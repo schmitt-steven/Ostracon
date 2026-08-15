@@ -1,5 +1,5 @@
 import "server-only";
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { links, notes } from "@/db/schema";
 
@@ -42,6 +42,26 @@ export async function resolveWikilinkTitles(
   const result = new Map<string, string>();
   for (const [title, v] of oldestByTitle) result.set(title, v.slug);
   return result;
+}
+
+/**
+ * Slugs of every note linked with this one in either direction: the notes it
+ * points at (whose backlink panels list it) and the notes pointing at it
+ * (whose wikilinks to it are about to go dead). Deleting a note changes how
+ * all of those render, so the caller revalidates them.
+ */
+export async function linkedSlugs(noteId: string): Promise<string[]> {
+  const rows = await db
+    .select({ slug: notes.slug })
+    .from(links)
+    .innerJoin(
+      notes,
+      // The note at whichever end of the row isn't the one being asked about.
+      sql`${notes.id} = case when ${links.fromId} = ${noteId} then ${links.toId} else ${links.fromId} end`,
+    )
+    .where(or(eq(links.fromId, noteId), eq(links.toId, noteId)));
+
+  return [...new Set(rows.map((r) => r.slug))];
 }
 
 /**

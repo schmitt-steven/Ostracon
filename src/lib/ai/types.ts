@@ -16,6 +16,13 @@ export const ACTION_LABELS: Record<AiAction, string> = {
   ask: "Ask…",
 };
 
+/**
+ * Ceiling on whole-note context for a cursor-position ask. Long enough for any
+ * note in a personal knowledge base, low enough that a runaway one can't spend
+ * a free tier's rate limit in a couple of questions.
+ */
+export const NOTE_CONTEXT_LIMIT = 16000;
+
 /** What `GET /api/ai` returns — never includes base URLs or keys. */
 export type ProviderInfo = {
   id: string;

@@ -6,8 +6,11 @@ import type { AiAction } from "@/lib/ai/types";
 export type AiRequest = {
   providerId?: string;
   action: AiAction;
-  selection: string;
+  /** Absent for a question raised at the bare cursor. */
+  selection?: string;
   question?: string;
+  /** Whole-note context, sent only when there's no selection. */
+  noteBody?: string;
   noteTitle?: string;
 };
 

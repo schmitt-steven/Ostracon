@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { defaultProvider, getProvider, getProviders } from "@/lib/ai/providers";
-import { streamCompletion } from "@/lib/ai/stream";
-import { AI_ACTIONS, type ProviderInfo } from "@/lib/ai/types";
+import { describeCompletionError, streamCompletion } from "@/lib/ai/stream";
+import {
+  AI_ACTIONS,
+  NOTE_CONTEXT_LIMIT,
+  type ProviderInfo,
+} from "@/lib/ai/types";
 
 // Lets the menu render the real provider list — which ones exist, which are
 // reachable from this deployment, and why not. Deliberately maps the fields by
@@ -29,9 +33,11 @@ const RequestSchema = z.object({
   providerId: z.enum(["gemini", "lmstudio", "ollama"]).optional(),
   action: z.enum(AI_ACTIONS),
   // Bounded so a stray select-all can't send an entire long note (and burn
-  // the free tier's rate limit) on one keystroke.
-  selection: z.string().min(1).max(8000),
+  // the free tier's rate limit) on one keystroke. Optional because "ask" can
+  // be raised at the bare cursor, where the note stands in as context.
+  selection: z.string().max(8000).optional(),
   question: z.string().max(1000).optional(),
+  noteBody: z.string().max(NOTE_CONTEXT_LIMIT).optional(),
   noteTitle: z.string().max(300).optional(),
 });
 
@@ -42,10 +48,19 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
-  const { providerId, action, selection, question, noteTitle } = parsed.data;
+  const { providerId, action, selection, question, noteBody, noteTitle } =
+    parsed.data;
 
   if (action === "ask" && !question?.trim()) {
     return NextResponse.json({ error: "Ask what?" }, { status: 400 });
+  }
+  // Explain/summarize/rewrite are all "do this to that" — without a selection
+  // there is no "that", and only ask can fall back to whole-note context.
+  if (action !== "ask" && !selection?.trim()) {
+    return NextResponse.json(
+      { error: "Select some text first" },
+      { status: 400 },
+    );
   }
 
   const provider = providerId ? getProvider(providerId) : defaultProvider();
@@ -64,23 +79,20 @@ export async function POST(request: Request) {
   // body turns out to be empty.
   const tokens = streamCompletion(
     provider,
-    { action, selection, question, noteTitle },
+    { action, selection, question, noteBody, noteTitle },
     request.signal,
   );
   let first;
   try {
     first = await tokens.next();
   } catch (error) {
-    // "Connection error." is what the SDK gives for an unreachable host, which
-    // for a local provider almost always means the app isn't running — worth
-    // saying, since that's a fix the user can act on.
-    const raw =
-      error instanceof Error ? error.message : "The model request failed";
-    const message =
-      raw === "Connection error."
-        ? `Couldn't reach ${provider.label}. Is it running?`
-        : raw;
-    return NextResponse.json({ error: message }, { status: 502 });
+    // 502 rather than the upstream's own status: the failure is this route's
+    // gateway hop, and forwarding a 404 would read as "no such endpoint" to the
+    // client. The upstream status travels in the message instead.
+    return NextResponse.json(
+      { error: describeCompletionError(error, provider.label) },
+      { status: 502 },
+    );
   }
 
   const encoder = new TextEncoder();

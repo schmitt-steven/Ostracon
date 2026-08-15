@@ -4,7 +4,8 @@ import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
 import { redo, redoDepth, undo, undoDepth } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
-import { EditorView, placeholder as placeholderExt } from "@codemirror/view";
+import { Prec } from "@codemirror/state";
+import { EditorView, keymap, placeholder as placeholderExt } from "@codemirror/view";
 import { basicSetup } from "codemirror";
 
 const appTheme = EditorView.theme({
@@ -142,6 +143,17 @@ function urlPasteHandler() {
   });
 }
 
+// The caret has no width, so `coordsAtPos` is the only way to anchor a popup
+// to it. It returns null when the position isn't currently rendered (scrolled
+// far out of view), in which case the editor's own top-left is a sane place to
+// put the menu rather than the viewport corner.
+function anchorAtCursor(view: EditorView): { x: number; y: number } {
+  const coords = view.coordsAtPos(view.state.selection.main.head);
+  if (coords) return { x: coords.left, y: coords.bottom };
+  const box = view.dom.getBoundingClientRect();
+  return { x: box.left + 16, y: box.top + 16 };
+}
+
 // Clicking a toolbar button moves focus out of the editor, so hand it back
 // afterwards: the caret CodeMirror just restored is where the user wants to
 // resume typing, and ⌘Z has to keep working without a click into the text.
@@ -154,12 +166,18 @@ function runHistoryCommand(
   view.focus();
 }
 
-export type SelectionContextMenu = {
-  /** Viewport coordinates of the click, for positioning the menu. */
+/**
+ * Where an AI prompt was opened from. Two ways in: right-clicking a selection,
+ * or the ask shortcut at the bare cursor — hence `text` may be empty, which is
+ * what distinguishes "ask about this" from "ask about the note".
+ */
+export type AiAnchor = {
+  /** Viewport coordinates to position the menu at. */
   x: number;
   y: number;
+  /** The selected text; empty when opened from the cursor. */
   text: string;
-  /** End of the selection — where generated text gets inserted. */
+  /** Where generated text gets inserted — selection end, or the cursor. */
   to: number;
 };
 
@@ -192,7 +210,9 @@ type Props = {
   /** Fires with the 1-based line the user clicked on. */
   onLineClick?: (line: number) => void;
   /** Fires on right-click when text is selected; suppresses the native menu. */
-  onSelectionContextMenu?: (menu: SelectionContextMenu) => void;
+  onSelectionContextMenu?: (anchor: AiAnchor) => void;
+  /** Fires on the ask shortcut (⌘J / Ctrl-J), selection or not. */
+  onAskShortcut?: (anchor: AiAnchor) => void;
   /** Fires only when a direction flips between empty and non-empty. */
   onHistoryChange?: (history: HistoryState) => void;
   placeholder?: string;
@@ -205,6 +225,7 @@ export function CodeMirrorEditor({
   onChange,
   onLineClick,
   onSelectionContextMenu,
+  onAskShortcut,
   onHistoryChange,
   placeholder,
   className,
@@ -224,6 +245,10 @@ export function CodeMirrorEditor({
   useEffect(() => {
     onContextMenuRef.current = onSelectionContextMenu;
   }, [onSelectionContextMenu]);
+  const onAskShortcutRef = useRef(onAskShortcut);
+  useEffect(() => {
+    onAskShortcutRef.current = onAskShortcut;
+  }, [onAskShortcut]);
   const onHistoryChangeRef = useRef(onHistoryChange);
   useEffect(() => {
     onHistoryChangeRef.current = onHistoryChange;
@@ -287,6 +312,25 @@ export function CodeMirrorEditor({
       parent: containerRef.current,
       extensions: [
         basicSetup,
+        // Prec.highest so this wins over basicSetup's keymaps regardless of
+        // extension order. Mod-j is ⌘J on macOS, Ctrl-J elsewhere.
+        Prec.highest(
+          keymap.of([
+            {
+              key: "Mod-j",
+              preventDefault: true,
+              run(view) {
+                const { from, to } = view.state.selection.main;
+                onAskShortcutRef.current?.({
+                  ...anchorAtCursor(view),
+                  text: view.state.sliceDoc(from, to),
+                  to,
+                });
+                return true;
+              },
+            },
+          ]),
+        ),
         markdown({ codeLanguages: languages }),
         EditorView.lineWrapping,
         placeholderExt(placeholder ?? ""),

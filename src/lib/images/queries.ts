@@ -3,9 +3,7 @@ import { list, type ListBlobResultBlob } from "@vercel/blob";
 import { asc } from "drizzle-orm";
 import { db } from "@/db/client";
 import { notes } from "@/db/schema";
-
-/** Matches the prefix the upload route writes under. */
-const PREFIX = "notes/";
+import { referencedUrls, UPLOAD_PREFIX } from "./references";
 
 /** `id` is what the gallery matches against note search results. */
 export type ImageOwner = { id: string; slug: string; title: string };
@@ -19,25 +17,6 @@ export type StoredImage = {
   /** The note whose body points at this URL. */
   note: ImageOwner;
 };
-
-// Nothing records which note an upload belonged to — the URL is written
-// straight into the markdown and that reference is the only link that exists.
-// So ownership is recovered by reading it back out of the note bodies.
-//
-// Both syntaxes are covered: the paste handler writes `![alt](url)`, but an
-// upload can also end up as a plain link or as raw HTML pasted into the note.
-const MARKDOWN_TARGET_RE = /!?\[[^\]]*\]\(\s*<?([^\s)>]+)/g;
-const HTML_SRC_RE = /<img[^>]*\ssrc\s*=\s*["']([^"']+)["']/gi;
-
-// Safe to share these across calls: String.matchAll works on a clone, so it
-// never leaves `lastIndex` behind on the module-level regex.
-function referencedUrls(markdown: string): string[] {
-  return [MARKDOWN_TARGET_RE, HTML_SRC_RE].flatMap((re) =>
-    [...markdown.matchAll(re)]
-      .map((m) => m[1])
-      .filter((url): url is string => url !== undefined),
-  );
-}
 
 async function ownersByUrl(): Promise<Map<string, ImageOwner>> {
   const rows = await db
@@ -71,7 +50,7 @@ async function listAllBlobs(): Promise<ListBlobResultBlob[]> {
   // so the cursor is followed rather than silently truncating the tail.
   do {
     const page = await list({
-      prefix: PREFIX,
+      prefix: UPLOAD_PREFIX,
       cursor,
       // Explicit token for the same reason as the upload route — see the
       // comment there about OIDC resolution.
@@ -84,7 +63,7 @@ async function listAllBlobs(): Promise<ListBlobResultBlob[]> {
 }
 
 function displayName(pathname: string): string {
-  return pathname.slice(PREFIX.length).replace(/^\d+-/, "");
+  return pathname.slice(UPLOAD_PREFIX.length).replace(/^\d+-/, "");
 }
 
 export async function listStoredImages(): Promise<StoredImage[]> {

@@ -1,5 +1,9 @@
 import "server-only";
-import OpenAI from "openai";
+import OpenAI, {
+  APIConnectionError,
+  APIConnectionTimeoutError,
+  APIError,
+} from "openai";
 import type { Provider } from "./providers";
 import type { AiAction } from "./types";
 
@@ -22,10 +26,13 @@ const INSTRUCTIONS: Record<Exclude<AiAction, "ask">, string> = {
 
 export type CompletionRequest = {
   action: AiAction;
-  selection: string;
+  /** Empty for an ask raised at the bare cursor. */
+  selection?: string;
   /** Only used by the "ask" action. */
   question?: string;
-  /** Gives the model a little context about where the selection came from. */
+  /** Whole-note context, sent only when there's no selection to focus on. */
+  noteBody?: string;
+  /** Gives the model a little context about where this came from. */
   noteTitle?: string;
 };
 
@@ -33,26 +40,94 @@ function buildUserPrompt({
   action,
   selection,
   question,
+  noteBody,
   noteTitle,
 }: CompletionRequest): string {
   const instruction =
-    action === "ask"
-      ? (question?.trim() ?? "")
-      : INSTRUCTIONS[action];
+    action === "ask" ? (question?.trim() ?? "") : INSTRUCTIONS[action];
 
-  // The selection is fenced off in a tag rather than quoted inline so that a
-  // selection which itself contains backticks or markdown headings can't be
-  // read as part of the instruction.
-  return [
-    noteTitle ? `The selection is from a note titled "${noteTitle}".` : null,
-    "<selection>",
-    selection,
-    "</selection>",
-    "",
-    instruction,
-  ]
+  // Context is fenced in a tag rather than quoted inline, so text that itself
+  // contains backticks or markdown headings can't be read as instructions.
+  const context = selection
+    ? ["<selection>", selection, "</selection>"]
+    : noteBody
+      ? ["<note>", noteBody, "</note>"]
+      : [];
+
+  const preamble = selection
+    ? noteTitle
+      ? `The selection is from a note titled "${noteTitle}".`
+      : null
+    : noteBody
+      ? `Below is the user's note${noteTitle ? ` titled "${noteTitle}"` : ""}. Answer their question; draw on the note where it's relevant and say so plainly when it isn't.`
+      : null;
+
+  return [preamble, ...context, "", instruction]
     .filter((line) => line !== null)
     .join("\n");
+}
+
+// The SDK builds its error message out of a `{"error":{"message":...}}` body.
+// Gemini wraps that same object in a JSON array, which matches neither the
+// expected shape nor the not-JSON-at-all fallback, so its errors arrive as the
+// bare "404 status code (no body)" with the explanation thrown away. Unwrapping
+// it here — the one place that touches the wire — keeps the repair out of every
+// caller, which can go on reading `APIError.message`.
+async function fetchUnwrappingErrors(
+  input: string | URL | Request,
+  init?: RequestInit,
+): Promise<Response> {
+  const response = await fetch(input, init);
+  if (response.ok) return response;
+
+  const body = await response.text();
+  let unwrapped = body;
+  try {
+    const parsed: unknown = JSON.parse(body);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      unwrapped = JSON.stringify(parsed[0]);
+    }
+  } catch {
+    // Not JSON — an HTML error page from a proxy, say. Passed through as-is,
+    // since the SDK reports a body it can't parse as the message verbatim.
+  }
+
+  // Both headers describe the bytes on the wire, which have now been decoded
+  // and rewritten, so neither survives the copy.
+  const headers = new Headers(response.headers);
+  headers.delete("content-length");
+  headers.delete("content-encoding");
+  return new Response(unwrapped, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+/**
+ * Reduces whatever the SDK threw to one line worth showing the user. Failures
+ * here are usually actionable — a local server that isn't running, a retired
+ * model, a spent quota — so the message should say which one it was.
+ */
+export function describeCompletionError(
+  error: unknown,
+  providerLabel: string,
+): string {
+  if (error instanceof APIConnectionTimeoutError) {
+    return `${providerLabel} didn't respond in time.`;
+  }
+  if (error instanceof APIConnectionError) {
+    // What the SDK gives for an unreachable host, which for a local provider
+    // almost always means the app isn't running — worth saying, since that's a
+    // fix the user can act on.
+    return `Couldn't reach ${providerLabel}. Is it running?`;
+  }
+  if (error instanceof APIError) {
+    // `message` already leads with the status code, so it isn't repeated here.
+    // With no body to explain it, that status is all there is to report.
+    return `${providerLabel}: ${error.message}`;
+  }
+  return error instanceof Error ? error.message : "The model request failed.";
 }
 
 /**
@@ -68,6 +143,7 @@ export async function* streamCompletion(
   const client = new OpenAI({
     apiKey: provider.apiKey,
     baseURL: provider.baseURL,
+    fetch: fetchUnwrappingErrors,
     // Local servers are on loopback and a stalled request should surface
     // quickly rather than hanging the editor; the browser can always retry.
     timeout: 60_000,

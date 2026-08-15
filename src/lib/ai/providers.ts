@@ -46,7 +46,9 @@ export function getProviders(): Provider[] {
       id: "gemini",
       label: "Gemini",
       baseURL: GEMINI_BASE_URL,
-      model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
+      // The floating alias, not a pinned version: Google retires old models
+      // for new API keys, and a pin turns that into a 404 on the next request.
+      model: process.env.GEMINI_MODEL ?? "gemini-flash-latest",
       apiKey: geminiKey,
       available: geminiKey.length > 0,
       unavailableReason: geminiKey ? undefined : "GEMINI_API_KEY is not set.",

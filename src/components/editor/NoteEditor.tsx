@@ -17,14 +17,18 @@ import {
   setProviderChoice,
   subscribeProviderChoice,
 } from "@/lib/ai/provider-choice";
-import type { AiAction, ProviderInfo } from "@/lib/ai/types";
+import {
+  NOTE_CONTEXT_LIMIT,
+  type AiAction,
+  type ProviderInfo,
+} from "@/lib/ai/types";
 import { suggestTags } from "@/lib/notes/tag-heuristic";
 import { AiMenu } from "./AiMenu";
 import {
   CodeMirrorEditor,
   type EditorHandle,
   type HistoryState,
-  type SelectionContextMenu,
+  type AiAnchor,
 } from "./CodeMirrorEditor";
 import { HistoryControls } from "./HistoryControls";
 import { PreviewPane, type PreviewHandle } from "./PreviewPane";
@@ -73,7 +77,7 @@ export function NoteEditor({
     canRedo: false,
   });
 
-  const [aiMenu, setAiMenu] = useState<SelectionContextMenu | null>(null);
+  const [aiMenu, setAiMenu] = useState<AiAnchor | null>(null);
   const [providers, setProviders] = useState<ProviderInfo[] | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
 
@@ -111,7 +115,7 @@ export function NoteEditor({
   // Fetched on first use rather than on mount: most note sessions never open
   // this menu, and the request is fast enough to finish while the menu shows
   // its loading state.
-  const openAiMenu = useCallback((menu: SelectionContextMenu) => {
+  const openAiMenu = useCallback((menu: AiAnchor) => {
     setAiMenu(menu);
     setAiError(null);
     if (providersRequested.current) return;
@@ -128,6 +132,16 @@ export function NoteEditor({
     })();
   }, []);
 
+  // Whole-note context for a question raised at the bare cursor. Truncation
+  // carries a visible marker so a clipped note reads to the model as clipped,
+  // rather than as one that happens to stop mid-sentence.
+  function noteContext(): string | undefined {
+    const body = bodyMd.trim();
+    if (!body) return undefined;
+    if (body.length <= NOTE_CONTEXT_LIMIT) return body;
+    return `${body.slice(0, NOTE_CONTEXT_LIMIT - 32)}\n\n…[note truncated]`;
+  }
+
   function startAi(action: AiAction, question?: string) {
     if (!aiMenu) return;
     const editor = editorRef.current;
@@ -135,15 +149,20 @@ export function NoteEditor({
 
     setAiMenu(null);
     setAiError(null);
-    // Insertion starts at the end of the selection, on its own blank line, so
-    // the answer reads as a new block rather than running into the source text.
+    // Insertion starts where the prompt was raised — end of the selection, or
+    // the cursor — on its own blank line, so the answer reads as a new block
+    // rather than running into the surrounding text.
     editor.beginStream(aiMenu.to);
     editor.insertStreamed("\n\n");
+    const selection = aiMenu.text.trim();
     void runAi({
       providerId: usableProviderId,
       action,
       question,
-      selection: aiMenu.text,
+      selection: selection || undefined,
+      // Only one or the other: with something selected, that's the subject;
+      // without, the note stands in.
+      noteBody: selection ? undefined : noteContext(),
       noteTitle: title || undefined,
     });
   }
@@ -315,6 +334,7 @@ export function NoteEditor({
             value={bodyMd}
             onChange={updateBody}
             onSelectionContextMenu={openAiMenu}
+            onAskShortcut={openAiMenu}
             onHistoryChange={setHistory}
             // Clicking a line in the source scrolls the rendered side to the
             // block it produced (split only — nothing to sync otherwise).
@@ -345,6 +365,7 @@ export function NoteEditor({
         <AiMenu
           x={aiMenu.x}
           y={aiMenu.y}
+          hasSelection={aiMenu.text.trim().length > 0}
           providers={providers}
           providerId={providerId}
           onProviderChange={setProviderChoice}

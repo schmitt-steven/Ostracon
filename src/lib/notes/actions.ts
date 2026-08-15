@@ -6,9 +6,10 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { notes } from "@/db/schema";
 import { requireAuth } from "@/lib/auth/require-auth";
+import { deleteNoteImages } from "@/lib/images/cleanup";
 import { stringifyContentMd } from "./frontmatter";
 import { uniqueSlugFor } from "./slug";
-import { syncLinksForNote } from "./wikilinks";
+import { linkedSlugs, syncLinksForNote } from "./wikilinks";
 
 const NoteInput = z.object({
   // Title is intentionally optional: a very common flow is opening a new
@@ -98,8 +99,29 @@ export async function updateNote(input: unknown): Promise<UpdateNoteResult> {
   return { ok: true, version: updated.version, slug: updated.slug };
 }
 
-export async function deleteNote(id: string): Promise<void> {
+export async function deleteNote(input: unknown): Promise<void> {
   await requireAuth();
+  const id = z.uuid().parse(input);
+
+  // The body is read before the row goes, since it's the only record of which
+  // uploads the note was holding.
+  const [note] = await db
+    .select({ slug: notes.slug, contentMd: notes.contentMd })
+    .from(notes)
+    .where(eq(notes.id, id))
+    .limit(1);
+  // Already gone — deleting the same note twice (a stale list, a double
+  // submit) is a no-op, not an error.
+  if (!note) return;
+
+  const affectedSlugs = await linkedSlugs(id);
+
+  // `links` rows at both ends cascade with the note (see schema).
   await db.delete(notes).where(eq(notes.id, id));
+  await deleteNoteImages(id, note.contentMd);
+
   revalidatePath("/");
+  revalidatePath(`/notes/${note.slug}`);
+  for (const s of affectedSlugs) revalidatePath(`/notes/${s}`);
+  refresh();
 }

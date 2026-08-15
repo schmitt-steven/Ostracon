@@ -14,7 +14,14 @@ function formatSize(bytes: number): string {
     : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-function Thumbnail({ image }: { image: StoredImage }) {
+// The first row at the widest this page gets (max-w-4xl caps the grid at three
+// columns). Those are the only tiles that can be above the fold, and one of
+// them is the LCP element — so they load eagerly instead of waiting for the
+// lazy-load observer. Kept to one row: eager-loading tiles that turn out to be
+// below the fold just spends bandwidth on images nobody scrolled to.
+const EAGER_TILES = 3;
+
+function Thumbnail({ image, eager }: { image: StoredImage; eager: boolean }) {
   return (
     <>
       <div className="relative aspect-4/3 overflow-hidden rounded-2xl border border-line bg-paper-sunk transition-all group-hover:border-blue/40 group-hover:shadow-md group-hover:shadow-ink/5">
@@ -25,6 +32,9 @@ function Thumbnail({ image }: { image: StoredImage }) {
           alt={image.filename}
           fill
           sizes={SIZES}
+          // Not `priority`: deprecated in Next 16 in favour of `preload`,
+          // which the docs then steer away from for exactly this case.
+          loading={eager ? "eager" : "lazy"}
           // contain, not cover: these are mostly screenshots and diagrams, and
           // cropping one to a tidy 4:3 tends to cut off the very text that
           // tells you which screenshot it is.
@@ -47,7 +57,7 @@ function Thumbnail({ image }: { image: StoredImage }) {
 export function ImageGallery({ images }: { images: StoredImage[] }) {
   return (
     <ul className="grid grid-cols-2 gap-5 sm:grid-cols-3">
-      {images.map((image) => (
+      {images.map((image, i) => (
         <li key={image.url}>
           <Link
             href={`/notes/${image.note.slug}`}
@@ -56,7 +66,7 @@ export function ImageGallery({ images }: { images: StoredImage[] }) {
             title={image.filename}
             className="group block focus-visible:outline-none"
           >
-            <Thumbnail image={image} />
+            <Thumbnail image={image} eager={i < EAGER_TILES} />
           </Link>
         </li>
       ))}

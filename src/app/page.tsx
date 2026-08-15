@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ImageBrowser } from "@/components/images/ImageBrowser";
 import { ImagesToggle } from "@/components/notes/ImagesToggle";
+import { NoteCount } from "@/components/notes/NoteCount";
 import { NoteList } from "@/components/notes/NoteList";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { listStoredImages } from "@/lib/images/queries";
@@ -36,15 +37,19 @@ export default async function HomePage(props: PageProps<"/">) {
     (await props.searchParams).view === "images" ? "images" : "notes";
   const data = await loadView(view);
 
-  const count = data.view === "images" ? data.images.length : data.notes.length;
-  const noun = data.view === "images" ? "Image" : "Note";
   const switcher = <ImagesToggle active={data.view === "images"} />;
 
   return (
     <div className="mx-auto w-full max-w-4xl flex-1 px-8 py-12">
       <div className="mb-9 flex flex-wrap items-end justify-between gap-4">
         <h1 className="font-display text-5xl font-semibold tracking-tight text-ink">
-          {count} {count === 1 ? noun : `${noun}s`}
+          {/* The note count is a client component so it can tick down with the
+              row it's counting, as one motion — the gallery's is static. */}
+          {data.view === "images" ? (
+            `${data.images.length} ${data.images.length === 1 ? "Image" : "Images"}`
+          ) : (
+            <NoteCount noteIds={data.notes.map((note) => note.id)} />
+          )}
         </h1>
         <Link
           href="/notes/new"

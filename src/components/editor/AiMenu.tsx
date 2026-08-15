@@ -13,6 +13,11 @@ const MENU_WIDTH = 232;
 type Props = {
   x: number;
   y: number;
+  /**
+   * False when opened from the cursor with nothing selected: the three
+   * transform actions have no input, so only the question box is offered.
+   */
+  hasSelection: boolean;
   /** null while the provider list is still being fetched. */
   providers: ProviderInfo[] | null;
   /** null when nothing has been picked yet this session. */
@@ -25,13 +30,16 @@ type Props = {
 export function AiMenu({
   x,
   y,
+  hasSelection,
   providers,
   providerId,
   onProviderChange,
   onPick,
   onClose,
 }: Props) {
-  const [asking, setAsking] = useState(false);
+  // With no selection there's nothing to list, so the box is the whole menu
+  // and the shortcut lands the user straight in it, typing.
+  const [asking, setAsking] = useState(!hasSelection);
   const [question, setQuestion] = useState("");
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -85,7 +93,9 @@ export function AiMenu({
             autoFocus
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ask about the selection…"
+            placeholder={
+              hasSelection ? "Ask about the selection…" : "Ask about this note…"
+            }
             className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-blue"
           />
         </form>
