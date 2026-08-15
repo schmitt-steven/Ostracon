@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
+import { redo, redoDepth, undo, undoDepth } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
 import { EditorView, placeholder as placeholderExt } from "@codemirror/view";
@@ -141,11 +142,48 @@ function urlPasteHandler() {
   });
 }
 
+// Clicking a toolbar button moves focus out of the editor, so hand it back
+// afterwards: the caret CodeMirror just restored is where the user wants to
+// resume typing, and ⌘Z has to keep working without a click into the text.
+function runHistoryCommand(
+  view: EditorView | null,
+  command: (view: EditorView) => boolean,
+) {
+  if (!view) return;
+  command(view);
+  view.focus();
+}
+
+export type SelectionContextMenu = {
+  /** Viewport coordinates of the click, for positioning the menu. */
+  x: number;
+  y: number;
+  text: string;
+  /** End of the selection — where generated text gets inserted. */
+  to: number;
+};
+
+/** Whether each direction has anything left to step through. */
+export type HistoryState = {
+  canUndo: boolean;
+  canRedo: boolean;
+};
+
 export type EditorHandle = {
   /** Scrolls the given 1-based source line into view at the top. */
   scrollToLine: (line: number) => void;
   /** Re-measures after the pane goes from hidden back to visible. */
   remeasure: () => void;
+  /** Same history as ⌘Z / ⇧⌘Z — the keymap and these share one undo stack. */
+  undo: () => void;
+  redo: () => void;
+  /**
+   * Opens a streaming insertion point at `pos`. Subsequent `insertStreamed`
+   * calls append there, and the point survives edits made in the meantime.
+   */
+  beginStream: (pos: number) => void;
+  insertStreamed: (text: string) => void;
+  endStream: () => void;
 };
 
 type Props = {
@@ -153,6 +191,10 @@ type Props = {
   onChange: (value: string) => void;
   /** Fires with the 1-based line the user clicked on. */
   onLineClick?: (line: number) => void;
+  /** Fires on right-click when text is selected; suppresses the native menu. */
+  onSelectionContextMenu?: (menu: SelectionContextMenu) => void;
+  /** Fires only when a direction flips between empty and non-empty. */
+  onHistoryChange?: (history: HistoryState) => void;
   placeholder?: string;
   className?: string;
   ref?: Ref<EditorHandle>;
@@ -162,6 +204,8 @@ export function CodeMirrorEditor({
   value,
   onChange,
   onLineClick,
+  onSelectionContextMenu,
+  onHistoryChange,
   placeholder,
   className,
   ref,
@@ -176,6 +220,24 @@ export function CodeMirrorEditor({
   useEffect(() => {
     onLineClickRef.current = onLineClick;
   }, [onLineClick]);
+  const onContextMenuRef = useRef(onSelectionContextMenu);
+  useEffect(() => {
+    onContextMenuRef.current = onSelectionContextMenu;
+  }, [onSelectionContextMenu]);
+  const onHistoryChangeRef = useRef(onHistoryChange);
+  useEffect(() => {
+    onHistoryChangeRef.current = onHistoryChange;
+  }, [onHistoryChange]);
+
+  // Last values reported upward. The update listener runs on every keystroke
+  // and every cursor move, but the buttons only care about the empty/non-empty
+  // flip, so anything else would be a re-render of the whole editor for nothing.
+  const historyRef = useRef<HistoryState>({ canUndo: false, canRedo: false });
+
+  // Where streamed text is currently being appended, or null when no
+  // generation is in flight. Mapped through every document change below, so
+  // typing elsewhere mid-stream doesn't send tokens to the wrong offset.
+  const streamPosRef = useRef<number | null>(null);
 
   useImperativeHandle(ref, () => ({
     scrollToLine(line) {
@@ -191,6 +253,29 @@ export function CodeMirrorEditor({
     },
     remeasure() {
       viewRef.current?.requestMeasure();
+    },
+    undo() {
+      runHistoryCommand(viewRef.current, undo);
+    },
+    redo() {
+      runHistoryCommand(viewRef.current, redo);
+    },
+    beginStream(pos) {
+      streamPosRef.current = pos;
+    },
+    insertStreamed(text) {
+      const view = viewRef.current;
+      const pos = streamPosRef.current;
+      if (!view || pos === null) return;
+      // No explicit advance of streamPosRef: the update listener maps it
+      // through this very change, which moves it past the inserted text.
+      view.dispatch({
+        changes: { from: pos, insert: text },
+        scrollIntoView: true,
+      });
+    },
+    endStream() {
+      streamPosRef.current = null;
     },
   }), []);
 
@@ -217,9 +302,41 @@ export function CodeMirrorEditor({
             // Never handled — the click still has to place the caret.
             return false;
           },
+          contextmenu(event, view) {
+            const { from, to } = view.state.selection.main;
+            // With no selection there's nothing to ask about, so the browser's
+            // own menu (spellcheck, paste) stays available.
+            if (from === to) return false;
+            event.preventDefault();
+            onContextMenuRef.current?.({
+              x: event.clientX,
+              y: event.clientY,
+              text: view.state.sliceDoc(from, to),
+              to,
+            });
+            return true;
+          },
         }),
         EditorView.updateListener.of((update) => {
+          // Not gated on docChanged: undo() itself empties the undo stack
+          // without the document differing from where redo would put it back.
+          const canUndo = undoDepth(update.state) > 0;
+          const canRedo = redoDepth(update.state) > 0;
+          const previous = historyRef.current;
+          if (canUndo !== previous.canUndo || canRedo !== previous.canRedo) {
+            historyRef.current = { canUndo, canRedo };
+            onHistoryChangeRef.current?.(historyRef.current);
+          }
+
           if (update.docChanged) {
+            if (streamPosRef.current !== null) {
+              // assoc 1 keeps the point after text inserted at it, so our own
+              // streamed tokens append in order instead of stacking backwards.
+              streamPosRef.current = update.changes.mapPos(
+                streamPosRef.current,
+                1,
+              );
+            }
             onChangeRef.current(update.state.doc.toString());
           }
         }),

@@ -3,26 +3,41 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { links, notes } from "@/db/schema";
 import { parseContentMd } from "./frontmatter";
+import { textLength } from "./text-length";
 
 export type NoteOverview = {
   id: string;
   slug: string;
   title: string;
   tags: string[];
+  createdAt: Date;
   updatedAt: Date;
+  /** Readable characters in the body — see `textLength`. Drives "Most text". */
+  textLength: number;
 };
 
 export async function listNotesOverview(): Promise<NoteOverview[]> {
-  return db
+  // contentMd is pulled only to measure it; the body itself never leaves this
+  // function. The list page would otherwise need a second round trip to sort
+  // by length, and this is a single-user knowledge base — the whole table is
+  // already scanned for the overview.
+  const rows = await db
     .select({
       id: notes.id,
       slug: notes.slug,
       title: notes.title,
       tags: notes.tags,
+      contentMd: notes.contentMd,
+      createdAt: notes.createdAt,
       updatedAt: notes.updatedAt,
     })
     .from(notes)
     .orderBy(desc(notes.updatedAt));
+
+  return rows.map(({ contentMd, ...rest }) => ({
+    ...rest,
+    textLength: textLength(parseContentMd(contentMd).body),
+  }));
 }
 
 export type Note = {

@@ -88,18 +88,24 @@ export function PreviewPane({
     <div
       ref={scrollerRef}
       onClick={handleClick}
-      className={`relative overflow-y-auto px-8 py-6 ${className ?? ""}`}
+      className={`relative overflow-y-auto ${className ?? ""}`}
     >
-      {html ? (
-        <WikilinkNav>
-          <div
-            className="markdown-body"
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
-        </WikilinkNav>
-      ) : (
-        <p className="text-base text-ink-faint">Nothing to preview yet.</p>
-      )}
+      {/* Padding lives in here, not on the scroller: the scroller is a
+          flex-1 sibling of the editor, and flex-basis:0 can't shrink a
+          border-box element below its own padding — so padding out there
+          would hand this pane 64px more width than the editor in split. */}
+      <div className="px-8 py-6">
+        {html ? (
+          <WikilinkNav>
+            <div
+              className="markdown-body"
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          </WikilinkNav>
+        ) : (
+          <p className="text-base text-ink-faint">Nothing to preview yet.</p>
+        )}
+      </div>
     </div>
   );
 }

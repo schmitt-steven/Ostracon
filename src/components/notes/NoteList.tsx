@@ -1,49 +1,49 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
-import { useNoteSearch, type NoteOverviewLite } from "@/hooks/use-note-search";
+import { useMemo, type ReactNode } from "react";
+import {
+  collectTags,
+  useNoteSearch,
+  type NoteOverviewLite,
+} from "@/hooks/use-note-search";
 import { LocalDate } from "@/components/ui/LocalDate";
-import { TagFilter } from "./TagFilter";
+import { ListControls } from "./ListControls";
+import { SortFilter } from "./SortFilter";
 
-export function NoteList({ initialNotes }: { initialNotes: NoteOverviewLite[] }) {
-  const { query, setQuery, selectedTags, setSelectedTags, results } =
-    useNoteSearch(initialNotes);
+type Props = {
+  initialNotes: NoteOverviewLite[];
+  /**
+   * The notes/images switcher, handed in as a slot. It decides whether this
+   * list is on screen at all, so it stays the page's to own — the list just
+   * gives it a place to sit in the control row.
+   */
+  viewSwitcher: ReactNode;
+};
 
-  const allTags = useMemo(() => {
-    const set = new Set<string>();
-    for (const note of initialNotes) {
-      for (const tag of note.tags) set.add(tag);
-    }
-    return [...set].sort();
-  }, [initialNotes]);
+export function NoteList({ initialNotes, viewSwitcher }: Props) {
+  const {
+    query,
+    setQuery,
+    selectedTags,
+    setSelectedTags,
+    sort,
+    setSort,
+    results,
+  } = useNoteSearch(initialNotes);
+
+  const allTags = useMemo(() => collectTags(initialNotes), [initialNotes]);
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="relative">
-        <svg
-          aria-hidden
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-ink-faint"
-        >
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-3.5-3.5" />
-        </svg>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search notes…"
-          className="w-full rounded-full border border-line bg-surface py-3 pl-13 pr-5 text-base text-ink shadow-sm shadow-ink/5 outline-none transition-colors focus:border-blue"
-        />
-      </div>
-      <TagFilter
+      <ListControls
+        query={query}
+        onQueryChange={setQuery}
         allTags={allTags}
-        selected={selectedTags}
-        onChange={setSelectedTags}
+        selectedTags={selectedTags}
+        onTagsChange={setSelectedTags}
+        viewSwitcher={viewSwitcher}
+        trailing={<SortFilter value={sort} onChange={setSort} />}
       />
 
       {results.length === 0 ? (

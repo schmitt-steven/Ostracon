@@ -17,8 +17,11 @@ export function TagFilter({ allTags, selected, onChange }: Props) {
     );
   }
 
+  // A fragment, not a row of its own: the filter bar in NoteList lays the tags
+  // out in the same wrapping flow as the sort control, so the two can't be
+  // nested flex containers.
   return (
-    <div className="flex flex-wrap gap-2">
+    <>
       {allTags.map((tag) => {
         const active = selected.includes(tag);
         return (
@@ -36,6 +39,6 @@ export function TagFilter({ allTags, selected, onChange }: Props) {
           </button>
         );
       })}
-    </div>
+    </>
   );
 }

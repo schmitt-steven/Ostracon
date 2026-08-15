@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { NoteEditor } from "@/components/editor/NoteEditor";
 import { BacklinksPanel } from "@/components/notes/BacklinksPanel";
@@ -8,9 +9,13 @@ import { getNoteBySlug } from "@/lib/notes/queries";
 
 export default async function NotePage({
   params,
+  searchParams,
 }: PageProps<"/notes/[slug]">) {
   await requireAuth();
   const { slug } = await params;
+  // Set by the editor when it redirects here right after creating the note —
+  // the user is still writing, so don't open in preview.
+  const { created } = await searchParams;
   const note = await getNoteBySlug(slug);
   if (!note) notFound();
 
@@ -21,6 +26,15 @@ export default async function NotePage({
 
   return (
     <div className="mx-auto w-full max-w-4xl flex-1 px-8 py-12">
+      {/* A link to the list rather than history.back(): notes are reached from
+          wikilinks and direct URLs too, where there's no list to go back to. */}
+      <Link
+        href="/"
+        className="-ml-3 mb-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-base text-ink-muted transition-colors hover:bg-blue-wash hover:text-blue"
+      >
+        <span aria-hidden>←</span>
+        All notes
+      </Link>
       <NoteEditor
         noteId={note.id}
         version={note.version}
@@ -28,6 +42,7 @@ export default async function NotePage({
         initialBodyMd={body}
         initialTags={note.tags}
         initialPreviewHtml={previewHtml}
+        initialMode={created === "1" ? "write" : undefined}
       />
       <BacklinksPanel noteId={note.id} />
     </div>

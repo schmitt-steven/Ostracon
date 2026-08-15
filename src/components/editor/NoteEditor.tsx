@@ -1,10 +1,32 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { useAiCompletion } from "@/hooks/use-ai-completion";
 import { useAutosave } from "@/hooks/use-autosave";
+import {
+  getProviderChoice,
+  getServerProviderChoice,
+  setProviderChoice,
+  subscribeProviderChoice,
+} from "@/lib/ai/provider-choice";
+import type { AiAction, ProviderInfo } from "@/lib/ai/types";
 import { suggestTags } from "@/lib/notes/tag-heuristic";
-import { CodeMirrorEditor, type EditorHandle } from "./CodeMirrorEditor";
+import { AiMenu } from "./AiMenu";
+import {
+  CodeMirrorEditor,
+  type EditorHandle,
+  type HistoryState,
+  type SelectionContextMenu,
+} from "./CodeMirrorEditor";
+import { HistoryControls } from "./HistoryControls";
 import { PreviewPane, type PreviewHandle } from "./PreviewPane";
 import { SaveToast } from "./SaveToast";
 import { TagEditor } from "./TagEditor";
@@ -19,6 +41,8 @@ type Props = {
   initialTags: string[];
   /** Server-rendered HTML of `initialBodyMd`; empty for a brand-new note. */
   initialPreviewHtml?: string;
+  /** Overrides the mode the editor opens in (see the default below). */
+  initialMode?: ViewMode;
 };
 
 export function NoteEditor({
@@ -28,18 +52,101 @@ export function NoteEditor({
   initialBodyMd,
   initialTags,
   initialPreviewHtml = "",
+  initialMode,
 }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(initialTitle);
   const [bodyMd, setBodyMd] = useState(initialBodyMd);
   const [tags, setTags] = useState(initialTags);
   const [suggestEnabled, setSuggestEnabled] = useState(false);
-  // An existing note opens split (that's what the old page showed); an empty
-  // new note has nothing to preview, so it opens on the writing surface.
-  const [mode, setMode] = useState<ViewMode>(initialBodyMd ? "split" : "write");
+  // Opening an existing note is a reading action, so it lands on the rendered
+  // side; a new note is a writing action (and has nothing to preview anyway),
+  // so it lands on the writing surface.
+  const [mode, setMode] = useState<ViewMode>(
+    initialMode ?? (noteId ? "preview" : "write"),
+  );
 
   const editorRef = useRef<EditorHandle>(null);
   const previewRef = useRef<PreviewHandle>(null);
+  const [history, setHistory] = useState<HistoryState>({
+    canUndo: false,
+    canRedo: false,
+  });
+
+  const [aiMenu, setAiMenu] = useState<SelectionContextMenu | null>(null);
+  const [providers, setProviders] = useState<ProviderInfo[] | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  // Held in the session store, not component state, so picking a provider once
+  // holds for every note until the tab closes — see [provider-choice].
+  const providerId = useSyncExternalStore(
+    subscribeProviderChoice,
+    getProviderChoice,
+    getServerProviderChoice,
+  );
+
+  // A stored choice can name a provider this deployment doesn't offer (picked
+  // LM Studio locally, then opened the deployed app). Falling back to
+  // undefined lets the server choose, which matches the fallback the menu
+  // already shows in its dropdown.
+  const usableProviderId =
+    providers?.some((p) => p.id === providerId && p.available) && providerId
+      ? providerId
+      : undefined;
+
+  const { run: runAi, cancel: cancelAi, streaming } = useAiCompletion({
+    onToken: (text) => editorRef.current?.insertStreamed(text),
+    onDone: ({ ok, error }) => {
+      editorRef.current?.endStream();
+      if (!ok && error) setAiError(error);
+      // The tokens arrived as document changes, so updateBody already queued
+      // an autosave; flushing here just avoids waiting out the debounce on
+      // what may be a large block of new text.
+      if (ok) void flush();
+    },
+  });
+
+  const providersRequested = useRef(false);
+
+  // Fetched on first use rather than on mount: most note sessions never open
+  // this menu, and the request is fast enough to finish while the menu shows
+  // its loading state.
+  const openAiMenu = useCallback((menu: SelectionContextMenu) => {
+    setAiMenu(menu);
+    setAiError(null);
+    if (providersRequested.current) return;
+    providersRequested.current = true;
+    void (async () => {
+      try {
+        const res = await fetch("/api/ai");
+        setProviders(res.ok ? ((await res.json()) as ProviderInfo[]) : []);
+      } catch {
+        // Offline, or the session expired and the fetch was redirected to the
+        // login page — an empty list renders as "no provider available".
+        setProviders([]);
+      }
+    })();
+  }, []);
+
+  function startAi(action: AiAction, question?: string) {
+    if (!aiMenu) return;
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    setAiMenu(null);
+    setAiError(null);
+    // Insertion starts at the end of the selection, on its own blank line, so
+    // the answer reads as a new block rather than running into the source text.
+    editor.beginStream(aiMenu.to);
+    editor.insertStreamed("\n\n");
+    void runAi({
+      providerId: usableProviderId,
+      action,
+      question,
+      selection: aiMenu.text,
+      noteTitle: title || undefined,
+    });
+  }
 
   // display:none leaves CodeMirror with stale measurements; re-measure when
   // the pane comes back rather than tearing the view (and its undo history)
@@ -52,7 +159,10 @@ export function NoteEditor({
     initialNoteId: noteId,
     initialVersion: version,
     onCreated: (result) => {
-      router.replace(`/notes/${result.slug}`);
+      // This swaps /notes/new for the real route, which remounts the editor
+      // mid-typing — `created` keeps it on the writing surface instead of
+      // letting the existing-note default drop the user into preview.
+      router.replace(`/notes/${result.slug}?created=1`);
     },
   });
 
@@ -153,15 +263,59 @@ export function NoteEditor({
       )}
       {/* One box for both sides: the toolbar is a row inside it, and split
           mode divides the body with a hairline rather than a second card. */}
-      <div className="flex h-[70vh] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-sm shadow-ink/5 transition-colors focus-within:border-blue/50">
-        <div className="flex shrink-0 items-center border-b border-line px-3 py-2">
-          <ViewModeToggle mode={mode} onChange={setMode} />
+      {streaming && (
+        <div className="flex items-center gap-3 rounded-xl border border-blue/30 bg-blue-wash px-4 py-2.5 text-sm text-blue">
+          <span
+            aria-hidden
+            className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-blue"
+          />
+          Generating…
+          <button
+            type="button"
+            onClick={cancelAi}
+            className="ml-auto rounded-full px-3 py-1 text-sm font-medium transition-colors hover:bg-blue hover:text-paper"
+          >
+            Stop
+          </button>
+        </div>
+      )}
+      {aiError && (
+        <div className="flex items-start gap-3 rounded-xl border border-accent/35 bg-accent-wash px-4 py-2.5 text-sm text-ink">
+          <span className="min-w-0 flex-1">{aiError}</span>
+          <button
+            type="button"
+            onClick={() => setAiError(null)}
+            className="shrink-0 text-ink-muted transition-colors hover:text-ink"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      {/* `group` so the lines inside the box — the toolbar's underline and the
+          hairlines between the modes — can pick up the same focus swing as the
+          box's own border instead of staying cream while it turns blue. */}
+      <div className="group flex h-[70vh] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-sm shadow-ink/5 transition-colors focus-within:border-blue/50">
+        <div className="flex shrink-0 border-b border-line transition-colors group-focus-within:border-blue/50">
+          <HistoryControls
+            canUndo={history.canUndo}
+            canRedo={history.canRedo}
+            onUndo={() => editorRef.current?.undo()}
+            onRedo={() => editorRef.current?.redo()}
+            dividerHidden={mode === "write"}
+          />
+          {/* min-w-0 so the three mode segments keep splitting whatever width
+              is left over instead of pushing the buttons off the edge. */}
+          <div className="min-w-0 flex-1">
+            <ViewModeToggle mode={mode} onChange={setMode} />
+          </div>
         </div>
         <div className="flex min-h-0 flex-1">
           <CodeMirrorEditor
             ref={editorRef}
             value={bodyMd}
             onChange={updateBody}
+            onSelectionContextMenu={openAiMenu}
+            onHistoryChange={setHistory}
             // Clicking a line in the source scrolls the rendered side to the
             // block it produced (split only — nothing to sync otherwise).
             onLineClick={(line) => {
@@ -186,6 +340,18 @@ export function NoteEditor({
           />
         </div>
       </div>
+
+      {aiMenu && (
+        <AiMenu
+          x={aiMenu.x}
+          y={aiMenu.y}
+          providers={providers}
+          providerId={providerId}
+          onProviderChange={setProviderChoice}
+          onPick={startAi}
+          onClose={() => setAiMenu(null)}
+        />
+      )}
     </div>
   );
 }
