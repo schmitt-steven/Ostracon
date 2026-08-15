@@ -1,26 +1,301 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Palette: warm paper, deep-blue ink, burnt-orange accent.
+
+   Single committed theme — no dark variant. The design leans on paper warmth
+   for depth (tinted surfaces, warm hairlines) rather than on light/dark
+   inversion, so a mirrored dark palette would be a different design, not a
+   translation of this one.
+   --------------------------------------------------------------------------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #faf3e8;
+  --paper-sunk: #f3e7d4;
+  --surface: #fffcf6;
+  /* Leans blue, not warmer-cream: hover also swings the card's border and
+     title into --blue, and a warm-shifting background underneath those read
+     as muddy. Kept well lighter than --blue-wash so tag pills still separate
+     from the card they sit on. */
+  --surface-hover: #f1f5fd;
+
+  --ink: #152f52;
+  --ink-muted: #55688a;
+  --ink-faint: #8b98ab;
+
+  /* Orange is ambient only — background wash, list bullets, links, section
+     eyebrows. Anything the user clicks is blue (see below), so the two colours
+     never compete for "this is actionable". */
+  --accent: #c25a1e;
+  --accent-hover: #a94a15;
+  --accent-wash: #f7e5d1;
+
+  /* Interactive blue: a step brighter than --ink so buttons read as buttons
+     rather than as blocks of body text. */
+  --blue: #1d4e8f;
+  --blue-hover: #163d73;
+  --blue-wash: #dfe8f7;
+
+  /* Confirmation only — the save toast is the single place green appears, so
+     it never has to coexist with the orange/blue split above. Desaturated
+     towards the paper warmth so it doesn't read as a stock system green. */
+  --green: #2f6b46;
+  --green-wash: #e1eddc;
+
+  --line: #e8d8bf;
+  --line-strong: #d8c2a1;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
 }
 
 @theme inline {
+  --color-paper: var(--paper);
+  --color-paper-sunk: var(--paper-sunk);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-wash: var(--accent-wash);
+  --color-blue: var(--blue);
+  --color-blue-hover: var(--blue-hover);
+  --color-blue-wash: var(--blue-wash);
+  --color-green: var(--green);
+  --color-green-wash: var(--green-wash);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-plex-sans);
+  --font-mono: var(--font-plex-mono);
+  --font-display: var(--font-fraunces);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Two soft warm pools — orange at the top, a paler one low-left — keep the
+     large empty areas of the note list from reading as flat beige. Fixed
+     attachment so they stay put while long notes scroll under them. */
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(
+      70rem 32rem at 50% -12rem,
+      color-mix(in srgb, var(--accent) 12%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      48rem 40rem at -10% 110%,
+      color-mix(in srgb, var(--accent) 7%, transparent) 0%,
+      transparent 70%
+    );
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--ink);
+}
+
+::placeholder {
+  color: var(--ink-faint);
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/* Save toast (SaveToast). Drops in from under the sticky header. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.toast-enter {
+  animation: toast-in 180ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-enter {
+    animation: none;
+  }
+}
+
+/* Rendered note markdown (MarkdownView). Hand-rolled rather than a
+   typography plugin, kept intentionally minimal. */
+.markdown-body {
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: color-mix(in srgb, var(--ink) 88%, var(--paper));
+}
+
+.markdown-body > :first-child {
+  margin-top: 0;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ink);
+  margin-top: 1.6em;
+  margin-bottom: 0.5em;
+}
+
+.markdown-body h1 {
+  font-size: 1.6em;
+}
+.markdown-body h2 {
+  font-size: 1.3em;
+}
+.markdown-body h3 {
+  font-size: 1.1em;
+}
+
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body blockquote,
+.markdown-body table,
+.markdown-body pre {
+  margin-top: 0;
+  margin-bottom: 1em;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.5em;
+}
+
+.markdown-body ul {
+  list-style: none;
+  padding-left: 1.2em;
+}
+
+.markdown-body ul > li::before {
+  content: "";
+  display: inline-block;
+  width: 0.35em;
+  height: 0.35em;
+  margin-right: 0.6em;
+  margin-left: -0.95em;
+  vertical-align: 0.2em;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.markdown-body ol > li::marker {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.markdown-body li + li {
+  margin-top: 0.3em;
+}
+
+.markdown-body blockquote {
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent-wash) 55%, transparent);
+  border-radius: 0 0.375rem 0.375rem 0;
+  padding: 0.6em 1em;
+  color: var(--ink-muted);
+  font-style: italic;
+}
+
+.markdown-body blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body code {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.875em;
+  background: var(--paper-sunk);
+  color: color-mix(in srgb, var(--accent) 80%, var(--ink));
+  border-radius: 0.25em;
+  padding: 0.15em 0.4em;
+}
+
+.markdown-body pre {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 0.5em;
+  padding: 1em;
+}
+
+.markdown-body pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  font-size: 0.85em;
+}
+
+.markdown-body table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9em;
+  overflow: hidden;
+  border-radius: 0.5rem;
+}
+
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid var(--line);
+  padding: 0.5em 0.7em;
+  text-align: left;
+}
+
+.markdown-body th {
+  background: var(--paper-sunk);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid var(--line-strong);
+  margin: 2em 0;
+}
+
+.markdown-body img {
+  max-width: 100%;
+  border-radius: 0.5rem;
+}
+
+.markdown-body a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  text-underline-offset: 2px;
+}
+
+.markdown-body a:hover {
+  text-decoration-color: var(--accent);
+}
+
+.markdown-body a.wikilink-unresolved {
+  color: var(--ink-faint);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--line-strong);
+}
+
+/* Shiki output (see rehype-shiki-lazy.ts). A single warm light theme now that
+   the app has no dark mode — tokens carry plain colors again, so no
+   --shiki-* custom-property plumbing is needed. The theme's own background is
+   dropped in favour of the app's sunk-paper tone so code blocks sit in the
+   same warm family as the rest of the page. */
+.markdown-body .shiki {
+  background-color: var(--paper-sunk) !important;
 }
