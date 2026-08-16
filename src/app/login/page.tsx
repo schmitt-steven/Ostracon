@@ -3,7 +3,7 @@ import { LoginForm } from "@/components/auth/LoginForm";
 export default function LoginPage() {
   return (
     <div className="flex flex-1 items-center justify-center p-8">
-      <div className="w-full max-w-md rounded-2xl border border-line bg-surface px-10 py-12 shadow-lg shadow-ink/5">
+      <div className="w-full max-w-md rounded-2xl border border-line bg-surface px-10 py-12 shadow-lg shadow-shade/5">
         <div className="mb-8 text-center">
           <span
             aria-hidden

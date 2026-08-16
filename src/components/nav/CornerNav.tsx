@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { logoutAction } from "@/lib/auth/actions";
+import { ThemeToggle } from "./ThemeToggle";
 
 /**
  * Replaces the old full-width header. A quarter disc pinned to the top-right
@@ -11,8 +12,9 @@ import { logoutAction } from "@/lib/auth/actions";
  *
  * It stays collapsed at 4rem — small enough that page content starting at
  * `pt-16` clears it at every viewport width, so it needs no mobile variant —
- * and grows to 11rem to reveal Log out. Hover opens it on pointer devices,
- * tapping the disc opens it on touch, and focus opens it for the keyboard.
+ * and grows to 13rem to reveal the theme switch and Log out. Hover opens it on
+ * pointer devices, tapping the disc opens it on touch, and focus opens it for
+ * the keyboard.
  */
 export function CornerNav() {
   const [open, setOpen] = useState(false);
@@ -43,9 +45,9 @@ export function CornerNav() {
         className={[
           // A square with only its bottom-left corner rounded to the full side
           // length is exactly a quarter disc centred on the page corner.
-          "size-16 rounded-bl-full border border-line bg-surface/90 shadow-lg shadow-ink/5 backdrop-blur-md",
+          "size-16 rounded-bl-full border border-line bg-surface/90 shadow-lg shadow-shade/5 backdrop-blur-md",
           "transition-[width,height] duration-300 ease-out motion-reduce:transition-none",
-          "group-hover:size-44 group-focus-within:size-44 group-data-open:size-44",
+          "group-hover:size-52 group-focus-within:size-52 group-data-open:size-52",
         ].join(" ")}
       />
 
@@ -56,7 +58,7 @@ export function CornerNav() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? "Close menu" : "Open menu"}
-        className="absolute right-0 top-0 size-16 rounded-bl-full transition-[width,height] duration-300 ease-out group-hover:size-44 group-focus-within:size-44 group-data-open:size-44 motion-reduce:transition-none"
+        className="absolute right-0 top-0 size-16 rounded-bl-full transition-[width,height] duration-300 ease-out group-hover:size-52 group-focus-within:size-52 group-data-open:size-52 motion-reduce:transition-none"
       />
 
       {/* The mark. Anchored rather than centred in the disc, so it holds still
@@ -67,22 +69,28 @@ export function CornerNav() {
         className="absolute right-5 top-5 flex size-3 items-center justify-center rounded-full bg-accent transition-transform hover:scale-125"
       />
 
-      <form
-        action={logoutAction}
+      {/* Both controls ride one reveal, right-aligned: the disc's edge curves
+          away to the left as it descends, so a right-hand stack is the shape
+          that stays inside it. Log out sits last — the one action here you
+          can't undo by clicking again. */}
+      <div
         className={[
-          "absolute right-4 top-14 opacity-0 transition-opacity duration-200",
+          "absolute right-4 top-14 flex flex-col items-end gap-0.5 opacity-0 transition-opacity duration-200",
           "pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto group-data-open:pointer-events-auto",
           "group-hover:opacity-100 group-focus-within:opacity-100 group-data-open:opacity-100",
           "motion-reduce:transition-none",
         ].join(" ")}
       >
-        <button
-          type="submit"
-          className="rounded-full px-3 py-1.5 text-base text-ink-muted transition-colors hover:bg-blue-wash hover:text-blue"
-        >
-          Log out
-        </button>
-      </form>
+        <ThemeToggle />
+        <form action={logoutAction}>
+          <button
+            type="submit"
+            className="rounded-full px-3 py-1.5 text-base text-ink-muted transition-colors hover:bg-blue-wash hover:text-blue"
+          >
+            Log out
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

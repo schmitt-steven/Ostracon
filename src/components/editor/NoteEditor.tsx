@@ -231,7 +231,14 @@ export function NoteEditor({
         placeholder="Untitled note"
         // Inputs clip to their line box, and Fraunces' descenders overflow
         // the default text-4xl leading — hence the roomier line-height.
-        className="w-full bg-transparent font-display text-4xl font-semibold leading-[1.35] tracking-tight text-ink outline-none"
+        //
+        // The global :focus-visible rule would box this borderless field in an
+        // accent ring — text inputs match :focus-visible on click too, so it
+        // shows up the moment you start titling a note. The caret in 4xl
+        // display type is affordance enough. That rule is unlayered, so it
+        // outranks any utility layer regardless of specificity — hence the `!`
+        // (same as [TagEditor]).
+        className="w-full bg-transparent font-display text-4xl font-semibold leading-[1.35] tracking-tight text-ink outline-none focus-visible:outline-none!"
       />
       <SaveToast status={status} onSave={() => void flush()} />
       <div className="flex items-start gap-3">
@@ -313,7 +320,7 @@ export function NoteEditor({
       {/* `group` so the lines inside the box — the toolbar's underline and the
           hairlines between the modes — can pick up the same focus swing as the
           box's own border instead of staying cream while it turns blue. */}
-      <div className="group flex h-[70vh] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-sm shadow-ink/5 transition-colors focus-within:border-blue/50">
+      <div className="group flex h-[70vh] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-sm shadow-shade/5 transition-colors focus-within:border-blue/50">
         <div className="flex shrink-0 border-b border-line transition-colors group-focus-within:border-blue/50">
           <HistoryControls
             canUndo={history.canUndo}

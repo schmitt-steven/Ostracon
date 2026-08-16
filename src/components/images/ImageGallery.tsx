@@ -24,7 +24,7 @@ const EAGER_TILES = 3;
 function Thumbnail({ image, eager }: { image: StoredImage; eager: boolean }) {
   return (
     <>
-      <div className="relative aspect-4/3 overflow-hidden rounded-2xl border border-line bg-paper-sunk transition-all group-hover:border-blue/40 group-hover:shadow-md group-hover:shadow-ink/5">
+      <div className="relative aspect-4/3 overflow-hidden rounded-2xl border border-line bg-paper-sunk transition-all group-hover:border-blue/40 group-hover:shadow-md group-hover:shadow-shade/5">
         <Image
           src={image.url}
           // The filename is the only description that exists — nothing records

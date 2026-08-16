@@ -3,11 +3,16 @@ import type { Element, ElementContent, Root } from "hast";
 import { bundledLanguages, getSingletonHighlighter } from "shiki";
 import { visit } from "unist-util-visit";
 
-// Single theme — the app committed to one warm light palette (see globals.css),
-// so the previous dual light/dark output (which required --shiki-* custom
-// properties on every token) is no longer needed. rose-pine-dawn's muted
-// blue/gold tokens sit in the same family as the app's ink and accent.
-const THEME = "rose-pine-dawn";
+// Dual output, one render. Notes are highlighted on the server (and cached by
+// whatever rendered them), so the HTML can't know which theme the reader is
+// in — instead every token carries both colours and the CSS in globals.css
+// picks one. `defaultColor: "light"` writes the light colour inline as a plain
+// `color:`, so light-theme output is exactly what a single-theme render gives;
+// dark rides along in `--shiki-dark`.
+//
+// Both are Rose Pine: dawn's muted blue/gold tokens sit in the same family as
+// the app's ink and accent, and moon is that same palette on a deep ground.
+const THEMES = { light: "rose-pine-dawn", dark: "rose-pine-moon" } as const;
 
 function languageFromClassName(className: unknown): string | null {
   if (!Array.isArray(className)) return null;
@@ -67,14 +72,15 @@ export function rehypeShikiLazy() {
 
     const langs = [...new Set(targets.map((t) => t.lang))];
     const highlighter = await getSingletonHighlighter({
-      themes: [THEME],
+      themes: [THEMES.light, THEMES.dark],
       langs,
     });
 
     for (const target of targets) {
       const highlighted = await highlighter.codeToHast(target.code, {
         lang: target.lang,
-        theme: THEME,
+        themes: THEMES,
+        defaultColor: "light",
       });
       const newPre = highlighted.children[0];
       if (newPre && newPre.type === "element") {

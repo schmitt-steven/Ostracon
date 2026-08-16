@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { CornerNav } from "@/components/nav/CornerNav";
+import { InlineScript } from "@/components/ui/InlineScript";
 import { isAuthenticated } from "@/lib/auth/require-auth";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
@@ -38,8 +40,16 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      // The light palette is what the server can safely assume; the script
+      // below corrects it during parsing when the reader's is dark, which is a
+      // DOM change React would otherwise flag as a hydration mismatch.
+      data-theme="light"
+      suppressHydrationWarning
       className={`${plexSans.variable} ${plexMono.variable} ${fraunces.variable} h-full antialiased`}
     >
+      <head>
+        <InlineScript html={THEME_INIT_SCRIPT} />
+      </head>
       <body className="min-h-full flex flex-col">
         {signedIn && <CornerNav />}
         <main className="flex flex-1 flex-col">{children}</main>

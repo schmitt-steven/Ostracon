@@ -3,12 +3,17 @@
 /* ---------------------------------------------------------------------------
    Palette: warm paper, deep-blue ink, burnt-orange accent.
 
-   Single committed theme — no dark variant. The design leans on paper warmth
-   for depth (tinted surfaces, warm hairlines) rather than on light/dark
-   inversion, so a mirrored dark palette would be a different design, not a
-   translation of this one.
+   Two themes, one design. The dark variant below isn't an inversion — it
+   swaps the two materials the light theme is already made of: the ink navy
+   becomes the paper, and the paper cream becomes the ink. Everything else
+   (accent, blue, hairlines) is the same colour re-lit for a dark ground.
+
+   Every component styles itself from these tokens, so a theme is exactly
+   this block: nothing else in the app knows which one is active.
    --------------------------------------------------------------------------- */
 :root {
+  color-scheme: light;
+
   --paper: #faf3e8;
   --paper-sunk: #f3e7d4;
   --surface: #fffcf6;
@@ -53,8 +58,74 @@
   --line: #e8d8bf;
   --line-strong: #d8c2a1;
 
+  /* What shadows are cast in — deliberately not --ink, which flips to cream
+     in the dark theme and would turn every drop shadow into a halo. */
+  --shade: #152f52;
+
+  /* Strength of the two ambient pools in `body` below. Tokens rather than
+     literals so the dark theme can dim them without restating the
+     gradients. */
+  --glow-top: 12%;
+  --glow-low: 7%;
+
   --background: var(--paper);
   --foreground: var(--ink);
+}
+
+/* ---------------------------------------------------------------------------
+   Dark. Applied from `data-theme` on <html>, which an inline script in the
+   root layout stamps before first paint (see lib/theme.ts) — so there is no
+   flash and no need for a `prefers-color-scheme` copy of this block: the
+   script resolves the OS preference itself and writes the result here.
+   --------------------------------------------------------------------------- */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* The light theme's --ink, taken well past it. Surfaces step *up* towards
+     the light rather than down, which is what keeps this reading as navy
+     paper rather than as a black UI — including --paper-sunk, which inverts
+     its direction here: below this ground there's only black, and a recess
+     printed in black reads as a hole rather than as a lower surface. */
+  --paper: #041226;
+  --paper-sunk: #142c4d;
+  --surface: #0b1f39;
+  --surface-hover: #11294a;
+
+  /* And the light theme's paper, now the type. Held warm so the cream/navy
+     pairing survives the swap; the muted steps cool off towards the
+     background the way the light theme's do. */
+  --ink: #f0e7d8;
+  --ink-muted: #a7b8cf;
+  --ink-faint: #728aa8;
+
+  /* Both washes invert their role: a tint *of* the paper rather than a tint
+     on it. The foreground colours brighten, since on a dark ground it's the
+     lighter tone that has to come forward — hence hover being brighter here
+     and darker in the light theme. */
+  --accent: #e5854a;
+  --accent-hover: #f09b64;
+  --accent-wash: #331f11;
+
+  --blue: #7cabe8;
+  --blue-hover: #9cc3f5;
+  --blue-wash: #143156;
+
+  --green: #7cc295;
+  --green-wash: #163021;
+
+  --danger: #e8837a;
+  --danger-hover: #f39d95;
+  --danger-wash: #351a19;
+
+  --line: #1a3350;
+  --line-strong: #2b4a72;
+
+  /* Near-black, not the paper navy: a shadow the same colour as the surface
+     it falls on isn't a shadow. */
+  --shade: #000814;
+
+  --glow-top: 9%;
+  --glow-low: 5%;
 }
 
 @theme inline {
@@ -78,6 +149,7 @@
   --color-danger-wash: var(--danger-wash);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
+  --color-shade: var(--shade);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
@@ -94,17 +166,45 @@ body {
   background-image:
     radial-gradient(
       70rem 32rem at 50% -12rem,
-      color-mix(in srgb, var(--accent) 12%, transparent) 0%,
+      color-mix(in srgb, var(--accent) var(--glow-top), transparent) 0%,
       transparent 70%
     ),
     radial-gradient(
       48rem 40rem at -10% 110%,
-      color-mix(in srgb, var(--accent) 7%, transparent) 0%,
+      color-mix(in srgb, var(--accent) var(--glow-low), transparent) 0%,
       transparent 70%
     );
   background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-sans), system-ui, sans-serif;
+  /* Long enough to read as the page changing state, short enough not to lag
+     behind the toggle. Only the two properties the theme actually swaps here
+     — the components animate their own via `transition-colors`. */
+  transition:
+    background-color 250ms ease,
+    color 250ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body {
+    transition: none;
+  }
+}
+
+/* The two faces of the theme toggle (ThemeToggle). Swapped in CSS rather than
+   from React state: the inline script settles the theme before hydration, so
+   a state-driven label would have to either flash the wrong face or wait for
+   an effect. Here the correct one is right from the first paint. */
+.theme-when-dark {
+  display: none;
+}
+
+[data-theme="dark"] .theme-when-light {
+  display: none;
+}
+
+[data-theme="dark"] .theme-when-dark {
+  display: inline-flex;
 }
 
 ::selection {
@@ -409,11 +509,28 @@ body {
   border-bottom: 1px dashed var(--line-strong);
 }
 
-/* Shiki output (see rehype-shiki-lazy.ts). A single warm light theme now that
-   the app has no dark mode — tokens carry plain colors again, so no
-   --shiki-* custom-property plumbing is needed. The theme's own background is
-   dropped in favour of the app's sunk-paper tone so code blocks sit in the
-   same warm family as the rest of the page. */
+/* Shiki output (see rehype-shiki-lazy.ts). Every token carries the light
+   colour inline and the dark one in --shiki-dark; these rules choose. Either
+   theme's own background is dropped in favour of the app's sunk-paper tone, so
+   code blocks sit in the same family as the rest of the page. */
 .markdown-body .shiki {
   background-color: var(--paper-sunk) !important;
+}
+
+/* Font style is the one thing dual-theme output never writes inline — both
+   themes read it from a variable, so this rule serves the light theme too. */
+.markdown-body .shiki span {
+  font-style: var(--shiki-light-font-style, normal);
+  font-weight: var(--shiki-light-font-weight, inherit);
+}
+
+/* !important because the light colour is an inline style attribute, which no
+   amount of selector specificity outranks. Spans without a colour of their own
+   inherit --shiki-dark from the <pre>, which holds the theme's default
+   foreground — so this covers unhighlighted text as well as tokens. */
+[data-theme="dark"] .markdown-body .shiki,
+[data-theme="dark"] .markdown-body .shiki span {
+  color: var(--shiki-dark) !important;
+  font-style: var(--shiki-dark-font-style, normal);
+  font-weight: var(--shiki-dark-font-weight, inherit);
 }

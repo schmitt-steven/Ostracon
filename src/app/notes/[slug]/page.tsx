@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { NoteEditor } from "@/components/editor/NoteEditor";
+import { BackToNotesLink } from "@/components/nav/BackToNotesLink";
 import { BacklinksPanel } from "@/components/notes/BacklinksPanel";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { renderNoteHtml } from "@/lib/markdown/render-note";
@@ -27,15 +27,7 @@ export default async function NotePage({
   return (
     // pt-16 clears the collapsed CornerNav disc at every viewport width.
     <div className="mx-auto w-full max-w-4xl flex-1 px-8 pb-12 pt-16">
-      {/* A link to the list rather than history.back(): notes are reached from
-          wikilinks and direct URLs too, where there's no list to go back to. */}
-      <Link
-        href="/"
-        className="-ml-3 mb-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-base text-ink-muted transition-colors hover:bg-blue-wash hover:text-blue"
-      >
-        <span aria-hidden>←</span>
-        All notes
-      </Link>
+      <BackToNotesLink />
       <NoteEditor
         noteId={note.id}
         version={note.version}

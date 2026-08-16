@@ -1,4 +1,5 @@
 import { NoteEditor } from "@/components/editor/NoteEditor";
+import { BackToNotesLink } from "@/components/nav/BackToNotesLink";
 import { requireAuth } from "@/lib/auth/require-auth";
 
 export default async function NewNotePage({
@@ -11,6 +12,7 @@ export default async function NewNotePage({
   return (
     // pt-16 clears the collapsed CornerNav disc at every viewport width.
     <div className="mx-auto w-full max-w-3xl flex-1 p-6 pt-16">
+      <BackToNotesLink />
       <NoteEditor
         noteId={null}
         version={1}

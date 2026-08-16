@@ -71,7 +71,7 @@ export function AiMenu({
       ref={menuRef}
       role="menu"
       style={{ left, top, width: MENU_WIDTH }}
-      className="fixed z-50 overflow-hidden rounded-2xl border border-line bg-surface shadow-lg shadow-ink/10"
+      className="fixed z-50 overflow-hidden rounded-2xl border border-line bg-surface shadow-lg shadow-shade/10"
     >
       {providers === null ? (
         <p className="px-4 py-3 text-sm text-ink-faint">Loading providers…</p>

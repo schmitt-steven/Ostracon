@@ -172,7 +172,7 @@ export function NoteList({ initialNotes, viewSwitcher }: Props) {
                 href={`/notes/${note.slug}`}
                 // pr-16 reserves the corner the delete control sits in, so a
                 // long title never runs under it.
-                className="group block rounded-2xl border border-line bg-surface px-6 py-5 pr-16 transition-all hover:-translate-y-px hover:border-blue/40 hover:bg-surface-hover hover:shadow-md hover:shadow-ink/5"
+                className="group block rounded-2xl border border-line bg-surface px-6 py-5 pr-16 transition-all hover:-translate-y-px hover:border-blue/40 hover:bg-surface-hover hover:shadow-md hover:shadow-shade/5"
               >
                 <span className="font-display text-xl font-semibold tracking-tight text-ink transition-colors group-hover:text-blue">
                   {note.title || "Untitled"}

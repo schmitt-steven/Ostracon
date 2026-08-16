@@ -99,7 +99,7 @@ export function DeleteNoteButton({
         <div
           role="dialog"
           aria-label={`Delete ${name}?`}
-          className="absolute right-0 top-full z-20 mt-2 w-60 rounded-xl border border-line bg-surface p-4 shadow-lg shadow-ink/10"
+          className="absolute right-0 top-full z-20 mt-2 w-60 rounded-xl border border-line bg-surface p-4 shadow-lg shadow-shade/10"
         >
           <p className="text-sm text-ink">
             Delete <span className="font-medium">{name}</span>?

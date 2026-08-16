@@ -3,9 +3,11 @@
 import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
 import { redo, redoDepth, undo, undoDepth } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { Prec } from "@codemirror/state";
 import { EditorView, keymap, placeholder as placeholderExt } from "@codemirror/view";
+import { tags as t } from "@lezer/highlight";
 import { basicSetup } from "codemirror";
 
 const appTheme = EditorView.theme({
@@ -43,7 +45,72 @@ const appTheme = EditorView.theme({
   ".cm-selectionMatch": {
     backgroundColor: "color-mix(in srgb, var(--ink) 12%, transparent)",
   },
+  // basicSetup brings the search panel and autocomplete tooltips, which
+  // otherwise fall back to CodeMirror's built-in light baseTheme and stay
+  // cream-on-cream once the app is in its dark palette. Same tokens as the
+  // rest, so they follow whichever theme is active.
+  ".cm-panels": {
+    backgroundColor: "var(--surface)",
+    color: "var(--ink)",
+  },
+  ".cm-panels.cm-panels-top": { borderBottom: "1px solid var(--line)" },
+  ".cm-panels.cm-panels-bottom": { borderTop: "1px solid var(--line)" },
+  ".cm-tooltip": {
+    backgroundColor: "var(--surface)",
+    color: "var(--ink)",
+    border: "1px solid var(--line)",
+  },
+  ".cm-searchMatch": {
+    backgroundColor: "color-mix(in srgb, var(--accent) 22%, transparent)",
+  },
+  ".cm-searchMatch.cm-searchMatch-selected": {
+    backgroundColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
+  },
 });
+
+/**
+ * Syntax colours for the source pane, drawn from the app's tokens.
+ *
+ * basicSetup ships `defaultHighlightStyle`, whose palette is a set of fixed
+ * hex colours picked for a white page — link URLs come out near-navy, which is
+ * unreadable once the app is in its dark theme. These are the same tokens
+ * every other surface uses, so the source pane follows whichever theme is
+ * active for free. Registered without `fallback`, so it takes precedence over
+ * the default that basicSetup registers *with* it.
+ *
+ * Markdown's own tags come first and the ones for embedded fenced code after:
+ * code text carries `monospace` from the markdown parser as well as its own
+ * tag from the nested language, and both land on the same element, so the
+ * later rule is the one that wins.
+ */
+const appHighlight = HighlightStyle.define([
+  { tag: t.heading, color: "var(--ink)", fontWeight: "600" },
+  { tag: t.strong, color: "var(--ink)", fontWeight: "600" },
+  { tag: t.emphasis, fontStyle: "italic" },
+  { tag: t.strikethrough, textDecoration: "line-through" },
+  { tag: t.quote, color: "var(--ink-muted)", fontStyle: "italic" },
+  { tag: t.list, color: "var(--accent)" },
+  { tag: t.link, color: "var(--blue)" },
+  { tag: t.url, color: "var(--blue)", textDecoration: "underline" },
+  { tag: t.labelName, color: "var(--ink-muted)" },
+  { tag: t.monospace, color: "var(--accent)" },
+  { tag: t.escape, color: "var(--ink-faint)" },
+  { tag: t.character, color: "var(--accent)" },
+  { tag: t.contentSeparator, color: "var(--ink-faint)" },
+  // The markup itself — #, *, backticks, list bullets, link brackets. Held
+  // back so the text reads over its own punctuation.
+  { tag: t.processingInstruction, color: "var(--ink-faint)" },
+
+  { tag: [t.keyword, t.controlKeyword, t.moduleKeyword], color: "var(--blue)" },
+  { tag: [t.operator, t.derefOperator], color: "var(--ink-muted)" },
+  { tag: [t.string, t.regexp, t.special(t.string)], color: "var(--green)" },
+  { tag: [t.number, t.bool, t.atom, t.null], color: "var(--accent)" },
+  { tag: [t.typeName, t.className, t.namespace, t.tagName], color: "var(--accent-hover)" },
+  { tag: [t.propertyName, t.attributeName], color: "var(--ink)" },
+  { tag: t.function(t.variableName), color: "var(--blue-hover)" },
+  { tag: t.comment, color: "var(--ink-faint)", fontStyle: "italic" },
+  { tag: t.invalid, color: "var(--danger)" },
+]);
 
 async function uploadImage(file: File): Promise<string> {
   const formData = new FormData();
@@ -335,6 +402,7 @@ export function CodeMirrorEditor({
         EditorView.lineWrapping,
         placeholderExt(placeholder ?? ""),
         appTheme,
+        syntaxHighlighting(appHighlight),
         imagePasteHandler(),
         urlPasteHandler(),
         EditorView.domEventHandlers({

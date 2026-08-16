@@ -53,7 +53,7 @@ export function ListControls({
           // Notes, in both views: in the gallery this searches the notes the
           // images came from, which is the only text an upload has.
           placeholder="Search notes…"
-          className="w-full rounded-full border border-line bg-surface py-3 pl-13 pr-5 text-base text-ink shadow-sm shadow-ink/5 outline-none transition-colors focus:border-blue"
+          className="w-full rounded-full border border-line bg-surface py-3 pl-13 pr-5 text-base text-ink shadow-sm shadow-shade/5 outline-none transition-colors focus:border-blue"
         />
       </div>
       {/* Tags get the row to themselves: there can be a lot of them, and they

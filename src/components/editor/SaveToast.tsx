@@ -71,7 +71,7 @@ export function SaveToast({ status, onSave }: Props) {
       {failed ? (
         <div
           role="alert"
-          className="toast-enter pointer-events-auto flex items-center gap-3 rounded-full border border-accent/40 bg-accent-wash py-2.5 pl-5 pr-2.5 text-base text-ink shadow-lg shadow-ink/10"
+          className="toast-enter pointer-events-auto flex items-center gap-3 rounded-full border border-accent/40 bg-accent-wash py-2.5 pl-5 pr-2.5 text-base text-ink shadow-lg shadow-shade/10"
         >
           <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-accent" />
           Couldn&apos;t save this note
@@ -87,7 +87,7 @@ export function SaveToast({ status, onSave }: Props) {
         showSaved && (
           <div
             role="status"
-            className="toast-enter pointer-events-auto flex items-center gap-2.5 rounded-full border border-green/30 bg-green-wash px-5 py-2.5 text-base font-medium text-green shadow-lg shadow-ink/10"
+            className="toast-enter pointer-events-auto flex items-center gap-2.5 rounded-full border border-green/30 bg-green-wash px-5 py-2.5 text-base font-medium text-green shadow-lg shadow-shade/10"
           >
             <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-green" />
             Saved
@@ -95,7 +95,7 @@ export function SaveToast({ status, onSave }: Props) {
         )
       )}
       {showHint && (
-        <p className="toast-enter max-w-xs rounded-2xl border border-line bg-surface px-4 py-2.5 text-sm text-ink-muted shadow-lg shadow-ink/10">
+        <p className="toast-enter max-w-xs rounded-2xl border border-line bg-surface px-4 py-2.5 text-sm text-ink-muted shadow-lg shadow-shade/10">
           No need — this note saves itself as you type. If a save ever fails,
           you&apos;ll be told right here.
         </p>
