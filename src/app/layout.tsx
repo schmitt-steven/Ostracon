@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
-import Link from "next/link";
-import { logoutAction } from "@/lib/auth/actions";
+import { CornerNav } from "@/components/nav/CornerNav";
 import { isAuthenticated } from "@/lib/auth/require-auth";
 import "./globals.css";
 
@@ -31,8 +30,9 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  // This layout wraps /login too, so the header has to know: otherwise
-  // logging out lands you on a page still offering to log you out.
+  // This layout wraps /login too, so the corner has to know: otherwise
+  // logging out lands you on a page still offering to log you out. /login
+  // carries its own wordmark, so signed out there's nothing to show at all.
   const signedIn = await isAuthenticated();
 
   return (
@@ -41,29 +41,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${plexSans.variable} ${plexMono.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <header className="sticky top-0 z-20 border-b border-line/80 bg-paper/80 backdrop-blur-md">
-          <div className="mx-auto flex w-full max-w-4xl items-center justify-between px-8 py-4">
-            <Link href="/" className="group flex items-center gap-3">
-              <span
-                aria-hidden
-                className="h-3 w-3 rounded-full bg-accent transition-transform group-hover:scale-125"
-              />
-              <span className="font-display text-xl font-semibold tracking-tight text-ink">
-                SE Knowledge Base
-              </span>
-            </Link>
-            {signedIn && (
-              <form action={logoutAction}>
-                <button
-                  type="submit"
-                  className="rounded-full px-4 py-2 text-base text-ink-muted transition-colors hover:bg-blue-wash hover:text-blue"
-                >
-                  Log out
-                </button>
-              </form>
-            )}
-          </div>
-        </header>
+        {signedIn && <CornerNav />}
         <main className="flex flex-1 flex-col">{children}</main>
       </body>
     </html>

@@ -25,7 +25,8 @@ export default async function NotePage({
   const previewHtml = await renderNoteHtml(body);
 
   return (
-    <div className="mx-auto w-full max-w-4xl flex-1 px-8 py-12">
+    // pt-16 clears the collapsed CornerNav disc at every viewport width.
+    <div className="mx-auto w-full max-w-4xl flex-1 px-8 pb-12 pt-16">
       {/* A link to the list rather than history.back(): notes are reached from
           wikilinks and direct URLs too, where there's no list to go back to. */}
       <Link

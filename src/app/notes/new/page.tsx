@@ -9,7 +9,8 @@ export default async function NewNotePage({
   const initialTitle = typeof title === "string" ? title : "";
 
   return (
-    <div className="mx-auto w-full max-w-3xl flex-1 p-6">
+    // pt-16 clears the collapsed CornerNav disc at every viewport width.
+    <div className="mx-auto w-full max-w-3xl flex-1 p-6 pt-16">
       <NoteEditor
         noteId={null}
         version={1}

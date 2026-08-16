@@ -40,7 +40,8 @@ export default async function HomePage(props: PageProps<"/">) {
   const switcher = <ImagesToggle active={data.view === "images"} />;
 
   return (
-    <div className="mx-auto w-full max-w-4xl flex-1 px-8 py-12">
+    // pt-16 clears the collapsed CornerNav disc at every viewport width.
+    <div className="mx-auto w-full max-w-4xl flex-1 px-8 pb-12 pt-16">
       <div className="mb-9 flex flex-wrap items-end justify-between gap-4">
         <h1 className="font-display text-5xl font-semibold tracking-tight text-ink">
           {/* The note count is a client component so it can tick down with the

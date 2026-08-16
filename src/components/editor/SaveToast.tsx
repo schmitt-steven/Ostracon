@@ -65,7 +65,8 @@ export function SaveToast({ status, onSave }: Props) {
   if (!failed && !showSaved && !showHint) return null;
 
   return (
-    // top-20 clears the sticky header (z-20), which this has to sit above.
+    // top-20 clears the collapsed CornerNav disc. Opening the disc does cover
+    // this, but that only happens on a deliberate hover/tap up there.
     <div className="pointer-events-none fixed right-6 top-20 z-30 flex flex-col items-end gap-2">
       {failed ? (
         <div

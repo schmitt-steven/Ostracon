@@ -121,7 +121,7 @@ body {
   outline-offset: 2px;
 }
 
-/* Save toast (SaveToast). Drops in from under the sticky header. */
+/* Save toast (SaveToast). Drops in from the top-right, below the corner nav. */
 @keyframes toast-in {
   from {
     opacity: 0;
