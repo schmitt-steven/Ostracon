@@ -25,8 +25,8 @@ export function ImagesToggle({ active }: { active: boolean }) {
       // read as one more tag pill from the row above.
       className={`flex shrink-0 items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
         active
-          ? "bg-blue text-paper"
-          : "bg-paper-sunk text-ink hover:text-blue"
+          ? "bg-action text-paper"
+          : "bg-paper-sunk text-ink hover:text-action"
       }`}
     >
       <svg

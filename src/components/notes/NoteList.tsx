@@ -19,12 +19,14 @@ import {
   subscribePendingDeletes,
 } from "@/lib/notes/pending-deletes";
 import {
+  collectRecency,
   collectTags,
   useNoteSearch,
   type NoteOverviewLite,
 } from "@/hooks/use-note-search";
 import { LocalDate } from "@/components/ui/LocalDate";
 import { DeleteNoteButton } from "./DeleteNoteButton";
+import { RecencyTag } from "./RecencyTag";
 import { ListControls } from "./ListControls";
 import { SortFilter } from "./SortFilter";
 
@@ -101,12 +103,18 @@ export function NoteList({ initialNotes, viewSwitcher }: Props) {
     setQuery,
     selectedTags,
     setSelectedTags,
+    selectedRecency,
+    setSelectedRecency,
     sort,
     setSort,
     results,
   } = useNoteSearch(initialNotes);
 
   const allTags = useMemo(() => collectTags(initialNotes), [initialNotes]);
+  const availableRecency = useMemo(
+    () => collectRecency(initialNotes),
+    [initialNotes],
+  );
 
   const listRef = useRef<HTMLUListElement>(null);
   // Rows are hidden the moment the user confirms rather than when the server
@@ -148,6 +156,9 @@ export function NoteList({ initialNotes, viewSwitcher }: Props) {
         allTags={allTags}
         selectedTags={selectedTags}
         onTagsChange={setSelectedTags}
+        selectedRecency={selectedRecency}
+        onRecencyChange={setSelectedRecency}
+        availableRecency={availableRecency}
         viewSwitcher={viewSwitcher}
         trailing={<SortFilter value={sort} onChange={setSort} />}
       />
@@ -172,9 +183,9 @@ export function NoteList({ initialNotes, viewSwitcher }: Props) {
                 href={`/notes/${note.slug}`}
                 // pr-16 reserves the corner the delete control sits in, so a
                 // long title never runs under it.
-                className="group block rounded-2xl border border-line bg-surface px-6 py-5 pr-16 transition-all hover:-translate-y-px hover:border-blue/40 hover:bg-surface-hover hover:shadow-md hover:shadow-shade/5"
+                className="group block rounded-2xl border border-line bg-surface px-6 py-5 pr-16 transition-all hover:-translate-y-px hover:border-action/40 hover:bg-surface-hover hover:shadow-md hover:shadow-shade/5"
               >
-                <span className="font-display text-xl font-semibold tracking-tight text-ink transition-colors group-hover:text-blue">
+                <span className="font-display text-xl font-semibold tracking-tight text-ink transition-colors group-hover:text-action">
                   {note.title || "Untitled"}
                 </span>
                 <div className="mt-3 flex flex-wrap items-center gap-2.5 text-sm text-ink-muted">
@@ -182,15 +193,18 @@ export function NoteList({ initialNotes, viewSwitcher }: Props) {
                     date={note.updatedAt}
                     options={{ dateStyle: "medium", timeStyle: "short" }}
                   />
-                  {note.tags.length > 0 && (
+                  {(note.recency || note.tags.length > 0) && (
                     <span aria-hidden className="text-line-strong">
                       •
                     </span>
                   )}
+                  {/* Ahead of the note's own tags: it's about the row's
+                      timestamp on its left, not one more label on the note. */}
+                  <RecencyTag recency={note.recency} />
                   {note.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="rounded-full bg-blue-wash px-3 py-1 font-medium text-blue"
+                      className="rounded-full bg-action-wash px-3 py-1 font-medium text-action"
                     >
                       {tag}
                     </span>

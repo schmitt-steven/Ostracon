@@ -6,15 +6,20 @@ import { NoteList } from "@/components/notes/NoteList";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { listStoredImages } from "@/lib/images/queries";
 import { listNotesOverview } from "@/lib/notes/queries";
+import { noteRecency } from "@/lib/notes/recency";
 
 type OverviewView = "notes" | "images";
 
 async function loadNotes() {
   const notes = await listNotesOverview();
+  // One `now` for the whole list, so a render that straddles midnight can't
+  // hand two rows different ideas of what today is.
+  const now = new Date();
   return notes.map((n) => ({
     ...n,
     createdAt: n.createdAt.toISOString(),
     updatedAt: n.updatedAt.toISOString(),
+    recency: noteRecency(n.createdAt, n.updatedAt, now),
   }));
 }
 
@@ -54,7 +59,7 @@ export default async function HomePage(props: PageProps<"/">) {
         </h1>
         <Link
           href="/notes/new"
-          className="shrink-0 rounded-full bg-blue px-5 py-2.5 text-base font-medium text-paper shadow-sm shadow-blue/25 transition-colors hover:bg-blue-hover"
+          className="shrink-0 rounded-full bg-action px-5 py-2.5 text-base font-medium text-paper shadow-sm shadow-action/25 transition-colors hover:bg-action-hover"
         >
           New note
         </Link>

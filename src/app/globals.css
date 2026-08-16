@@ -5,8 +5,14 @@
 
    Two themes, one design. The dark variant below isn't an inversion — it
    swaps the two materials the light theme is already made of: the ink navy
-   becomes the paper, and the paper cream becomes the ink. Everything else
-   (accent, blue, hairlines) is the same colour re-lit for a dark ground.
+   becomes the paper, and the paper cream becomes the ink. The rest follows
+   from that swap rather than being restated.
+
+   --action is the one token whose *hue* differs between the themes, which is
+   why it's named for its job and not its colour: it belongs to the ink's
+   family, one step brighter, so clickable things read as made of the same
+   material as the text. That lands on blue beside navy ink, and on amber
+   beside cream ink.
 
    Every component styles itself from these tokens, so a theme is exactly
    this block: nothing else in the app knows which one is active.
@@ -17,37 +23,73 @@
   --paper: #faf3e8;
   --paper-sunk: #f3e7d4;
   --surface: #fffcf6;
-  /* Leans blue, not warmer-cream: hover also swings the card's border and
-     title into --blue, and a warm-shifting background underneath those read
-     as muddy. Kept well lighter than --blue-wash so tag pills still separate
-     from the card they sit on. */
+  /* Leans towards --action rather than further into the cream: hover also
+     swings the card's border and title into --action, and a background
+     shifting the other way underneath those reads as muddy. Kept well lighter
+     than --action-wash so tag pills still separate from the card they sit
+     on. */
   --surface-hover: #f1f5fd;
 
-  --ink: #152f52;
-  --ink-muted: #55688a;
-  --ink-faint: #8b98ab;
+  /* The reading ladder. All three are the same cool navy at different depths;
+     what separates them is contrast against the ground, not hue.
+
+     --ink sits deliberately low in its own hue: ~17:1 on the surface, most of
+     the way to the 20.5:1 pure black would give. Long stretches of monospace
+     in the editor turned out to want that; #152f52 (13:1) and then #0d2140
+     (15.7:1) both still read soft there. Navy rather than black, so it stays
+     in family with --action.
+
+     The other two are measured against the *worst* ground they land on rather
+     than against --paper: the tag pills sit on --accent-wash and --paper-sunk,
+     which are a good deal darker than the page, and tuning to the page alone
+     left them thin exactly where they're smallest. --ink-muted lifted from
+     #55688a (4.6:1 on those washes, only just over the 4.5 floor for body
+     text) to hold ~6.6:1 everywhere. --ink-faint is the real repair: #8b98ab
+     measured 2.4–2.9:1, under even the 3:1 minimum for UI text, so it was
+     failing outright wherever it carried words rather than punctuation. Now
+     ~4.5:1 at worst — still the faintest step by a wide margin, since --ink is
+     three times its contrast. */
+  --ink: #0a1a33;
+  --ink-muted: #42506a;
+  --ink-faint: #5b697e;
 
   /* Orange is ambient only — background wash, list bullets, links, section
-     eyebrows. Anything the user clicks is blue (see below), so the two colours
-     never compete for "this is actionable". */
+     eyebrows. Anything the user clicks is --action (see below), so the two
+     colours never compete for "this is actionable". */
   --accent: #c25a1e;
   --accent-hover: #a94a15;
   --accent-wash: #f7e5d1;
+  /* The automatic "created/modified today" tag on a note — the app's own
+     label, so it gets its own pair rather than borrowing the tags' or the
+     buttons'. Here that's the ambient orange carrying small text, which
+     --accent itself can't do: it measures 3.6:1 on its own wash and 4:1 on
+     the paper, both under the 4.5 floor, and the pill came out looking
+     bleached for exactly that reason. Deepened along the same terracotta hue
+     rather than pulled towards brown — 5.4:1 on the wash. (--accent-hover is
+     nearly dark enough at 4.65:1, but it's the hover state, not a text
+     colour.) The dark theme takes this somewhere else entirely; see there. */
+  --auto-tag: #9a4212;
+  --auto-tag-wash: var(--accent-wash);
 
   /* Interactive blue: a step brighter than --ink so buttons read as buttons
      rather than as blocks of body text. */
-  --blue: #1d4e8f;
-  --blue-hover: #163d73;
-  --blue-wash: #dfe8f7;
+  --action: #1d4e8f;
+  --action-hover: #163d73;
+  --action-wash: #dfe8f7;
+  /* --action-wash sized for a large filled area rather than a pill or a hover
+     state. On the cream it can stay as-is: the wash is already a pale tint of
+     a ground that is nearly white. The dark theme has to pull it back — see
+     the note there. */
+  --action-seat: var(--action-wash);
 
   /* Confirmation only — the save toast is the single place green appears, so
-     it never has to coexist with the orange/blue split above. Desaturated
+     it never has to coexist with the ambient/action split above. Desaturated
      towards the paper warmth so it doesn't read as a stock system green. */
   --green: #2f6b46;
   --green-wash: #e1eddc;
 
   /* Destructive only — the delete control and its confirmation. Red is the one
-     signal that can't be spelled in blue without lying about what the button
+     signal that can't be spelled in --action without lying about what the button
      does, so it's admitted for exactly that and nothing else. Pulled towards
      the paper warmth like --green, so it sits beside --accent as a deeper,
      redder neighbour rather than as a stock system red. */
@@ -81,51 +123,104 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  /* The light theme's --ink, taken well past it. Surfaces step *up* towards
-     the light rather than down, which is what keeps this reading as navy
-     paper rather than as a black UI — including --paper-sunk, which inverts
-     its direction here: below this ground there's only black, and a recess
-     printed in black reads as a hole rather than as a lower surface. */
-  --paper: #041226;
-  --paper-sunk: #142c4d;
-  --surface: #0b1f39;
-  --surface-hover: #11294a;
+  /* The ground is nearly neutral, and that's the point. The light theme's
+     paper is only faintly warm — its hue lives in the ink and the accent, not
+     in the sheet — so a ground of saturated navy here would put the loudest
+     colour in the theme underneath everything and read as a blue theme rather
+     than as this app in the dark. What's left of the navy is a cast, enough to
+     keep it ink-stained rather than grey.
 
-  /* And the light theme's paper, now the type. Held warm so the cream/navy
-     pairing survives the swap; the muted steps cool off towards the
-     background the way the light theme's do. */
-  --ink: #f0e7d8;
-  --ink-muted: #a7b8cf;
-  --ink-faint: #728aa8;
+     --paper-sunk inverts its direction: below this ground there's only black,
+     and a recess printed in black reads as a hole rather than a lower
+     surface — so "sunk" steps up, as does --surface. Kept to the same narrow
+     spread the light theme uses between paper and card. */
+  --paper: #121821;
+  --paper-sunk: #212a35;
+  --surface: #19212b;
+  /* Leans towards --action for the same reason the light one does — which,
+     with the action colour now warm, means the card warms under the cursor
+     instead of cooling. */
+  --surface-hover: #241f19;
 
-  /* Both washes invert their role: a tint *of* the paper rather than a tint
-     on it. The foreground colours brighten, since on a dark ground it's the
-     lighter tone that has to come forward — hence hover being brighter here
-     and darker in the light theme. */
-  --accent: #e5854a;
-  --accent-hover: #f09b64;
-  --accent-wash: #331f11;
+  /* The light theme's paper, now the type — and its muted steps stay in the
+     type's own family, warm, the way the light theme's cool towards its navy
+     ink. This is what carries the warmth across: cream on near-black, rather
+     than the blue-grey the earlier ground pulled everything towards.
 
-  --blue: #7cabe8;
-  --blue-hover: #9cc3f5;
-  --blue-wash: #143156;
+     --ink is close to this ground's ceiling: ~15.2:1 on the surface, where
+     pure white would give 16.2:1 — far less headroom than the light theme has.
+     Warmth and lightness trade against each other directly up here, since a
+     tint can only survive so close to white, so this is about as far as it
+     goes with any cream left in it. #ece3d4 (12.8:1) and #f7f1e6 (14.4:1) both
+     still read dim, the way a warm tone does against near-black.
 
-  --green: #7cc295;
-  --green-wash: #163021;
+     The muted and faint steps follow it up, measured against --paper-sunk,
+     which is the lightest ground here and so the least forgiving of pale type
+     — the mode toggle and the tag pills both sit on it. --ink-muted from
+     #a89e91 (5.5:1 there) and --ink-faint from #8a8175 (3.8:1, under the 4.5
+     floor for body text). The ladder still reads as three steps: roughly 14,
+     8 and 5 to one against the editor's surface. */
+  --ink: #fbf7f2;
+  --ink-muted: #c1bab0;
+  --ink-faint: #9e978d;
 
-  --danger: #e8837a;
-  --danger-hover: #f39d95;
-  --danger-wash: #351a19;
+  /* Both re-lit for a dark ground: the foreground tones brighten (on the dark
+     it's the lighter tone that comes forward — hence hover brightening here
+     and darkening in the light theme) and the washes become a tint *of* the
+     ground rather than on it.
 
-  --line: #1a3350;
-  --line-strong: #2b4a72;
+     The ambient/actionable split holds, but it's spelled in two warm hues
+     rather than across the wheel — the cool half of that pair belonged to the
+     navy ink, which is now the paper. Terracotta stays ambient and amber takes
+     the clicks: separated by roughly 20° of hue and a clear step in lightness,
+     with the brighter of the two on the things you can press. */
+  --accent: #d9794e;
+  --accent-hover: #e88f63;
+  --accent-wash: #2e1e14;
+  /* Blue, where the light theme's automatic tag is orange — the one hue this
+     theme has going spare. The ambient/actionable split is spelled in two
+     warm tones here (terracotta and amber), which leaves the app's own tag
+     nothing to be: in --accent it sat at 5.2:1 on a wash that separates from
+     the card by 1.01:1, so it read as a third warm thing rather than as
+     something apart. Cool and brighter instead — 7.2:1 on its wash, and the
+     wash itself carries enough lightness over --surface (1.14:1) to look
+     seated rather than painted on. Not to be mistaken for the light theme's
+     navy: that one is the ink and then the paper, never a highlight. */
+  --auto-tag: #8dbcf5;
+  --auto-tag-wash: #1a2b45;
 
-  /* Near-black, not the paper navy: a shadow the same colour as the surface
-     it falls on isn't a shadow. */
-  --shade: #000814;
+  --action: #eba55f;
+  --action-hover: #f6b877;
+  --action-wash: #33261a;
+  /* Held much closer to the surface than the light theme's seat. The wash is
+     warm brown and the ground it sits on is cool near-black, so across a whole
+     segment of the mode strip the hue difference reads as a coloured bar
+     rather than as a seated block — loud in a way the same wash never is
+     behind a pill or under the cursor. Mixed rather than hand-picked so it
+     tracks both tokens if either moves. */
+  --action-seat: color-mix(in srgb, var(--action-wash) 50%, var(--surface));
 
-  --glow-top: 9%;
-  --glow-low: 5%;
+  --green: #7cba90;
+  --green-wash: #1a2a20;
+
+  /* Held redder and cooler than the two above, so the one destructive control
+     can't be mistaken for an ordinary warm button. */
+  --danger: #e5615a;
+  --danger-hover: #f0776f;
+  --danger-wash: #331a1a;
+
+  --line: #2b3441;
+  --line-strong: #3b4653;
+
+  /* Black, near enough: a shadow the same colour as the surface it falls on
+     isn't a shadow. */
+  --shade: #05070a;
+
+  /* The two warm pools survive the swap — on a near-neutral ground they're
+     the clearest thing left of the light theme's paper warmth, so they carry
+     nearly their full strength rather than being dimmed out of the way. */
+  --glow-top: 10%;
+  --glow-low: 6%;
 }
 
 @theme inline {
@@ -139,9 +234,12 @@
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-wash: var(--accent-wash);
-  --color-blue: var(--blue);
-  --color-blue-hover: var(--blue-hover);
-  --color-blue-wash: var(--blue-wash);
+  --color-auto-tag: var(--auto-tag);
+  --color-auto-tag-wash: var(--auto-tag-wash);
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-action-wash: var(--action-wash);
+  --color-action-seat: var(--action-seat);
   --color-green: var(--green);
   --color-green-wash: var(--green-wash);
   --color-danger: var(--danger);
@@ -352,7 +450,17 @@ body {
 /* Rendered note markdown (MarkdownView). Hand-rolled rather than a
    typography plugin, kept intentionally minimal. */
 .markdown-body {
-  font-size: 1.0625rem;
+  /* Every size below this is em-relative, so scaling the root of the block
+     carries the headings, code and lists with it. --editor-font-scale is set
+     on the editor card by the text-size control; rendered notes outside that
+     card (there are none today) fall back to 1.
+
+     1.1875rem is 19px, the old 1.0625rem (17px) re-based by the same step the
+     source pane took — see the note there. Kept a whole pixel like every other
+     size in this file, which puts it a hair over the exact multiple; the two
+     panes end up 2% further apart in relative size than before, which is not a
+     difference the eye has any way of finding. */
+  font-size: calc(1.1875rem * var(--editor-font-scale, 1));
   line-height: 1.75;
   color: color-mix(in srgb, var(--ink) 88%, var(--paper));
 }

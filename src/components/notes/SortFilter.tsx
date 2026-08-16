@@ -34,7 +34,7 @@ export function SortFilter({ value, onChange }: Props) {
         // (No `outline-none`: the app's global focus-visible ring applies.)
         // pr-9 leaves room for the chevron; appearance-none drops the
         // platform arrow that would otherwise sit next to it.
-        className="appearance-none rounded-full bg-paper-sunk py-1.5 pl-3.5 pr-9 text-sm font-medium text-ink transition-colors hover:text-blue"
+        className="appearance-none rounded-full bg-paper-sunk py-1.5 pl-3.5 pr-9 text-sm font-medium text-ink transition-colors hover:text-action"
       >
         {OPTIONS.map(({ value: option, label }) => (
           <option key={option} value={option}>

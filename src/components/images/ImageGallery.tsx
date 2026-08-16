@@ -24,7 +24,7 @@ const EAGER_TILES = 3;
 function Thumbnail({ image, eager }: { image: StoredImage; eager: boolean }) {
   return (
     <>
-      <div className="relative aspect-4/3 overflow-hidden rounded-2xl border border-line bg-paper-sunk transition-all group-hover:border-blue/40 group-hover:shadow-md group-hover:shadow-shade/5">
+      <div className="relative aspect-4/3 overflow-hidden rounded-2xl border border-line bg-paper-sunk transition-all group-hover:border-action/40 group-hover:shadow-md group-hover:shadow-shade/5">
         <Image
           src={image.url}
           // The filename is the only description that exists — nothing records
@@ -41,7 +41,7 @@ function Thumbnail({ image, eager }: { image: StoredImage; eager: boolean }) {
           className="object-contain transition-transform duration-200 ease-out motion-reduce:transition-none group-hover:scale-[1.03]"
         />
       </div>
-      <p className="mt-2.5 truncate text-base font-medium text-ink transition-colors group-hover:text-blue">
+      <p className="mt-2.5 truncate text-base font-medium text-ink transition-colors group-hover:text-action">
         {image.note.title || "Untitled"}
       </p>
       <p className="mt-1 truncate text-sm text-ink-faint">

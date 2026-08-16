@@ -1,51 +1,145 @@
 "use client";
 
 import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
-import { redo, redoDepth, undo, undoDepth } from "@codemirror/commands";
+import {
+  autocompletion,
+  closeBrackets,
+  closeBracketsKeymap,
+  completionKeymap,
+} from "@codemirror/autocomplete";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  redo,
+  redoDepth,
+  undo,
+  undoDepth,
+} from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import {
+  bracketMatching,
+  defaultHighlightStyle,
+  foldKeymap,
+  HighlightStyle,
+  indentOnInput,
+  syntaxHighlighting,
+} from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
-import { Prec } from "@codemirror/state";
-import { EditorView, keymap, placeholder as placeholderExt } from "@codemirror/view";
+import { lintKeymap } from "@codemirror/lint";
+import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
+import { EditorState, Prec } from "@codemirror/state";
+import {
+  crosshairCursor,
+  drawSelection,
+  dropCursor,
+  EditorView,
+  highlightActiveLine,
+  highlightSpecialChars,
+  keymap,
+  placeholder as placeholderExt,
+  rectangularSelection,
+} from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
-import { basicSetup } from "codemirror";
+
+/**
+ * `basicSetup` from the `codemirror` package, minus every gutter: line
+ * numbers, the fold arrows beside them, and the active-line gutter highlight.
+ * Notes are prose, not code — numbered lines are noise here, and dropping the
+ * gutter entirely lets the text sit flush against the editor's left edge
+ * rather than leaving an empty column behind.
+ *
+ * Inlined because that extension is a plain array that "does not allow
+ * customization"; its own docs say to copy the source and adjust it, which is
+ * all this is. Everything else is verbatim, in the original order.
+ */
+const editorSetup = [
+  highlightSpecialChars(),
+  history(),
+  drawSelection(),
+  dropCursor(),
+  EditorState.allowMultipleSelections.of(true),
+  indentOnInput(),
+  syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+  bracketMatching(),
+  closeBrackets(),
+  autocompletion(),
+  rectangularSelection(),
+  crosshairCursor(),
+  highlightActiveLine(),
+  highlightSelectionMatches(),
+  keymap.of([
+    ...closeBracketsKeymap,
+    ...defaultKeymap,
+    ...searchKeymap,
+    ...historyKeymap,
+    ...foldKeymap,
+    ...completionKeymap,
+    ...lintKeymap,
+  ]),
+];
+
+const SELECTION_BG = "color-mix(in srgb, var(--accent) 22%, transparent)";
 
 const appTheme = EditorView.theme({
   "&": {
     color: "var(--ink)",
     backgroundColor: "transparent",
     height: "100%",
-    fontSize: "15.5px",
+    // Scaled rather than replaced, so the source pane keeps its own base size
+    // (mono reads smaller than prose at the same nominal px) while tracking
+    // the preview pane step for step. The fallback matters: the variable is
+    // set on the editor card, and this theme is also what a bare CodeMirror
+    // outside it would use.
+    //
+    // 17px is the old 15.5px re-based: a step up read better than the original
+    // default, so it became the default rather than something to be re-set on
+    // every device. Rounded from 17.05 — 0.3% off exact, invisible, and a
+    // whole pixel is the kinder number to reason from next time.
+    fontSize: "calc(17px * var(--editor-font-scale, 1))",
   },
   ".cm-content": {
     fontFamily: "var(--font-plex-mono, monospace)",
     caretColor: "var(--accent)",
-    paddingTop: "1rem",
-    paddingBottom: "1rem",
+    padding: "1rem",
+  },
+  // CodeMirror's base theme pads every line by 6px on the left and 2px on the
+  // right, which would land on top of the padding above and pull the text off
+  // centre. Zeroed so the inset is exactly the 1rem set on the content.
+  ".cm-line": {
+    padding: "0",
   },
   "&.cm-focused .cm-cursor": {
     borderLeftColor: "var(--accent)",
     borderLeftWidth: "2px",
   },
-  ".cm-gutters": {
-    backgroundColor: "transparent",
-    color: "var(--ink-faint)",
-    border: "none",
-  },
   ".cm-activeLine": {
     backgroundColor: "color-mix(in srgb, var(--accent) 5%, transparent)",
   },
-  ".cm-activeLineGutter": {
-    backgroundColor: "transparent",
-    color: "var(--accent)",
+  // Unfocused, plus the native selection in nested inputs (the search panel),
+  // which CodeMirror leaves to the browser.
+  ".cm-selectionBackground, ::selection": {
+    backgroundColor: SELECTION_BG,
   },
-  "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
-    backgroundColor: "color-mix(in srgb, var(--accent) 22%, transparent)",
+  // The focused case, spelled out in full rather than as
+  // `&.cm-focused .cm-selectionBackground`. drawSelection's base theme claims
+  // it as `&light.cm-focused > .cm-scroller > .cm-selectionLayer
+  // .cm-selectionBackground` — five classes, so the shorter selector lost to
+  // it on specificity and the selection came out in CodeMirror's stock
+  // lavender, its *light* default, on the dark ground. Matching the path ties
+  // the specificity, and a theme outranks a base theme on ties.
+  //
+  // `&light` is what applies because this theme never declares itself dark:
+  // that flag is fixed when the extension is built, and the app switches
+  // palettes at runtime. Overriding both defaults outright is what keeps the
+  // token colours right in either theme.
+  "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground": {
+    backgroundColor: SELECTION_BG,
   },
   ".cm-selectionMatch": {
     backgroundColor: "color-mix(in srgb, var(--ink) 12%, transparent)",
   },
-  // basicSetup brings the search panel and autocomplete tooltips, which
+  // editorSetup brings the search panel and autocomplete tooltips, which
   // otherwise fall back to CodeMirror's built-in light baseTheme and stay
   // cream-on-cream once the app is in its dark palette. Same tokens as the
   // rest, so they follow whichever theme is active.
@@ -71,12 +165,12 @@ const appTheme = EditorView.theme({
 /**
  * Syntax colours for the source pane, drawn from the app's tokens.
  *
- * basicSetup ships `defaultHighlightStyle`, whose palette is a set of fixed
+ * editorSetup ships `defaultHighlightStyle`, whose palette is a set of fixed
  * hex colours picked for a white page — link URLs come out near-navy, which is
  * unreadable once the app is in its dark theme. These are the same tokens
  * every other surface uses, so the source pane follows whichever theme is
  * active for free. Registered without `fallback`, so it takes precedence over
- * the default that basicSetup registers *with* it.
+ * the default that editorSetup registers *with* it.
  *
  * Markdown's own tags come first and the ones for embedded fenced code after:
  * code text carries `monospace` from the markdown parser as well as its own
@@ -89,9 +183,16 @@ const appHighlight = HighlightStyle.define([
   { tag: t.emphasis, fontStyle: "italic" },
   { tag: t.strikethrough, textDecoration: "line-through" },
   { tag: t.quote, color: "var(--ink-muted)", fontStyle: "italic" },
-  { tag: t.list, color: "var(--accent)" },
-  { tag: t.link, color: "var(--blue)" },
-  { tag: t.url, color: "var(--blue)", textDecoration: "underline" },
+  // No rule for t.list on purpose. The markdown parser tags lists as
+  // "BulletList/..." — the /... spreading that tag over every descendant — so
+  // colouring it paints the whole item, prose included, and lands on the same
+  // elements as the inline rules above. Being later in this array, it won a
+  // straight cascade tie against them: bold inside a list came out accent
+  // rather than ink. The bullet itself is a ListMark, which the parser tags as
+  // processingInstruction, so it's still held back with the rest of the markup
+  // by the rule further down.
+  { tag: t.link, color: "var(--action)" },
+  { tag: t.url, color: "var(--action)", textDecoration: "underline" },
   { tag: t.labelName, color: "var(--ink-muted)" },
   { tag: t.monospace, color: "var(--accent)" },
   { tag: t.escape, color: "var(--ink-faint)" },
@@ -101,13 +202,13 @@ const appHighlight = HighlightStyle.define([
   // back so the text reads over its own punctuation.
   { tag: t.processingInstruction, color: "var(--ink-faint)" },
 
-  { tag: [t.keyword, t.controlKeyword, t.moduleKeyword], color: "var(--blue)" },
+  { tag: [t.keyword, t.controlKeyword, t.moduleKeyword], color: "var(--action)" },
   { tag: [t.operator, t.derefOperator], color: "var(--ink-muted)" },
   { tag: [t.string, t.regexp, t.special(t.string)], color: "var(--green)" },
   { tag: [t.number, t.bool, t.atom, t.null], color: "var(--accent)" },
   { tag: [t.typeName, t.className, t.namespace, t.tagName], color: "var(--accent-hover)" },
   { tag: [t.propertyName, t.attributeName], color: "var(--ink)" },
-  { tag: t.function(t.variableName), color: "var(--blue-hover)" },
+  { tag: t.function(t.variableName), color: "var(--action-hover)" },
   { tag: t.comment, color: "var(--ink-faint)", fontStyle: "italic" },
   { tag: t.invalid, color: "var(--danger)" },
 ]);
@@ -210,10 +311,13 @@ function urlPasteHandler() {
   });
 }
 
-// The caret has no width, so `coordsAtPos` is the only way to anchor a popup
-// to it. It returns null when the position isn't currently rendered (scrolled
-// far out of view), in which case the editor's own top-left is a sane place to
-// put the menu rather than the viewport corner.
+// Anchors a popup below the selection's head — the caret when nothing is
+// selected, and the moving end of a range otherwise, which is where the
+// pointer (or the arrow keys) just left off. The caret has no width, so
+// `coordsAtPos` is the only way to place anything against it. It returns null
+// when the position isn't currently rendered (scrolled far out of view), in
+// which case the editor's own top-left is a sane place to put the menu rather
+// than the viewport corner.
 function anchorAtCursor(view: EditorView): { x: number; y: number } {
   const coords = view.coordsAtPos(view.state.selection.main.head);
   if (coords) return { x: coords.left, y: coords.bottom };
@@ -234,9 +338,9 @@ function runHistoryCommand(
 }
 
 /**
- * Where an AI prompt was opened from. Two ways in: right-clicking a selection,
- * or the ask shortcut at the bare cursor — hence `text` may be empty, which is
- * what distinguishes "ask about this" from "ask about the note".
+ * Where an AI prompt was opened from. Two ways in: selecting text, or the ask
+ * shortcut at the bare cursor — hence `text` may be empty, which is what
+ * distinguishes "ask about this" from "ask about the note".
  */
 export type AiAnchor = {
   /** Viewport coordinates to position the menu at. */
@@ -244,9 +348,13 @@ export type AiAnchor = {
   y: number;
   /** The selected text; empty when opened from the cursor. */
   text: string;
-  /** Where generated text gets inserted — selection end, or the cursor. */
+  /** The selection this was raised on, collapsed when raised at the cursor. */
+  from: number;
   to: number;
 };
+
+/** Where an accepted answer goes: over the selection, or after the block. */
+export type AnswerPlacement = "replace" | "below";
 
 /** Whether each direction has anything left to step through. */
 export type HistoryState = {
@@ -263,12 +371,15 @@ export type EditorHandle = {
   undo: () => void;
   redo: () => void;
   /**
-   * Opens a streaming insertion point at `pos`. Subsequent `insertStreamed`
-   * calls append there, and the point survives edits made in the meantime.
+   * Claims `from`..`to` as the range an in-flight answer belongs to. The range
+   * is mapped through every edit until it's used, so a note that keeps being
+   * typed in while the answer streams still takes it in the right place.
    */
-  beginStream: (pos: number) => void;
-  insertStreamed: (text: string) => void;
-  endStream: () => void;
+  beginAnswer: (from: number, to: number) => void;
+  /** Writes a reviewed answer into the claimed range, then releases it. */
+  applyAnswer: (text: string, placement: AnswerPlacement) => void;
+  /** Releases the claimed range without writing anything. */
+  endAnswer: () => void;
 };
 
 type Props = {
@@ -276,8 +387,12 @@ type Props = {
   onChange: (value: string) => void;
   /** Fires with the 1-based line the user clicked on. */
   onLineClick?: (line: number) => void;
-  /** Fires on right-click when text is selected; suppresses the native menu. */
-  onSelectionContextMenu?: (anchor: AiAnchor) => void;
+  /**
+   * Drives the selection-triggered AI menu: an anchor once a non-empty
+   * selection settles, null when the menu should go away (any click, any
+   * keystroke). Never suppresses the native context menu.
+   */
+  onSelectionMenu?: (anchor: AiAnchor | null) => void;
   /** Fires on the ask shortcut (⌘J / Ctrl-J), selection or not. */
   onAskShortcut?: (anchor: AiAnchor) => void;
   /** Fires only when a direction flips between empty and non-empty. */
@@ -291,7 +406,7 @@ export function CodeMirrorEditor({
   value,
   onChange,
   onLineClick,
-  onSelectionContextMenu,
+  onSelectionMenu,
   onAskShortcut,
   onHistoryChange,
   placeholder,
@@ -308,10 +423,10 @@ export function CodeMirrorEditor({
   useEffect(() => {
     onLineClickRef.current = onLineClick;
   }, [onLineClick]);
-  const onContextMenuRef = useRef(onSelectionContextMenu);
+  const onSelectionMenuRef = useRef(onSelectionMenu);
   useEffect(() => {
-    onContextMenuRef.current = onSelectionContextMenu;
-  }, [onSelectionContextMenu]);
+    onSelectionMenuRef.current = onSelectionMenu;
+  }, [onSelectionMenu]);
   const onAskShortcutRef = useRef(onAskShortcut);
   useEffect(() => {
     onAskShortcutRef.current = onAskShortcut;
@@ -326,10 +441,16 @@ export function CodeMirrorEditor({
   // flip, so anything else would be a re-render of the whole editor for nothing.
   const historyRef = useRef<HistoryState>({ canUndo: false, canRedo: false });
 
-  // Where streamed text is currently being appended, or null when no
-  // generation is in flight. Mapped through every document change below, so
-  // typing elsewhere mid-stream doesn't send tokens to the wrong offset.
-  const streamPosRef = useRef<number | null>(null);
+  // True between mousedown and mouseup inside the editor. A drag fires a
+  // selection update on every mousemove, and anchoring the menu to each one
+  // would have it chase the pointer across the screen — so pointer selections
+  // are reported once, on release, and these interim updates are skipped.
+  const draggingRef = useRef(false);
+
+  // The range an answer under review belongs to, or null when none is in
+  // flight. Mapped through every document change below, so a note edited while
+  // the answer streams doesn't take it at a stale offset.
+  const answerRangeRef = useRef<{ from: number; to: number } | null>(null);
 
   useImperativeHandle(ref, () => ({
     scrollToLine(line) {
@@ -352,34 +473,86 @@ export function CodeMirrorEditor({
     redo() {
       runHistoryCommand(viewRef.current, redo);
     },
-    beginStream(pos) {
-      streamPosRef.current = pos;
+    beginAnswer(from, to) {
+      answerRangeRef.current = { from, to };
     },
-    insertStreamed(text) {
+    applyAnswer(text, placement) {
       const view = viewRef.current;
-      const pos = streamPosRef.current;
-      if (!view || pos === null) return;
-      // No explicit advance of streamPosRef: the update listener maps it
-      // through this very change, which moves it past the inserted text.
+      const range = answerRangeRef.current;
+      answerRangeRef.current = null;
+      if (!view || !range) return;
+
+      // "below" lands after the whole source line rather than at the exact
+      // selection end: selecting half a sentence and inserting there would
+      // split the paragraph around the answer, where what's wanted is a new
+      // block following the paragraph the selection was taken from.
+      const replacing = placement === "replace";
+      const from = replacing ? range.from : view.state.doc.lineAt(range.to).to;
+      const to = replacing ? range.to : from;
+      const insert = replacing ? text : `\n\n${text}`;
+
       view.dispatch({
-        changes: { from: pos, insert: text },
+        changes: { from, to, insert },
+        // Caret at the end of what was written, deliberately not a selection
+        // over it: selecting the answer would read as a fresh highlight and
+        // pop the AI menu straight back open on top of it.
+        selection: { anchor: from + insert.length },
         scrollIntoView: true,
       });
+      view.focus();
     },
-    endStream() {
-      streamPosRef.current = null;
+    endAnswer() {
+      answerRangeRef.current = null;
     },
   }), []);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // Offers the current selection to the menu. Empty selections say nothing:
+    // closing is the dismiss handlers' job, and staying quiet here keeps a
+    // caret move from re-closing a menu the ask shortcut just opened.
+    function reportSelection(view: EditorView) {
+      const { from, to } = view.state.selection.main;
+      if (from === to) return;
+      onSelectionMenuRef.current?.({
+        ...anchorAtCursor(view),
+        text: view.state.sliceDoc(from, to),
+        from,
+        to,
+      });
+    }
+
     const view = new EditorView({
       doc: value,
       parent: containerRef.current,
       extensions: [
-        basicSetup,
-        // Prec.highest so this wins over basicSetup's keymaps regardless of
+        editorSetup,
+        // Any click or keystroke dismisses the menu. Prec.highest, and ahead
+        // of the keymaps below, so the close is queued before whatever the key
+        // actually does — a shift-arrow that grows the selection then reopens
+        // the menu from the update listener, in that order, while a plain
+        // keystroke that types over the selection leaves it closed.
+        Prec.highest(
+          EditorView.domEventHandlers({
+            // Fires for every button, so right-click is covered too: the menu
+            // gets out of the way and the browser's own menu takes over,
+            // unimpeded — there is no contextmenu handler any more. Only the
+            // primary button arms the drag, though: right-clicking *inside* a
+            // selection leaves that selection standing, and its mouseup would
+            // otherwise re-open the AI menu over the native one.
+            mousedown(event) {
+              if (event.button === 0) draggingRef.current = true;
+              onSelectionMenuRef.current?.(null);
+              return false;
+            },
+            keydown() {
+              onSelectionMenuRef.current?.(null);
+              return false;
+            },
+          }),
+        ),
+        // Prec.highest so this wins over editorSetup's keymaps regardless of
         // extension order. Mod-j is ⌘J on macOS, Ctrl-J elsewhere.
         Prec.highest(
           keymap.of([
@@ -391,6 +564,7 @@ export function CodeMirrorEditor({
                 onAskShortcutRef.current?.({
                   ...anchorAtCursor(view),
                   text: view.state.sliceDoc(from, to),
+                  from,
                   to,
                 });
                 return true;
@@ -414,22 +588,14 @@ export function CodeMirrorEditor({
             // Never handled — the click still has to place the caret.
             return false;
           },
-          contextmenu(event, view) {
-            const { from, to } = view.state.selection.main;
-            // With no selection there's nothing to ask about, so the browser's
-            // own menu (spellcheck, paste) stays available.
-            if (from === to) return false;
-            event.preventDefault();
-            onContextMenuRef.current?.({
-              x: event.clientX,
-              y: event.clientY,
-              text: view.state.sliceDoc(from, to),
-              to,
-            });
-            return true;
-          },
         }),
         EditorView.updateListener.of((update) => {
+          // Keyboard selections (shift-arrow, ⌘A) land here directly; pointer
+          // ones are skipped mid-drag and reported by the mouseup listener.
+          if (update.selectionSet && !draggingRef.current) {
+            reportSelection(update.view);
+          }
+
           // Not gated on docChanged: undo() itself empties the undo stack
           // without the document differing from where redo would put it back.
           const canUndo = undoDepth(update.state) > 0;
@@ -441,13 +607,16 @@ export function CodeMirrorEditor({
           }
 
           if (update.docChanged) {
-            if (streamPosRef.current !== null) {
-              // assoc 1 keeps the point after text inserted at it, so our own
-              // streamed tokens append in order instead of stacking backwards.
-              streamPosRef.current = update.changes.mapPos(
-                streamPosRef.current,
-                1,
-              );
+            const range = answerRangeRef.current;
+            if (range) {
+              // Assoc pushes each end outward — -1 holds `from` before text
+              // inserted at it, 1 holds `to` after — so an edit landing inside
+              // the range widens it rather than clipping the text the answer
+              // was asked about.
+              answerRangeRef.current = {
+                from: update.changes.mapPos(range.from, -1),
+                to: update.changes.mapPos(range.to, 1),
+              };
             }
             onChangeRef.current(update.state.doc.toString());
           }
@@ -456,7 +625,20 @@ export function CodeMirrorEditor({
     });
     viewRef.current = view;
 
+    // On the window rather than the editor: a drag that starts in the text and
+    // ends past its edge — the common way to grab a trailing line — releases
+    // outside, and CodeMirror's own handlers would never see it. Gated on the
+    // drag flag so a click that lands in the menu itself isn't mistaken for
+    // the end of a selection.
+    function onMouseUp(event: MouseEvent) {
+      if (event.button !== 0 || !draggingRef.current) return;
+      draggingRef.current = false;
+      reportSelection(view);
+    }
+    window.addEventListener("mouseup", onMouseUp);
+
     return () => {
+      window.removeEventListener("mouseup", onMouseUp);
       view.destroy();
       viewRef.current = null;
     };

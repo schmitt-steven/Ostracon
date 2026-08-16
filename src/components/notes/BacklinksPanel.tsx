@@ -16,7 +16,7 @@ export async function BacklinksPanel({ noteId }: { noteId: string }) {
           <li key={b.slug}>
             <Link
               href={`/notes/${b.slug}`}
-              className="inline-block rounded-full border border-line bg-surface px-4 py-2 text-base text-ink-muted transition-colors hover:border-blue/50 hover:bg-blue-wash hover:text-blue"
+              className="inline-block rounded-full border border-line bg-surface px-4 py-2 text-base text-ink-muted transition-colors hover:border-action/50 hover:bg-action-wash hover:text-action"
             >
               {b.title || "Untitled"}
             </Link>

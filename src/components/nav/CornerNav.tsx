@@ -85,12 +85,31 @@ export function CornerNav() {
         <form action={logoutAction}>
           <button
             type="submit"
-            className="rounded-full px-3 py-1.5 text-base text-ink-muted transition-colors hover:bg-blue-wash hover:text-blue"
+            className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-base text-ink-muted transition-colors hover:bg-action-wash hover:text-action"
           >
+            <LogOutIcon />
             Log out
           </button>
         </form>
       </div>
     </div>
+  );
+}
+
+function LogOutIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 16 16"
+      className="size-4 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6.2 2.2H3.4a1.2 1.2 0 0 0-1.2 1.2v9.2a1.2 1.2 0 0 0 1.2 1.2h2.8" />
+      <path d="M10.4 11.2 13.6 8l-3.2-3.2M13.6 8H6.2" />
+    </svg>
   );
 }

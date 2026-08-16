@@ -36,20 +36,23 @@ export function ViewModeToggle({ mode, onChange }: Props) {
     >
       {MODES.map(({ value, label }, i) => {
         const active = mode === value;
-        // The hairline is always in the layout (so selecting a mode never
-        // nudges the segments sideways) but goes transparent where it would
-        // meet the filled segment — a line drawn onto the blue edge reads as
-        // an artifact rather than a divider.
-        const touchesActive = active || mode === MODES[i - 1]?.value;
         return (
           <Fragment key={value}>
             {i > 0 && (
               <div
                 aria-hidden
-                // Same cream-to-blue swing as the editor box's border (the
-                // `group` is that box) so every line in the frame moves
-                // together when the editor takes focus.
-                className={`w-px shrink-0 ${TRANSITION} ${touchesActive ? "bg-transparent" : "bg-line group-focus-within:bg-blue/50"}`}
+                // Every hairline stays drawn, including the ones bracketing the
+                // current mode: with the selection carried by the label rather
+                // than by a filled block, the strip reads as three segments
+                // throughout, and dropping a line beside the active one would
+                // just look like a gap.
+                //
+                // Fixed at --line. These used to swing to --action alongside
+                // the editor box's border on focus-within; that's gone, since
+                // the editor holds focus the whole time you're writing and the
+                // cue was lit far more often than not. The transition stays for
+                // the theme swap.
+                className={`w-px shrink-0 ${TRANSITION} bg-line`}
               />
             )}
             <button
@@ -58,10 +61,20 @@ export function ViewModeToggle({ mode, onChange }: Props) {
               aria-pressed={active}
               // flex-1 with no width of its own: the three modes always split
               // the editor's width evenly, whatever that width happens to be.
+              //
+              // The current mode is spelled in the label's colour over
+              // --action-seat, a fill barely off the toolbar's own tone —
+              // enough to seat the segment without turning the top of the
+              // editor into a coloured bar. That's --action-wash on the cream,
+              // but a segment is far larger than the pills that wash was sized
+              // for, and on the dark ground it needs pulling back towards the
+              // surface; the token carries that difference.
+              // Hover brightens to plain ink instead, so --action means "this
+              // is the mode you're in" and never merely "the pointer is here".
               className={`flex-1 py-2.5 text-sm font-medium ${TRANSITION} ${
                 active
-                  ? "bg-blue text-paper"
-                  : "text-ink-muted hover:bg-blue-wash hover:text-blue"
+                  ? "bg-action-seat text-action"
+                  : "text-ink-muted hover:bg-surface-hover hover:text-ink"
               }`}
             >
               {label}

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAuth } from "@/lib/auth/require-auth";
-import { defaultProvider, getProvider, getProviders } from "@/lib/ai/providers";
+import { listProviders, resolveProvider } from "@/lib/ai/providers";
 import { describeCompletionError, streamCompletion } from "@/lib/ai/stream";
 import {
   AI_ACTIONS,
@@ -10,12 +10,12 @@ import {
 } from "@/lib/ai/types";
 
 // Lets the menu render the real provider list — which ones exist, which are
-// reachable from this deployment, and why not. Deliberately maps the fields by
-// hand rather than spreading: baseURL and apiKey stay server-side.
+// usable right now, and why not. Deliberately maps the fields by hand rather
+// than spreading: baseURL and apiKey stay server-side.
 export async function GET(): Promise<NextResponse<ProviderInfo[]>> {
   await requireAuth();
   return NextResponse.json(
-    getProviders().map((p) => ({
+    (await listProviders()).map((p) => ({
       id: p.id,
       label: p.label,
       model: p.model,
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const provider = providerId ? getProvider(providerId) : defaultProvider();
+  const provider = await resolveProvider(providerId);
   if (!provider) {
     return NextResponse.json({ error: "Unknown provider" }, { status: 400 });
   }

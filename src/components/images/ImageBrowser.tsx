@@ -3,6 +3,7 @@
 import { useMemo, type ReactNode } from "react";
 import { ListControls } from "@/components/notes/ListControls";
 import {
+  collectRecency,
   collectTags,
   useNoteSearch,
   type NoteOverviewLite,
@@ -32,12 +33,23 @@ type Props = {
  * lookup set rather than rendered.
  */
 export function ImageBrowser({ images, notes, viewSwitcher }: Props) {
-  const { query, setQuery, selectedTags, setSelectedTags, results } =
-    useNoteSearch(notes);
+  const {
+    query,
+    setQuery,
+    selectedTags,
+    setSelectedTags,
+    selectedRecency,
+    setSelectedRecency,
+    results,
+  } = useNoteSearch(notes);
 
   const allTags = useMemo(() => collectTags(notes), [notes]);
+  const availableRecency = useMemo(() => collectRecency(notes), [notes]);
 
-  const filtering = query.trim().length > 0 || selectedTags.length > 0;
+  const filtering =
+    query.trim().length > 0 ||
+    selectedTags.length > 0 ||
+    selectedRecency.length > 0;
 
   const visible = useMemo(() => {
     if (!filtering) return images;
@@ -53,6 +65,9 @@ export function ImageBrowser({ images, notes, viewSwitcher }: Props) {
         allTags={allTags}
         selectedTags={selectedTags}
         onTagsChange={setSelectedTags}
+        selectedRecency={selectedRecency}
+        onRecencyChange={setSelectedRecency}
+        availableRecency={availableRecency}
         viewSwitcher={viewSwitcher}
       />
       {images.length === 0 ? (

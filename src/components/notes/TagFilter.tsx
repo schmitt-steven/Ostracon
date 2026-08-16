@@ -31,8 +31,8 @@ export function TagFilter({ allTags, selected, onChange }: Props) {
             onClick={() => toggle(tag)}
             className={
               active
-                ? "rounded-full bg-blue px-3.5 py-1.5 text-sm font-medium text-paper transition-colors"
-                : "rounded-full border border-line-strong px-3.5 py-1.5 text-sm text-ink-muted transition-colors hover:border-blue hover:text-blue"
+                ? "rounded-full bg-action px-3.5 py-1.5 text-sm font-medium text-paper transition-colors"
+                : "rounded-full border border-line-strong px-3.5 py-1.5 text-sm text-ink-muted transition-colors hover:border-action hover:text-action"
             }
           >
             {tag}

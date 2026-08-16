@@ -1,6 +1,7 @@
 import { NoteEditor } from "@/components/editor/NoteEditor";
 import { BackToNotesLink } from "@/components/nav/BackToNotesLink";
 import { requireAuth } from "@/lib/auth/require-auth";
+import { defaultNoteTitle } from "@/lib/notes/default-title";
 
 export default async function NewNotePage({
   searchParams,
@@ -17,6 +18,11 @@ export default async function NewNotePage({
         noteId={null}
         version={1}
         initialTitle={initialTitle}
+        // Today, until the note exists and carries its own creation day.
+        defaultTitle={defaultNoteTitle(new Date())}
+        // Nothing has been saved yet — the tag appears once the first save
+        // lands and the editor redirects to the note's own route.
+        recency={null}
         initialBodyMd=""
         initialTags={[]}
       />

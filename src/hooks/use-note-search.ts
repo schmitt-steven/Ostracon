@@ -10,6 +10,7 @@ import {
   subscribeListState,
   type SortMode,
 } from "@/lib/notes/list-state";
+import { RECENCY_MODES, type NoteRecency } from "@/lib/notes/recency";
 import { loadCachedIndex, saveIndexCache } from "@/lib/search/indexeddb";
 
 export type { SortMode };
@@ -21,6 +22,8 @@ export type NoteOverviewLite = {
   tags: string[];
   createdAt: string;
   updatedAt: string;
+  /** The automatic tag this note carries. Server-decided — see `noteRecency`. */
+  recency: NoteRecency | null;
   textLength: number;
 };
 
@@ -39,6 +42,18 @@ export function collectTags(notes: NoteOverviewLite[]): string[] {
     for (const tag of note.tags) set.add(tag);
   }
   return [...set].sort();
+}
+
+/**
+ * Which automatic tags are in play, in their fixed order. The counterpart to
+ * `collectTags`, and derived from the same full note list for the same reason:
+ * the two views have to offer the same pills, or a selection made in one would
+ * be filtering the other with nothing on screen to say so.
+ */
+export function collectRecency(notes: NoteOverviewLite[]): NoteRecency[] {
+  return RECENCY_MODES.filter((mode) =>
+    notes.some((note) => note.recency === mode),
+  );
 }
 
 // ISO-8601 in a fixed zone sorts correctly as plain strings, so the dates need
@@ -71,7 +86,7 @@ export function useNoteSearch(initialNotes: NoteOverviewLite[]) {
   // Survives navigating into a note and back — see `list-state`. React uses
   // the server snapshot for the hydrating render and swaps in the stored one
   // right after, so a restored filter never causes a hydration mismatch.
-  const { query, selectedTags, sort } = useSyncExternalStore(
+  const { query, selectedTags, selectedRecency, sort } = useSyncExternalStore(
     subscribeListState,
     getListState,
     getServerListState,
@@ -84,6 +99,9 @@ export function useNoteSearch(initialNotes: NoteOverviewLite[]) {
   }, []);
   const setSelectedTags = useCallback((next: string[]) => {
     setListState({ ...getListState(), selectedTags: next });
+  }, []);
+  const setSelectedRecency = useCallback((next: NoteRecency[]) => {
+    setListState({ ...getListState(), selectedRecency: next });
   }, []);
   const setSort = useCallback((next: SortMode) => {
     setListState({ ...getListState(), sort: next });
@@ -162,22 +180,30 @@ export function useNoteSearch(initialNotes: NoteOverviewLite[]) {
       matches = initialNotes;
     }
 
-    if (selectedTags.length > 0) {
-      matches = matches.filter((n) =>
-        selectedTags.some((tag) => n.tags.includes(tag)),
+    // The automatic tags join the same OR the tag pills already use — a row of
+    // pills where some of them narrowed instead of widened would be a trap.
+    // Selected on their own, which is what they're for, they give today's
+    // notes; selecting both gives everything that happened today.
+    if (selectedTags.length > 0 || selectedRecency.length > 0) {
+      matches = matches.filter(
+        (n) =>
+          (n.recency !== null && selectedRecency.includes(n.recency)) ||
+          selectedTags.some((tag) => n.tags.includes(tag)),
       );
     }
 
     // Copy before sorting: `matches` is `initialNotes` itself whenever there's
     // no query, and sorting in place would mutate a prop.
     return [...matches].sort(COMPARATORS[sort]);
-  }, [query, selectedTags, sort, index, initialNotes, byId]);
+  }, [query, selectedTags, selectedRecency, sort, index, initialNotes, byId]);
 
   return {
     query,
     setQuery,
     selectedTags,
     setSelectedTags,
+    selectedRecency,
+    setSelectedRecency,
     sort,
     setSort,
     results,

@@ -28,7 +28,7 @@ export function ThemeToggle() {
       // face already says which way this goes, and a swapped label would need
       // the state this component deliberately doesn't keep.
       aria-label="Switch between the light and dark theme"
-      className="rounded-full px-3 py-1.5 text-base text-ink-muted transition-colors hover:bg-blue-wash hover:text-blue"
+      className="rounded-full px-3 py-1.5 text-base text-ink-muted transition-colors hover:bg-action-wash hover:text-action"
     >
       <span className="theme-when-light inline-flex items-center gap-2">
         <MoonIcon />

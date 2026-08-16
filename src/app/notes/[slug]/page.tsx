@@ -4,8 +4,10 @@ import { BackToNotesLink } from "@/components/nav/BackToNotesLink";
 import { BacklinksPanel } from "@/components/notes/BacklinksPanel";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { renderNoteHtml } from "@/lib/markdown/render-note";
+import { defaultNoteTitle } from "@/lib/notes/default-title";
 import { parseContentMd } from "@/lib/notes/frontmatter";
 import { getNoteBySlug } from "@/lib/notes/queries";
+import { noteRecency } from "@/lib/notes/recency";
 
 export default async function NotePage({
   params,
@@ -32,6 +34,10 @@ export default async function NotePage({
         noteId={note.id}
         version={note.version}
         initialTitle={note.title}
+        // The note's own day, not today's — emptying the title on an old note
+        // restores the day it was started, which is what the save will write.
+        defaultTitle={defaultNoteTitle(note.createdAt)}
+        recency={noteRecency(note.createdAt, note.updatedAt)}
         initialBodyMd={body}
         initialTags={note.tags}
         initialPreviewHtml={previewHtml}

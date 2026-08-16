@@ -7,12 +7,6 @@ type Props = {
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
-  /**
-   * Suppresses the trailing hairline when the segment next to it is filled —
-   * see the same rule in ViewModeToggle: a line drawn onto the blue edge
-   * reads as an artifact rather than a divider.
-   */
-  dividerHidden?: boolean;
 };
 
 // Same curve as the mode segments so the whole toolbar strip cross-fades as
@@ -27,7 +21,7 @@ const TRANSITION =
 const button = (enabled: boolean) =>
   `flex shrink-0 items-center px-3.5 py-2.5 ${TRANSITION} ${
     enabled
-      ? "text-ink-muted hover:bg-blue-wash hover:text-blue"
+      ? "text-ink-muted hover:bg-action-wash hover:text-action"
       : "text-ink-faint"
   }`;
 
@@ -36,13 +30,7 @@ const subscribeNever = () => () => {};
 const readModKey = () =>
   navigator.userAgent.includes("Mac") ? "⌘" : "Ctrl+";
 
-export function HistoryControls({
-  canUndo,
-  canRedo,
-  onUndo,
-  onRedo,
-  dividerHidden = false,
-}: Props) {
+export function HistoryControls({ canUndo, canRedo, onUndo, onRedo }: Props) {
   // The modifier differs per platform and the server can't know which one this
   // is, so it renders the bare label and the client fills the shortcut in —
   // via useSyncExternalStore rather than an effect so the two passes agree
@@ -74,11 +62,11 @@ export function HistoryControls({
       >
         <RedoIcon />
       </button>
+      {/* Always drawn, like the ones between the mode segments — see the note
+          there on why none of them drop out any more. */}
       <div
         aria-hidden
-        className={`w-px shrink-0 ${TRANSITION} ${
-          dividerHidden ? "bg-transparent" : "bg-line group-focus-within:bg-blue/50"
-        }`}
+        className={`w-px shrink-0 ${TRANSITION} bg-line`}
       />
     </div>
   );

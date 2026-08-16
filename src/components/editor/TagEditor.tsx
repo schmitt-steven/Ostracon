@@ -44,12 +44,12 @@ export function TagEditor({ tags, onChange }: Props) {
         <button
           type="button"
           onClick={() => setDraft("")}
-          className={`${PILL} border-dashed border-line-strong text-ink-faint hover:border-blue hover:text-blue`}
+          className={`${PILL} border-dashed border-line-strong text-ink-faint hover:border-action hover:text-action`}
         >
           + tag
         </button>
       ) : (
-        <span className={`${PILL} border-blue bg-blue-wash text-ink`}>
+        <span className={`${PILL} border-action bg-action-wash text-ink`}>
           <input
             // Focus the pill the moment it replaces the button — the click
             // that opened it was on a button that no longer exists, so
@@ -71,7 +71,7 @@ export function TagEditor({ tags, onChange }: Props) {
               }
             }}
             // The global :focus-visible outline would draw an accent ring
-            // inside the pill; the pill's own blue border and wash are the
+            // inside the pill; the pill's own --action border and wash are the
             // focus affordance here. That rule is unlayered, so it outranks
             // any utility layer regardless of specificity — hence the `!`.
             className="bg-transparent text-sm text-ink outline-none focus-visible:outline-none!"

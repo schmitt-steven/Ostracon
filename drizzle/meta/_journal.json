@@ -8,6 +8,27 @@
       "when": 1786736655947,
       "tag": "0000_glamorous_champions",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786893543239,
+      "tag": "0001_mute_storm",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786894321366,
+      "tag": "0002_red_hobgoblin",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786894748286,
+      "tag": "0003_flashy_captain_cross",
+      "breakpoints": true
     }
   ]
 }

@@ -96,7 +96,7 @@ export function AiMenu({
             placeholder={
               hasSelection ? "Ask about the selection…" : "Ask about this note…"
             }
-            className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-blue"
+            className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-action"
           />
         </form>
       ) : (
@@ -110,7 +110,7 @@ export function AiMenu({
                 if (action === "ask") setAsking(true);
                 else onPick(action);
               }}
-              className="block w-full px-4 py-2 text-left text-sm text-ink transition-colors hover:bg-blue-wash hover:text-blue"
+              className="block w-full px-4 py-2 text-left text-sm text-ink transition-colors hover:bg-action-wash hover:text-action"
             >
               {ACTION_LABELS[action]}
             </button>
