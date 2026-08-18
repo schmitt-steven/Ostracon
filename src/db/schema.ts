@@ -21,6 +21,20 @@ export const notes = pgTable(
       .notNull()
       .default(sql`'{}'::text[]`),
     version: integer("version").notNull().default(1),
+    /**
+     * When the note was pinned to the rail; null means it isn't.
+     *
+     * A timestamp rather than a boolean because the pinned section shows them
+     * in the order they were pinned, and that order has to survive a reload —
+     * a boolean would leave the rail sorting five equal values.
+     *
+     * A column rather than the localStorage the *tag* pins use (see
+     * lib/tags/preferences): the rail has to print a pinned note's title, and
+     * the only place a title lives is here. Client-side pins would mean either
+     * shipping every note's title to the browser so five of them could be
+     * looked up, or storing a copy of the title that a rename would strand.
+     */
+    pinnedAt: timestamp("pinned_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -32,6 +46,7 @@ export const notes = pgTable(
     uniqueIndex("notes_slug_idx").on(t.slug),
     index("notes_tags_gin_idx").using("gin", t.tags),
     index("notes_updated_at_idx").on(t.updatedAt),
+    index("notes_pinned_at_idx").on(t.pinnedAt),
   ],
 );
 

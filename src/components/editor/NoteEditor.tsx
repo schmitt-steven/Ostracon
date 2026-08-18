@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -9,8 +10,12 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { RelativeDate } from "@/components/ui/RelativeDate";
 import { useAiCompletion, type AiRequest } from "@/hooks/use-ai-completion";
 import { useAutosave } from "@/hooks/use-autosave";
+import { useCompactViewport } from "@/hooks/use-compact-viewport";
+import { useTagHues } from "@/hooks/use-tag-hues";
+import { registerCommands } from "@/lib/command/registry";
 import {
   getProviderChoice,
   getServerProviderChoice,
@@ -22,33 +27,24 @@ import {
   type AiAction,
   type ProviderInfo,
 } from "@/lib/ai/types";
-import {
-  DEFAULT_FONT_SCALE,
-  getFontScale,
-  getServerFontScale,
-  setFontScale,
-  stepFontScale,
-  subscribeFontScale,
-} from "@/lib/editor/font-scale";
+import type { Backlink } from "@/lib/notes/queries";
 import { suggestTags } from "@/lib/notes/tag-heuristic";
-import type { NoteRecency } from "@/lib/notes/recency";
-import { RecencyTag } from "@/components/notes/RecencyTag";
+import { knownTagSet, normalizeTagList } from "@/lib/tags/parse";
+import { ALL_NOTES_HREF, tagHref } from "@/lib/tags/routes";
 import { AiAnswerCard } from "./AiAnswerCard";
 import { AiMenu } from "./AiMenu";
-import { FontSizeControls } from "./FontSizeControls";
 import {
   CodeMirrorEditor,
   type AnswerPlacement,
   type EditorHandle,
-  type HistoryState,
   type AiAnchor,
 } from "./CodeMirrorEditor";
-import { HistoryControls } from "./HistoryControls";
+import { NoteDeleteButton } from "./NoteDeleteButton";
+import { NotePinButton } from "./NotePinButton";
 import { PreviewPane, type PreviewHandle } from "./PreviewPane";
 import { SaveToast } from "./SaveToast";
-import { TagEditor } from "./TagEditor";
-import { TagSuggestToggle } from "./TagSuggestToggle";
-import { ViewModeToggle, type ViewMode } from "./ViewModeToggle";
+import { TagBar, type TagBarHandle } from "./TagBar";
+import { ViewModeToggle, VIEW_MODES, type ViewMode } from "./ViewModeToggle";
 
 /**
  * An answer being reviewed. The text lives here rather than in the document
@@ -74,56 +70,128 @@ type Props = {
    * so the placeholder can't disagree with the title that actually lands.
    */
   defaultTitle: string;
-  /**
-   * The automatic tag this note carries, if any. Server-decided (see
-   * [noteRecency]) and re-rendered whenever a save refreshes the route, so it
-   * turns into "modified today" on the first edit of an older note without
-   * this component tracking anything itself. Always null on a note that
-   * hasn't been created yet.
-   */
-  recency: NoteRecency | null;
   initialBodyMd: string;
+  /** The note's tags, as filed. Edited in the tag bar, never in the body. */
   initialTags: string[];
   /** Server-rendered HTML of `initialBodyMd`; empty for a brand-new note. */
   initialPreviewHtml?: string;
   /** Overrides the mode the editor opens in (see the default below). */
   initialMode?: ViewMode;
+  /** Whether the note is pinned to the rail. False for one not yet created. */
+  pinned: boolean;
+  /** Last save, as the server knows it. Refreshed locally after each save. */
+  updatedAt: string;
+  backlinks: Backlink[];
+  /**
+   * Every tag in the collection. The tag bar suggests from it, and the body's
+   * `#` references resolve against it — a reference to a name that isn't in
+   * here isn't a tag, because the bar is the only place tags are made.
+   */
+  allTags: string[];
 };
 
+/**
+ * How wide the text column is allowed to get.
+ *
+ * 680px is the reading measure, and prose never exceeds it — surplus window
+ * width becomes margin rather than longer lines. Split is the one exception,
+ * and only because it isn't one column: two 680px columns would need a 1400px
+ * pane, so each half gets a little over half the measure and the pair stays
+ * within what the eye can track.
+ */
+const COLUMN: Record<ViewMode, string> = {
+  write: "max-w-[680px]",
+  preview: "max-w-[680px]",
+  split: "max-w-[1100px]",
+};
+
+/** Words, for the metadata line. Cheap enough to run on every keystroke. */
+function countWords(text: string): number {
+  const trimmed = text.trim();
+  return trimmed ? trimmed.split(/\s+/).length : 0;
+}
+
+/**
+ * View B — one note.
+ *
+ * The pane is washed in the note's first tag's hue, so arriving here from a
+ * green index reads as staying in the same place rather than as a page swap.
+ * There is no card, no fixed height and no toolbar: the title, the metadata
+ * line and the body are three blocks of text on one surface, separated by
+ * space.
+ */
 export function NoteEditor({
   noteId,
   version,
   initialTitle,
   defaultTitle,
-  recency,
   initialBodyMd,
   initialTags,
   initialPreviewHtml = "",
   initialMode,
+  pinned,
+  updatedAt,
+  backlinks,
+  allTags,
 }: Props) {
   const router = useRouter();
+  const { hueOf } = useTagHues();
+  // Narrow screens have two modes, not three — see [ViewModeToggle].
+  const compact = useCompactViewport();
   const [title, setTitle] = useState(initialTitle);
   const [bodyMd, setBodyMd] = useState(initialBodyMd);
   const [tags, setTags] = useState(initialTags);
-  const [suggestEnabled, setSuggestEnabled] = useState(false);
   // Opening an existing note is a reading action, so it lands on the rendered
   // side; a new note is a writing action (and has nothing to preview anyway),
   // so it lands on the writing surface.
-  const [mode, setMode] = useState<ViewMode>(
+  const [chosenMode, setMode] = useState<ViewMode>(
     initialMode ?? (noteId ? "preview" : "write"),
   );
+  // What a narrow screen does with split, which it has no room for: shows the
+  // writing surface. Derived rather than written back into state, so a window
+  // dragged narrow and wide again comes back to the mode it was left in —
+  // and so the pane can never be rendering two columns the switch says
+  // aren't there. The writing half rather than the rendered one because
+  // someone in split is mid-sentence.
+  const mode = compact && chosenMode === "split" ? "write" : chosenMode;
+  const [showBacklinks, setShowBacklinks] = useState(false);
 
   const editorRef = useRef<EditorHandle>(null);
   const previewRef = useRef<PreviewHandle>(null);
-  const [history, setHistory] = useState<HistoryState>({
-    canUndo: false,
-    canRedo: false,
-  });
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const tagBarRef = useRef<TagBarHandle>(null);
 
   const [aiMenu, setAiMenu] = useState<AiAnchor | null>(null);
   const [answer, setAnswer] = useState<AiAnswer | null>(null);
   const [providers, setProviders] = useState<ProviderInfo[] | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  const words = useMemo(() => countWords(bodyMd), [bodyMd]);
+
+  // The first tag is the note's primary one — what the pane is washed in and
+  // what the breadcrumb points back at. It's the first the user added rather
+  // than the alphabetically-first, so the colour follows what the note is
+  // about instead of what it happens to be called.
+  const primaryTag = tags[0] ?? null;
+
+  /**
+   * The names a `#reference` in the body may resolve to: every tag in the
+   * collection, plus this note's own — a tag added in the bar seconds ago
+   * hasn't reached `allTags`, and a reference to it shouldn't read as broken
+   * while the save is still in flight.
+   */
+  const knownTags = useMemo(
+    () => [...knownTagSet([allTags, tags])],
+    [allTags, tags],
+  );
+
+  // Read at the moment the button is pressed rather than on every keystroke:
+  // the heuristic scans the whole note, and nothing needs its answer until
+  // someone asks for one.
+  const suggestForNote = useCallback(
+    () => suggestTags(`${title}\n${bodyMd}`).slice(0, 5),
+    [bodyMd, title],
+  );
 
   // Held in the session store, not component state, so picking a provider once
   // holds for every note until the tab closes — see [provider-choice].
@@ -177,8 +245,7 @@ export function NoteEditor({
   // Re-fetched every time the menu opens, not once per session: for the local
   // providers this list is live state — whether LM Studio has a model in
   // memory — and a model loaded after the first open would otherwise stay
-  // invisible until a reload. The previous list stays on screen meanwhile, so
-  // a re-open doesn't flash back to "Loading providers…".
+  // invisible until a reload.
   const openAiMenu = useCallback((menu: AiAnchor) => {
     setAiMenu(menu);
     setAiError(null);
@@ -229,6 +296,17 @@ export function NoteEditor({
     void runAi(request);
   }
 
+  const { status, conflict, scheduleSave, flush, keepMine } = useAutosave({
+    initialNoteId: noteId,
+    initialVersion: version,
+    onCreated: (result) => {
+      // This swaps /notes/new for the real route, which remounts the editor
+      // mid-typing — `created` keeps it on the writing surface instead of
+      // letting the existing-note default drop the user into preview.
+      router.replace(`/notes/${result.slug}?created=1`);
+    },
+  });
+
   function acceptAnswer(placement: AnswerPlacement) {
     const text = answer?.text.trim();
     if (!text) return;
@@ -256,33 +334,22 @@ export function NoteEditor({
     void runAi(answer.request);
   }
 
-  // Same store shape as the provider choice above, and for the same reason —
-  // it has to outlive the editor being remounted on every navigation.
-  const fontScale = useSyncExternalStore(
-    subscribeFontScale,
-    getFontScale,
-    getServerFontScale,
-  );
-
-  // display:none leaves CodeMirror with stale measurements; re-measure when
-  // the pane comes back rather than tearing the view (and its undo history)
-  // down on every mode switch. A font-size change invalidates exactly the same
-  // measurements — CodeMirror caches character width to place the cursor and
-  // decide where lines wrap — so it re-measures on the same effect.
+  // The metadata line's "Edited …". The prop is the server's answer and goes
+  // stale the moment a save lands, so each landing stamps a fresh one rather
+  // than the line sitting there claiming the note was edited ten minutes ago
+  // while it's being typed into.
+  const [editedAt, setEditedAt] = useState(updatedAt);
+  const [savesThisSession, setSavesThisSession] = useState(0);
+  const wasSaving = useRef(false);
   useEffect(() => {
-    if (mode !== "preview") editorRef.current?.remeasure();
-  }, [mode, fontScale]);
-
-  const { status, conflict, scheduleSave, flush, keepMine } = useAutosave({
-    initialNoteId: noteId,
-    initialVersion: version,
-    onCreated: (result) => {
-      // This swaps /notes/new for the real route, which remounts the editor
-      // mid-typing — `created` keeps it on the writing surface instead of
-      // letting the existing-note default drop the user into preview.
-      router.replace(`/notes/${result.slug}?created=1`);
-    },
-  });
+    if (status === "saving") {
+      wasSaving.current = true;
+    } else if (status === "saved" && wasSaving.current) {
+      wasSaving.current = false;
+      setEditedAt(new Date().toISOString());
+      setSavesThisSession((count) => count + 1);
+    }
+  }, [status]);
 
   function updateTitle(value: string) {
     setTitle(value);
@@ -294,158 +361,312 @@ export function NoteEditor({
     scheduleSave({ title, bodyMd: value, tags });
   }
 
-  function updateTags(next: string[]) {
-    setTags(next);
-    scheduleSave({ title, bodyMd, tags: next });
-  }
+  // Memoised, unlike its two neighbours, only because the ⌘K "Suggest tags"
+  // command below closes over it and would otherwise re-register on every
+  // keystroke for no reason.
+  const updateTags = useCallback(
+    (value: string[]) => {
+      const next = normalizeTagList(value);
+      setTags(next);
+      scheduleSave({ title, bodyMd, tags: next });
+    },
+    [bodyMd, scheduleSave, title],
+  );
 
-  function acceptSuggestedTag(tag: string) {
-    updateTags([...tags, tag]);
-  }
+  // display:none leaves CodeMirror with stale measurements; re-measure when
+  // the pane comes back rather than tearing the view (and its undo history)
+  // down on every mode switch.
+  useEffect(() => {
+    if (mode !== "preview") editorRef.current?.remeasure();
+  }, [mode]);
 
-  // suggestTags is a pure, synchronous local computation (no network) — no
-  // need to piggyback on the autosave debounce, useMemo recomputing on
-  // every relevant keystroke is already free.
-  const suggestedTags = useMemo(() => {
-    if (!suggestEnabled) return [];
-    const current = new Set(tags);
-    return suggestTags(`${title}\n${bodyMd}`).filter((t) => !current.has(t));
-  }, [suggestEnabled, title, bodyMd, tags]);
+  // A textarea holds whatever height it was given, so it has to be re-fitted
+  // to the wrapped text on every change — a title is allowed to run to as many
+  // lines as it needs, and nothing here clips or truncates it.
+  useEffect(() => {
+    const el = titleRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [title]);
+
+  // Escape goes back to the index the note belongs to — the same destination
+  // the breadcrumb's tag segment points at. Deterministic rather than
+  // history.back(), which lands somewhere different depending on how you got
+  // here, and on nothing at all when you arrived from a bookmark.
+  const backHref = primaryTag ? tagHref(primaryTag) : ALL_NOTES_HREF;
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      const target = event.target as HTMLElement | null;
+      // Escape inside the editor is CodeMirror's (closing autocomplete, the
+      // search panel), and inside the title it's a chance to stop typing.
+      if (target?.closest(".cm-editor, input, textarea, [role='dialog']")) {
+        return;
+      }
+      router.push(backHref);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [backHref, router]);
+
+  // ⌘K's view-specific half. Registered from here because these are the only
+  // commands that mean anything while a note is open.
+  useEffect(() => {
+    const modes = compact
+      ? VIEW_MODES.filter(({ value }) => value !== "split")
+      : VIEW_MODES;
+    return registerCommands([
+      ...modes.map(({ value, label }) => ({
+        id: `mode-${value}`,
+        label: `${label} mode`,
+        group: "This note",
+        // "split" only matches while there is a split to switch to — on a
+        // phone it would land on Write, which isn't what was typed.
+        keywords: `view editor preview markdown${compact ? "" : " split"}`,
+        run: () => {
+          setMode(value);
+          if (value !== "preview") editorRef.current?.focus();
+        },
+      })),
+      {
+        id: "add-tags",
+        label: "Add tags",
+        group: "This note",
+        keywords: "tag hashtag topic file suggest",
+        // Opens the tag bar's field rather than doing anything itself. The
+        // suggestions for this note are the first rows in it, so the command
+        // and the bar are one behaviour with two ways in — and neither writes
+        // to the note without a click.
+        run: () => tagBarRef.current?.open(),
+      },
+    ]);
+  }, [compact]);
 
   function handleContainerBlur(e: React.FocusEvent<HTMLDivElement>) {
     // Only flush when focus leaves the editor entirely — not when it just
-    // hops between the title/tags/body fields inside it (every such hop
-    // fires a blur too, and flushing there raced note-creation against
-    // still-empty fields the user hadn't reached yet).
+    // hops between the title and the body (every such hop fires a blur too,
+    // and flushing there raced note-creation against still-empty fields the
+    // user hadn't reached yet).
     if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
       void flush();
     }
   }
 
-  return (
-    <div className="flex h-full flex-col gap-4" onBlur={handleContainerBlur}>
-      <input
-        value={title}
-        onChange={(e) => updateTitle(e.target.value)}
-        placeholder={defaultTitle}
-        // Inputs clip to their line box, and Fraunces' descenders overflow
-        // the default text-4xl leading — hence the roomier line-height.
-        //
-        // The global :focus-visible rule would box this borderless field in an
-        // accent ring — text inputs match :focus-visible on click too, so it
-        // shows up the moment you start titling a note. The caret in 4xl
-        // display type is affordance enough. That rule is unlayered, so it
-        // outranks any utility layer regardless of specificity — hence the `!`
-        // (same as [TagEditor]).
-        className="w-full bg-transparent font-display text-4xl font-semibold leading-[1.35] tracking-tight text-ink outline-none focus-visible:outline-none!"
-      />
-      <SaveToast status={status} onSave={() => void flush()} />
-      <div className="flex items-start gap-3">
-        {/* Sized to the pills in TagEditor rather than the list's smaller
-            ones, so the tag row reads as one row of tags. */}
-        <RecencyTag
-          recency={recency}
-          className="shrink-0 px-3.5 py-1.5 text-sm"
-        />
-        <TagEditor tags={tags} onChange={updateTags} />
-        <TagSuggestToggle enabled={suggestEnabled} onChange={setSuggestEnabled} />
-      </div>
-      {suggestEnabled && (
-        <div className="flex flex-wrap items-center gap-2">
-          {suggestedTags.length === 0 && (
-            // Without this the toggle looks broken when nothing matches.
-            <p className="text-sm text-ink-faint">
-              No tags to suggest for this note yet — keep writing ;)
-            </p>
-          )}
-          {suggestedTags.map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              onClick={() => acceptSuggestedTag(tag)}
-              className="rounded-full border border-dashed border-line-strong px-3.5 py-1.5 text-sm text-ink-muted transition-colors hover:border-action hover:bg-action-wash hover:text-action"
-            >
-              + {tag}
-            </button>
-          ))}
-        </div>
-      )}
-      {conflict && (
-        <div className="rounded-xl border border-accent/35 bg-accent-wash px-5 py-4 text-base text-ink">
-          This note changed in another tab (last saved{" "}
-          {new Date(conflict.updatedAt).toLocaleTimeString()}).
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={() => void keepMine()}
-              className="rounded-full bg-action px-4 py-1.5 text-sm font-medium text-paper transition-colors hover:bg-action-hover"
-            >
-              Keep mine
-            </button>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="rounded-full border border-line-strong px-4 py-1.5 text-sm text-ink-muted transition-colors hover:border-ink hover:text-ink"
-            >
-              Reload theirs
-            </button>
-          </div>
-        </div>
-      )}
-      {/* One box for both sides: the toolbar is a row inside it, and split
-          mode divides the body with a hairline rather than a second card. */}
-      {aiError && (
-        <div className="flex items-start gap-3 rounded-xl border border-accent/35 bg-accent-wash px-4 py-2.5 text-sm text-ink">
-          <span className="min-w-0 flex-1">{aiError}</span>
-          <button
-            type="button"
-            onClick={() => setAiError(null)}
-            className="shrink-0 text-ink-muted transition-colors hover:text-ink"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-      {/* Every line in this box stays --line whatever has focus. The border and
-          the hairlines inside it used to swing to --action together on
-          focus-within; the editor holds focus for as long as you're writing, so
-          what was meant as a focus cue just read as the frame being lit up the
-          entire time. No `group` here any more for the same reason — nothing
-          inside is keyed to this box's focus state now.
+  // The nudge fires on the note's second edit, not its first: a note that has
+  // just been started has every right to be untagged for a minute. `version`
+  // is the server's count of saves, so this is "you've come back to it".
+  const showTagNudge =
+    noteId !== null &&
+    tags.length === 0 &&
+    version + savesThisSession >= 3 &&
+    bodyMd.trim().length > 0;
 
-          The scale lands here rather than on either pane: both of them read it,
-          and setting it on their shared box is what keeps the raw markdown and
-          the rendered preview in step with each other in split view. Cast
-          because React's CSSProperties doesn't admit custom properties. */}
-      <div
-        style={
-          { "--editor-font-scale": fontScale / 100 } as React.CSSProperties
-        }
-        className="flex h-[70vh] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-sm shadow-shade/5 transition-colors"
+  return (
+    <div
+      style={
+        primaryTag
+          ? ({ "--h": hueOf(primaryTag) } as React.CSSProperties)
+          : undefined
+      }
+      onBlur={handleContainerBlur}
+      className={`hue-shift h-full overflow-y-auto ${
+        primaryTag ? "hue-wash" : "bg-surface"
+      }`}
+    >
+      <header
+        className={`sticky-head ${primaryTag ? "hue-wash" : "bg-surface/85"}`}
       >
-        <div className="flex shrink-0 border-b border-line transition-colors">
-          <HistoryControls
-            canUndo={history.canUndo}
-            canRedo={history.canRedo}
-            onUndo={() => editorRef.current?.undo()}
-            onRedo={() => editorRef.current?.redo()}
-          />
-          {/* min-w-0 so the three mode segments keep splitting whatever width
-              is left over instead of pushing the buttons off the edge. */}
-          <div className="min-w-0 flex-1">
-            <ViewModeToggle mode={mode} onChange={setMode} />
-          </div>
-          <FontSizeControls
-            scale={fontScale}
-            onStep={stepFontScale}
-            onReset={() => setFontScale(DEFAULT_FONT_SCALE)}
-          />
+        <div
+          className={`mx-auto flex items-center gap-3 px-6 py-4 ${COLUMN[mode]}`}
+        >
+          {/* min-w-0 is what lets the title segment shrink and ellipsise
+              instead of forcing the row wider than the pane — the overflow
+              that used to push controls off the edge. */}
+          <nav
+            aria-label="Breadcrumb"
+            className="flex min-w-0 flex-1 items-center text-[13px]"
+          >
+            {/* Same pill the tags themselves get, so a tag reads the same
+                wherever it appears — in the bar, or here in the path. */}
+            <Link
+              href={ALL_NOTES_HREF}
+              className="tag-pill tag-pill-ink shrink-0 rounded-full px-1.5 py-1 text-ink-muted"
+            >
+              All notes
+            </Link>
+            {primaryTag && (
+              <>
+                <span aria-hidden className="text-ink-faint">
+                  /
+                </span>
+                {/* The way back. There is no back button — this is it, and
+                    Escape does the same thing. */}
+                <Link
+                  href={tagHref(primaryTag)}
+                  style={
+                    { "--h": hueOf(primaryTag) } as React.CSSProperties
+                  }
+                  className="tag-pill hue-text shrink-0 rounded-full px-1.5 py-1"
+                >
+                  #{primaryTag}
+                </Link>
+              </>
+            )}
+            <span aria-hidden className="text-ink-faint">
+              /
+            </span>
+            <span className="min-w-0 truncate px-1.5 text-ink">
+              {title || defaultTitle}
+            </span>
+          </nav>
+          <ViewModeToggle mode={mode} onChange={setMode} />
+          {/* Both only once the note exists: there is nothing to pin or delete
+              until the first save has given it an id. */}
+          {noteId && (
+            <>
+              <NotePinButton noteId={noteId} title={title} pinned={pinned} />
+              <NoteDeleteButton noteId={noteId} title={title} />
+            </>
+          )}
         </div>
-        <div className="flex min-h-0 flex-1">
+      </header>
+
+      <div className={`mx-auto px-6 pb-32 ${COLUMN[mode]}`}>
+        <textarea
+          ref={titleRef}
+          // A textarea rather than an input so a long title wraps instead of
+          // scrolling out of sight sideways. It stays a one-line field in
+          // spirit: rows=1 plus the grow effect above, and Enter commits to
+          // the body instead of inserting a newline.
+          rows={1}
+          value={title}
+          // Pasted newlines would grow the field into a paragraph — a title is
+          // one line of text however it arrives.
+          onChange={(e) => updateTitle(e.target.value.replace(/\s*\n+\s*/g, " "))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.preventDefault();
+          }}
+          placeholder={defaultTitle}
+          aria-label="Note title"
+          // The global :focus-visible rule would box this borderless field in
+          // an accent ring — text inputs match :focus-visible on click too, so
+          // it shows up the moment you start titling a note. The caret in
+          // 28px display type is affordance enough. That rule is unlayered, so
+          // it outranks any utility layer regardless of specificity — hence
+          // the `!`.
+          className="mt-2 w-full resize-none overflow-hidden bg-transparent font-display text-[28px] font-medium leading-[1.3] text-ink outline-none focus-visible:outline-none!"
+        />
+
+        {/* One plain line. No pills, no chips, no filled badges — the three
+            facts a note has about itself, set as a sentence. */}
+        <p className="mt-[var(--space-hair)] text-[13px] text-ink-muted">
+          Edited <RelativeDate date={editedAt} long />
+          <span aria-hidden className="px-1.5 text-ink-faint">
+            ·
+          </span>
+          {words} {words === 1 ? "word" : "words"}
+          {backlinks.length > 0 && (
+            <>
+              <span aria-hidden className="px-1.5 text-ink-faint">
+                ·
+              </span>
+              <button
+                type="button"
+                aria-expanded={showBacklinks}
+                onClick={() => setShowBacklinks((v) => !v)}
+                className="underline-offset-2 hover:text-ink hover:underline"
+              >
+                {backlinks.length}{" "}
+                {backlinks.length === 1 ? "backlink" : "backlinks"}
+              </button>
+            </>
+          )}
+        </p>
+
+        {showBacklinks && (
+          <ul className="mt-[var(--space-item)] flex flex-col gap-[var(--space-item)]">
+            {backlinks.map((backlink) => (
+              <li key={backlink.slug}>
+                <Link
+                  href={`/notes/${backlink.slug}`}
+                  className="row-tint block rounded-[var(--radius-control)] px-2 py-1 text-[13px] text-ink-muted hover:text-ink"
+                >
+                  {backlink.title || "Untitled"}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {showTagNudge && (
+          // Quiet on purpose: a line of muted text, not a banner. Untagged is
+          // the new /misc/ in a system with nothing but tags, and the moment
+          // to say so is while the note is being worked on — but saying it
+          // loudly would make it an error, which it isn't. The bar above is
+          // already sitting there empty; this only says why that matters.
+          <p className="mt-[var(--space-item)] text-[13px] text-ink-faint">
+            No tags yet — add one above to file it.
+          </p>
+        )}
+
+        {conflict && (
+          <div className="mt-[var(--space-block)] rounded-[var(--radius-control)] bg-accent-wash px-4 py-3 text-[13px] text-ink">
+            This note changed in another tab (last saved{" "}
+            {new Date(conflict.updatedAt).toLocaleTimeString()}).
+            <span className="ml-2 inline-flex gap-3">
+              <button
+                type="button"
+                onClick={() => void keepMine()}
+                className="underline underline-offset-2 hover:text-accent"
+              >
+                Keep mine
+              </button>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="underline underline-offset-2 hover:text-accent"
+              >
+                Reload theirs
+              </button>
+            </span>
+          </div>
+        )}
+
+        {aiError && (
+          <p className="mt-[var(--space-block)] rounded-[var(--radius-control)] bg-accent-wash px-4 py-3 text-[13px] text-ink">
+            {aiError}
+            <button
+              type="button"
+              onClick={() => setAiError(null)}
+              className="ml-2 underline underline-offset-2 hover:text-accent"
+            >
+              Dismiss
+            </button>
+          </p>
+        )}
+
+        {/* The note's filing, on its own line between the metadata and the
+            text. Above the body rather than below it because it's read at the
+            same moment the title is — "what is this and where does it go" —
+            and because a bar under the text is a bar you scroll to find. */}
+        <TagBar
+          ref={tagBarRef}
+          tags={tags}
+          allTags={allTags}
+          onChange={updateTags}
+          onSuggest={suggestForNote}
+        />
+
+        {/* The body. No box: no border, no background, no shadow, no height of
+            its own. In split, the two halves are separated by a gap rather
+            than the hairline that used to divide them. */}
+        <div className="mt-[var(--space-block)] flex gap-8">
           <CodeMirrorEditor
             ref={editorRef}
             value={bodyMd}
             onChange={updateBody}
+            knownTags={knownTags}
             // Both entry points stand down while an answer is under review:
             // the menu is anchored at the same selection as the card, so it
             // would open on top of it, and there's one decision to make at a
@@ -458,21 +679,18 @@ export function NoteEditor({
             onAskShortcut={(anchor) => {
               if (!answer) openAiMenu(anchor);
             }}
-            onHistoryChange={setHistory}
             // Clicking a line in the source scrolls the rendered side to the
             // block it produced (split only — nothing to sync otherwise).
             onLineClick={(line) => {
               if (mode === "split") previewRef.current?.scrollToLine(line);
             }}
-            placeholder="Write in markdown…"
-            className={`${mode === "preview" ? "hidden " : ""}min-w-0 flex-1 overflow-hidden`}
+            placeholder="Write in markdown… type # to link a tag"
+            className={`${mode === "preview" ? "hidden " : ""}min-w-0 flex-1`}
           />
-          {mode === "split" && (
-            <div aria-hidden className="w-px shrink-0 bg-line" />
-          )}
           <PreviewPane
             ref={previewRef}
             bodyMd={bodyMd}
+            tags={tags}
             initialHtml={initialPreviewHtml}
             initialBodyMd={initialBodyMd}
             active={mode !== "write"}
@@ -483,6 +701,8 @@ export function NoteEditor({
           />
         </div>
       </div>
+
+      <SaveToast status={status} onSave={() => void flush()} />
 
       {aiMenu && (
         <AiMenu

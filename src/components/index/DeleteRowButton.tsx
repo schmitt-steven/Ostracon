@@ -13,7 +13,7 @@ function TrashIcon() {
       strokeWidth="1.75"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="h-4.5 w-4.5"
+      className="h-4 w-4"
     >
       <path d="M4 7h16" />
       <path d="M10 4h4a1 1 0 0 1 1 1v2H9V5a1 1 0 0 1 1-1z" />
@@ -24,16 +24,14 @@ function TrashIcon() {
 }
 
 /**
- * Delete control for one row of the note list.
+ * Delete control for one row of the index — a sibling of the row's `<Link>`,
+ * not nested in it, so this can sit right in the corner the relative date
+ * vacates on hover without an anchor ending up inside an anchor.
  *
- * Sits beside the card's `<Link>` rather than inside it — a button nested in an
- * anchor is invalid, and keeping them siblings is also what stops a click here
- * from navigating into the note being deleted.
- *
- * Confirming only reports the intent; the list owns the deletion itself, since
- * it's the list that has to animate the row out.
+ * Confirming only reports the intent; the list owns the actual deletion,
+ * since it's the list that has to drop the row from what it's showing.
  */
-export function DeleteNoteButton({
+export function DeleteRowButton({
   title,
   onConfirm,
 }: {
@@ -48,9 +46,10 @@ export function DeleteNoteButton({
   useEffect(() => {
     if (!confirming) return;
 
-    // A click anywhere else dismisses — including on another row's card, which
-    // would otherwise navigate away with this popover still open. `pointerdown`
-    // rather than `click` so the dismissal lands before that navigation.
+    // A click anywhere else dismisses — including on another row's link,
+    // which would otherwise navigate away with this popover still open.
+    // `pointerdown` rather than `click` so the dismissal lands before that
+    // navigation.
     function onPointerDown(event: PointerEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
         setConfirming(false);
@@ -69,9 +68,9 @@ export function DeleteNoteButton({
   }, [confirming]);
 
   function confirm() {
-    // Closed synchronously, before handing over: the row is about to be
-    // snapshotted for its exit animation, and an open popover would be caught
-    // in that snapshot and fade out hanging over the card below.
+    // Closed synchronously: the row is about to disappear from the list, and
+    // an open popover would otherwise be left hanging over whatever slides
+    // up to take its place.
     flushSync(() => setConfirming(false));
     onConfirm();
   }
@@ -83,13 +82,18 @@ export function DeleteNoteButton({
         // The row gives no other spoken clue which note this belongs to.
         aria-label={`Delete ${name}`}
         aria-expanded={confirming}
+        // A hook for the row itself: hovering this previews the deletion —
+        // row tinted red, title struck through — the same way a tag pill
+        // previews its own removal.
+        data-row-delete-trigger
         onClick={() => setConfirming((open) => !open)}
-        className={`flex h-9 w-9 items-center justify-center rounded-full text-ink-faint transition-all hover:bg-danger-wash hover:text-danger focus-visible:opacity-100 ${
-          // Hidden until the row is hovered, but never hidden while it's asking
-          // for confirmation — or while a keyboard user is tabbing through it.
+        className={`flex h-7 w-7 items-center justify-center rounded-full text-ink-faint transition-all hover:bg-danger-wash hover:text-danger focus-visible:opacity-100 ${
+          // Hidden until the row is hovered, but never hidden while it's
+          // asking for confirmation — or while a keyboard user is tabbing
+          // through it.
           confirming
             ? "bg-danger-wash text-danger opacity-100"
-            : "opacity-0 group-hover/note:opacity-100"
+            : "opacity-0 group-hover/row:opacity-100"
         }`}
       >
         <TrashIcon />
@@ -99,30 +103,27 @@ export function DeleteNoteButton({
         <div
           role="dialog"
           aria-label={`Delete ${name}?`}
-          className="absolute right-0 top-full z-20 mt-2 w-60 rounded-xl border border-line bg-surface p-4 shadow-lg shadow-shade/10"
+          className="absolute right-0 top-full z-20 mt-2 w-56 rounded-[var(--radius-zone)] border border-line bg-surface p-3 shadow-lg shadow-shade/20"
         >
-          <p className="text-sm text-ink">
+          <p className="text-[13px] text-ink">
             Delete <span className="font-medium">{name}</span>?
           </p>
-          <p className="mt-1 text-sm text-ink-faint">
-            Its images are deleted too.
-          </p>
-          <div className="mt-3 flex justify-end gap-2">
+          <div className="mt-2.5 flex justify-end gap-1.5">
             <button
               type="button"
               onClick={() => setConfirming(false)}
-              className="rounded-full px-3.5 py-1.5 text-sm font-medium text-ink-muted transition-colors hover:text-ink"
+              className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-[13px] text-ink-muted hover:text-ink"
             >
-              No
+              Keep
             </button>
             <button
               type="button"
               // Pre-selected, so Enter confirms straight away.
               autoFocus
               onClick={confirm}
-              className="rounded-full bg-danger px-3.5 py-1.5 text-sm font-medium text-paper transition-colors hover:bg-danger-hover"
+              className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-[13px] text-danger hover:text-danger-hover"
             >
-              Yes
+              Delete
             </button>
           </div>
         </div>

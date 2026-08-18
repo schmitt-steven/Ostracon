@@ -13,6 +13,12 @@ export type PreviewHandle = {
 
 type Props = {
   bodyMd: string;
+  /**
+   * The note's tags, as the bar currently holds them. Sent with the body so a
+   * `#name` just added in the bar renders as a resolved reference instead of
+   * waiting for the save to land — see [renderNoteHtml].
+   */
+  tags: string[];
   /** Server-rendered HTML for `initialBodyMd`, so the first paint is instant. */
   initialHtml: string;
   initialBodyMd: string;
@@ -26,6 +32,7 @@ type Props = {
 
 export function PreviewPane({
   bodyMd,
+  tags,
   initialHtml,
   initialBodyMd,
   active,
@@ -35,20 +42,29 @@ export function PreviewPane({
 }: Props) {
   const [html, setHtml] = useState(initialHtml);
   const [rendered, setRendered] = useState(initialBodyMd);
+  // The tag list `html` was rendered against. Seeded from the mount-time tags
+  // rather than left empty, because `initialHtml` came off the server rendered
+  // against exactly those — starting it blank would burn a render on open.
+  const [renderedTags, setRenderedTags] = useState(() => tags.join(","));
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   // Bumped per request so a slow render that resolves after a newer one
   // can't overwrite it.
   const requestSeq = useRef(0);
 
+  // `tags` is in the dependency list but not in `rendered`: adding a tag
+  // changes how the body renders (an unresolved `#name` becomes a link), so a
+  // tag change has to re-render even though the text is untouched.
+  const tagKey = tags.join(",");
   useEffect(() => {
-    if (!active || bodyMd === rendered) return;
+    if (!active || (bodyMd === rendered && tagKey === renderedTags)) return;
     const seq = ++requestSeq.current;
     const timer = setTimeout(() => {
-      void renderPreview(bodyMd).then(
+      void renderPreview({ bodyMd, tags }).then(
         (next) => {
           if (seq !== requestSeq.current) return;
           setHtml(next);
           setRendered(bodyMd);
+          setRenderedTags(tagKey);
         },
         () => {
           // Leave the last good render up; the next keystroke retries.
@@ -56,13 +72,13 @@ export function PreviewPane({
       );
     }, RERENDER_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [active, bodyMd, rendered]);
+  }, [active, bodyMd, rendered, tagKey, renderedTags, tags]);
 
   useImperativeHandle(ref, () => ({
     scrollToLine(line) {
-      const scroller = scrollerRef.current;
-      if (!scroller) return;
-      const blocks = [...scroller.querySelectorAll<HTMLElement>("[data-line]")];
+      const root = scrollerRef.current;
+      if (!root) return;
+      const blocks = [...root.querySelectorAll<HTMLElement>("[data-line]")];
       // Last block that starts at or before the line — the one the cursor is
       // actually sitting inside, since a block spans until the next one.
       let target: HTMLElement | undefined;
@@ -70,8 +86,11 @@ export function PreviewPane({
         if (Number(block.dataset.line) <= line) target = block;
         else break;
       }
-      if (!target) return;
-      scroller.scrollTo({ top: target.offsetTop - 16, behavior: "smooth" });
+      // scrollIntoView rather than scrollTo on this element: the pane no
+      // longer scrolls itself (its height is content-driven now), so the
+      // scrolling ancestor is the whole note view and only the browser knows
+      // which one that is.
+      target?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     },
   }), []);
 
@@ -84,17 +103,10 @@ export function PreviewPane({
   }
 
   return (
-    // relative so the blocks' offsetTop is measured against this scroller.
-    <div
-      ref={scrollerRef}
-      onClick={handleClick}
-      className={`relative overflow-y-auto ${className ?? ""}`}
-    >
-      {/* Padding lives in here, not on the scroller: the scroller is a
-          flex-1 sibling of the editor, and flex-basis:0 can't shrink a
-          border-box element below its own padding — so padding out there
-          would hand this pane 64px more width than the editor in split. */}
-      <div className="px-8 py-6">
+    // No overflow and no padding of its own: the height is content-driven and
+    // the note view around it owns both the scrolling and the text column.
+    <div ref={scrollerRef} onClick={handleClick} className={className}>
+      <div>
         {html ? (
           <WikilinkNav>
             <div

@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
 import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
-import { CornerNav } from "@/components/nav/CornerNav";
+import { AppShell } from "@/components/shell/AppShell";
 import { InlineScript } from "@/components/ui/InlineScript";
 import { isAuthenticated } from "@/lib/auth/require-auth";
+import {
+  listNotesOverview,
+  listPinnedNotes,
+  toLite,
+} from "@/lib/notes/queries";
+import { buildTagTree, flattenTree } from "@/lib/tags/tree";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
   variable: "--font-plex-sans",
-  weight: ["400", "500", "600"],
+  weight: ["400", "500"],
   subsets: ["latin"],
 });
 
@@ -18,8 +24,9 @@ const plexMono = IBM_Plex_Mono({
   subsets: ["latin"],
 });
 
-// Display face for the wordmark and note headings. `opsz` keeps the serif from
-// getting spindly at the small sizes it's used at here.
+// The app's visual signature: every note title and every index row title is
+// set in this, in both views. `opsz` keeps it from going spindly at the 16px
+// the index rows use.
 const fraunces = Fraunces({
   variable: "--font-fraunces",
   axes: ["SOFT", "WONK", "opsz"],
@@ -31,17 +38,53 @@ export const metadata: Metadata = {
   description: "Personal software-engineering notes",
 };
 
+/**
+ * The rail's contents, built once per render of the shell.
+ *
+ * Loaded in the layout rather than in each page because the rail is the same
+ * on all of them — and because a tag tree assembled per route would flicker
+ * its counts on every navigation as each page recomputed it.
+ */
+async function loadRail() {
+  // Two reads rather than one filtered pass over the overview: see
+  // [listPinnedNotes] for why the pins are asked for separately, and they are
+  // asked for at the same time so the pair costs one round trip's worth of
+  // waiting rather than two.
+  const [all, pinnedNotes] = await Promise.all([
+    listNotesOverview(),
+    listPinnedNotes(),
+  ]);
+  const notes = all.map(toLite);
+  const tree = buildTagTree(notes);
+  const flat = flattenTree(tree);
+  return {
+    rail: {
+      pinnedNotes,
+      tree,
+      tagCount: flat.length,
+      allCount: notes.length,
+      untaggedCount: notes.filter((note) => note.tags.length === 0).length,
+      // Counted across notes rather than by listing the bucket: the same
+      // markdown pasted into two notes points at one image, and the gallery
+      // shows it once. See the note on the rail's row for where this and the
+      // gallery can disagree.
+      imageCount: new Set(all.flatMap((note) => note.imageUrls)).size,
+    },
+    tagNames: flat.map((node) => node.name),
+  };
+}
+
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  // This layout wraps /login too, so the corner has to know: otherwise
-  // logging out lands you on a page still offering to log you out. /login
-  // carries its own wordmark, so signed out there's nothing to show at all.
+  // The shell wraps /login too, so it has to know: a rail full of tags behind
+  // a login form would be both wrong and a leak.
   const signedIn = await isAuthenticated();
+  const shell = signedIn ? await loadRail() : null;
 
   return (
     <html
       lang="en"
-      // The light palette is what the server can safely assume; the script
-      // below corrects it during parsing when the reader's is dark, which is a
+      // The light palette is what the server can safely assume; the scripts
+      // below correct it during parsing when the reader's is dark, which is a
       // DOM change React would otherwise flag as a hydration mismatch.
       data-theme="light"
       suppressHydrationWarning
@@ -50,9 +93,18 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <InlineScript html={THEME_INIT_SCRIPT} />
       </head>
-      <body className="min-h-full flex flex-col">
-        {signedIn && <CornerNav />}
-        <main className="flex flex-1 flex-col">{children}</main>
+      {/* The shell sizes itself to the viewport and scrolls its panes
+          internally, so the document itself never scrolls. */}
+      <body className="h-full overflow-hidden">
+        {shell ? (
+          <AppShell rail={shell.rail} tagNames={shell.tagNames}>
+            {children}
+          </AppShell>
+        ) : (
+          <main className="flex h-full flex-col overflow-y-auto">
+            {children}
+          </main>
+        )}
       </body>
     </html>
   );

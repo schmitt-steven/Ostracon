@@ -13,6 +13,9 @@ const DEBOUNCE_MS = 800;
 
 export type SaveStatus = "idle" | "saving" | "saved" | "conflict" | "error";
 
+// `tags` rides along with the text rather than being read back out of it: the
+// tag bar is the note's filing, and a body hashtag is only a reference to a
+// tag that already exists (see notes/actions).
 export type NoteDraft = {
   title: string;
   bodyMd: string;

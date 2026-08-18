@@ -1,112 +1,57 @@
 @import "tailwindcss";
 
-/* ---------------------------------------------------------------------------
-   Palette: warm paper, deep-blue ink, burnt-orange accent.
-
-   Two themes, one design. The dark variant below isn't an inversion — it
-   swaps the two materials the light theme is already made of: the ink navy
-   becomes the paper, and the paper cream becomes the ink. The rest follows
-   from that swap rather than being restated.
-
-   --action is the one token whose *hue* differs between the themes, which is
-   why it's named for its job and not its colour: it belongs to the ink's
-   family, one step brighter, so clickable things read as made of the same
-   material as the text. That lands on blue beside navy ink, and on amber
-   beside cream ink.
-
-   Every component styles itself from these tokens, so a theme is exactly
-   this block: nothing else in the app knows which one is active.
-   --------------------------------------------------------------------------- */
+/* Warm paper, deep-blue ink, burnt-orange accent. The dark theme swaps the
+   two materials (ink navy becomes paper, paper cream becomes ink) rather than
+   inverting — --action is the one token whose hue actually differs between
+   themes. Every component styles itself from these tokens, so a theme is
+   exactly this block. */
 :root {
   color-scheme: light;
 
-  --paper: #faf3e8;
-  --paper-sunk: #f3e7d4;
-  --surface: #fffcf6;
-  /* Leans towards --action rather than further into the cream: hover also
-     swings the card's border and title into --action, and a background
-     shifting the other way underneath those reads as muddy. Kept well lighter
-     than --action-wash so tag pills still separate from the card they sit
-     on. */
+  --paper: #eaeaea;
+  --paper-sunk: #f0f0f0;
+  --surface: #f0f0f0;
+  /* Ground for the two search fields — visible against --paper without going
+     as dark as --line-strong. */
+  --field: #d8d8d3;
   --surface-hover: #f1f5fd;
 
-  /* The reading ladder. All three are the same cool navy at different depths;
-     what separates them is contrast against the ground, not hue.
-
-     --ink sits deliberately low in its own hue: ~17:1 on the surface, most of
-     the way to the 20.5:1 pure black would give. Long stretches of monospace
-     in the editor turned out to want that; #152f52 (13:1) and then #0d2140
-     (15.7:1) both still read soft there. Navy rather than black, so it stays
-     in family with --action.
-
-     The other two are measured against the *worst* ground they land on rather
-     than against --paper: the tag pills sit on --accent-wash and --paper-sunk,
-     which are a good deal darker than the page, and tuning to the page alone
-     left them thin exactly where they're smallest. --ink-muted lifted from
-     #55688a (4.6:1 on those washes, only just over the 4.5 floor for body
-     text) to hold ~6.6:1 everywhere. --ink-faint is the real repair: #8b98ab
-     measured 2.4–2.9:1, under even the 3:1 minimum for UI text, so it was
-     failing outright wherever it carried words rather than punctuation. Now
-     ~4.5:1 at worst — still the faintest step by a wide margin, since --ink is
-     three times its contrast. */
+  /* Same navy at three depths; contrast is tuned against the worst ground
+     each step lands on (the tag pills sit on --accent-wash / --paper-sunk),
+     not against --paper alone. */
   --ink: #0a1a33;
   --ink-muted: #42506a;
-  --ink-faint: #5b697e;
+  --ink-faint: #565f6b;
 
-  /* Orange is ambient only — background wash, list bullets, links, section
-     eyebrows. Anything the user clicks is --action (see below), so the two
-     colours never compete for "this is actionable". */
+  /* Orange is ambient only (wash, bullets, links); anything clickable is
+     --action, so the two never compete for "this is actionable". */
   --accent: #c25a1e;
   --accent-hover: #a94a15;
   --accent-wash: #f7e5d1;
-  /* The automatic "created/modified today" tag on a note — the app's own
-     label, so it gets its own pair rather than borrowing the tags' or the
-     buttons'. Here that's the ambient orange carrying small text, which
-     --accent itself can't do: it measures 3.6:1 on its own wash and 4:1 on
-     the paper, both under the 4.5 floor, and the pill came out looking
-     bleached for exactly that reason. Deepened along the same terracotta hue
-     rather than pulled towards brown — 5.4:1 on the wash. (--accent-hover is
-     nearly dark enough at 4.65:1, but it's the hover state, not a text
-     colour.) The dark theme takes this somewhere else entirely; see there. */
+  /* The auto "created/modified today" tag gets its own pair since --accent
+     itself is under the 4.5:1 floor as small text. */
   --auto-tag: #9a4212;
   --auto-tag-wash: var(--accent-wash);
 
-  /* Interactive blue: a step brighter than --ink so buttons read as buttons
-     rather than as blocks of body text. */
   --action: #1d4e8f;
   --action-hover: #163d73;
   --action-wash: #dfe8f7;
-  /* --action-wash sized for a large filled area rather than a pill or a hover
-     state. On the cream it can stay as-is: the wash is already a pale tint of
-     a ground that is nearly white. The dark theme has to pull it back — see
-     the note there. */
   --action-seat: var(--action-wash);
 
-  /* Confirmation only — the save toast is the single place green appears, so
-     it never has to coexist with the ambient/action split above. Desaturated
-     towards the paper warmth so it doesn't read as a stock system green. */
   --green: #2f6b46;
   --green-wash: #e1eddc;
 
-  /* Destructive only — the delete control and its confirmation. Red is the one
-     signal that can't be spelled in --action without lying about what the button
-     does, so it's admitted for exactly that and nothing else. Pulled towards
-     the paper warmth like --green, so it sits beside --accent as a deeper,
-     redder neighbour rather than as a stock system red. */
   --danger: #a32e28;
   --danger-hover: #8a231e;
   --danger-wash: #f6dedb;
 
-  --line: #e8d8bf;
-  --line-strong: #d8c2a1;
+  --line: #dcdcd9;
+  --line-strong: #c3c3c0;
 
-  /* What shadows are cast in — deliberately not --ink, which flips to cream
-     in the dark theme and would turn every drop shadow into a halo. */
-  --shade: #152f52;
+  /* Not --ink — that flips to cream in dark mode and would turn shadows into
+     halos. */
+  --shade: #0e0f11;
 
-  /* Strength of the two ambient pools in `body` below. Tokens rather than
-     literals so the dark theme can dim them without restating the
-     gradients. */
   --glow-top: 12%;
   --glow-low: 7%;
 
@@ -114,111 +59,53 @@
   --foreground: var(--ink);
 }
 
-/* ---------------------------------------------------------------------------
-   Dark. Applied from `data-theme` on <html>, which an inline script in the
-   root layout stamps before first paint (see lib/theme.ts) — so there is no
-   flash and no need for a `prefers-color-scheme` copy of this block: the
-   script resolves the OS preference itself and writes the result here.
-   --------------------------------------------------------------------------- */
+/* Applied from data-theme on <html>, stamped pre-paint by the inline script
+   in the root layout (lib/theme.ts) — no flash, no prefers-color-scheme copy
+   needed. */
 [data-theme="dark"] {
   color-scheme: dark;
 
-  /* The ground is nearly neutral, and that's the point. The light theme's
-     paper is only faintly warm — its hue lives in the ink and the accent, not
-     in the sheet — so a ground of saturated navy here would put the loudest
-     colour in the theme underneath everything and read as a blue theme rather
-     than as this app in the dark. What's left of the navy is a cast, enough to
-     keep it ink-stained rather than grey.
-
-     --paper-sunk inverts its direction: below this ground there's only black,
-     and a recess printed in black reads as a hole rather than a lower
-     surface — so "sunk" steps up, as does --surface. Kept to the same narrow
-     spread the light theme uses between paper and card. */
-  --paper: #121821;
-  --paper-sunk: #212a35;
-  --surface: #19212b;
-  /* Leans towards --action for the same reason the light one does — which,
-     with the action colour now warm, means the card warms under the cursor
-     instead of cooling. */
+  --paper: #131315;
+  /* Inverts direction from the light theme: below this there's only black, so
+     "sunk" has to step up rather than down. */
+  --paper-sunk: #303033;
+  --surface: #26262a;
+  /* Ground for the two search fields — pulled back near --paper rather than
+     toward --surface, so it stays a shade rather than a highlight. */
+  --field: #19191b;
   --surface-hover: #241f19;
 
-  /* The light theme's paper, now the type — and its muted steps stay in the
-     type's own family, warm, the way the light theme's cool towards its navy
-     ink. This is what carries the warmth across: cream on near-black, rather
-     than the blue-grey the earlier ground pulled everything towards.
-
-     --ink is close to this ground's ceiling: ~15.2:1 on the surface, where
-     pure white would give 16.2:1 — far less headroom than the light theme has.
-     Warmth and lightness trade against each other directly up here, since a
-     tint can only survive so close to white, so this is about as far as it
-     goes with any cream left in it. #ece3d4 (12.8:1) and #f7f1e6 (14.4:1) both
-     still read dim, the way a warm tone does against near-black.
-
-     The muted and faint steps follow it up, measured against --paper-sunk,
-     which is the lightest ground here and so the least forgiving of pale type
-     — the mode toggle and the tag pills both sit on it. --ink-muted from
-     #a89e91 (5.5:1 there) and --ink-faint from #8a8175 (3.8:1, under the 4.5
-     floor for body text). The ladder still reads as three steps: roughly 14,
-     8 and 5 to one against the editor's surface. */
   --ink: #fbf7f2;
   --ink-muted: #c1bab0;
   --ink-faint: #9e978d;
 
-  /* Both re-lit for a dark ground: the foreground tones brighten (on the dark
-     it's the lighter tone that comes forward — hence hover brightening here
-     and darkening in the light theme) and the washes become a tint *of* the
-     ground rather than on it.
-
-     The ambient/actionable split holds, but it's spelled in two warm hues
-     rather than across the wheel — the cool half of that pair belonged to the
-     navy ink, which is now the paper. Terracotta stays ambient and amber takes
-     the clicks: separated by roughly 20° of hue and a clear step in lightness,
-     with the brighter of the two on the things you can press. */
+  /* Ambient/actionable split now spelled in two warm hues (terracotta,
+     amber) instead of across the wheel, since navy became the paper. */
   --accent: #d9794e;
   --accent-hover: #e88f63;
   --accent-wash: #2e1e14;
-  /* Blue, where the light theme's automatic tag is orange — the one hue this
-     theme has going spare. The ambient/actionable split is spelled in two
-     warm tones here (terracotta and amber), which leaves the app's own tag
-     nothing to be: in --accent it sat at 5.2:1 on a wash that separates from
-     the card by 1.01:1, so it read as a third warm thing rather than as
-     something apart. Cool and brighter instead — 7.2:1 on its wash, and the
-     wash itself carries enough lightness over --surface (1.14:1) to look
-     seated rather than painted on. Not to be mistaken for the light theme's
-     navy: that one is the ink and then the paper, never a highlight. */
+  /* Blue is the hue this theme has going spare, so the auto-tag takes it
+     instead of a third warm tone. */
   --auto-tag: #8dbcf5;
   --auto-tag-wash: #1a2b45;
 
   --action: #eba55f;
   --action-hover: #f6b877;
   --action-wash: #33261a;
-  /* Held much closer to the surface than the light theme's seat. The wash is
-     warm brown and the ground it sits on is cool near-black, so across a whole
-     segment of the mode strip the hue difference reads as a coloured bar
-     rather than as a seated block — loud in a way the same wash never is
-     behind a pill or under the cursor. Mixed rather than hand-picked so it
-     tracks both tokens if either moves. */
   --action-seat: color-mix(in srgb, var(--action-wash) 50%, var(--surface));
 
   --green: #7cba90;
   --green-wash: #1a2a20;
 
-  /* Held redder and cooler than the two above, so the one destructive control
-     can't be mistaken for an ordinary warm button. */
   --danger: #e5615a;
   --danger-hover: #f0776f;
   --danger-wash: #331a1a;
 
-  --line: #2b3441;
-  --line-strong: #3b4653;
+  --line: #2e3033;
+  --line-strong: #414447;
 
-  /* Black, near enough: a shadow the same colour as the surface it falls on
-     isn't a shadow. */
   --shade: #05070a;
 
-  /* The two warm pools survive the swap — on a near-neutral ground they're
-     the clearest thing left of the light theme's paper warmth, so they carry
-     nearly their full strength rather than being dimmed out of the way. */
   --glow-top: 10%;
   --glow-low: 6%;
 }
@@ -226,6 +113,7 @@
 @theme inline {
   --color-paper: var(--paper);
   --color-paper-sunk: var(--paper-sunk);
+  --color-field: var(--field);
   --color-surface: var(--surface);
   --color-surface-hover: var(--surface-hover);
   --color-ink: var(--ink);
@@ -257,27 +145,9 @@
 }
 
 body {
-  /* Two soft warm pools — orange at the top, a paler one low-left — keep the
-     large empty areas of the note list from reading as flat beige. Fixed
-     attachment so they stay put while long notes scroll under them. */
   background-color: var(--paper);
-  background-image:
-    radial-gradient(
-      70rem 32rem at 50% -12rem,
-      color-mix(in srgb, var(--accent) var(--glow-top), transparent) 0%,
-      transparent 70%
-    ),
-    radial-gradient(
-      48rem 40rem at -10% 110%,
-      color-mix(in srgb, var(--accent) var(--glow-low), transparent) 0%,
-      transparent 70%
-    );
-  background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-sans), system-ui, sans-serif;
-  /* Long enough to read as the page changing state, short enough not to lag
-     behind the toggle. Only the two properties the theme actually swaps here
-     — the components animate their own via `transition-colors`. */
   transition:
     background-color 250ms ease,
     color 250ms ease;
@@ -289,10 +159,8 @@ body {
   }
 }
 
-/* The two faces of the theme toggle (ThemeToggle). Swapped in CSS rather than
-   from React state: the inline script settles the theme before hydration, so
-   a state-driven label would have to either flash the wrong face or wait for
-   an effect. Here the correct one is right from the first paint. */
+/* The two faces of ThemeToggle, swapped in CSS since the inline script
+   settles the theme before hydration — a state-driven label would flash. */
 .theme-when-dark {
   display: none;
 }
@@ -319,7 +187,7 @@ body {
   outline-offset: 2px;
 }
 
-/* Save toast (SaveToast). Drops in from the top-right, below the corner nav. */
+/* SaveToast, dropping in below the corner nav. */
 @keyframes toast-in {
   from {
     opacity: 0;
@@ -341,99 +209,6 @@ body {
   }
 }
 
-/* Deleting a note (NoteList). The row is snapshotted under the class
-   `note-leaving`, every other row under `note-staying` — both applied in JS for
-   the duration of the transition only. */
-
-/* The row being deleted: fades out and settles slightly, so it reads as the
-   card leaving rather than the list blinking. It has no "new" snapshot, so
-   only the old one is animated.
-
-   Deliberately quicker than the slide below it. The rows underneath travel
-   across this card on their way up, and two opaque cards overlapping reads as
-   a glitch — so this one is nearly gone by the time they reach it. */
-::view-transition-old(.note-leaving) {
-  animation: 170ms cubic-bezier(0.4, 0, 1, 1) both note-leave;
-}
-
-/* And it passes beneath them rather than through them. */
-::view-transition-group(.note-leaving) {
-  z-index: 0;
-}
-::view-transition-group(.note-staying) {
-  z-index: 1;
-}
-
-@keyframes note-leave {
-  to {
-    opacity: 0;
-    transform: translateY(-0.35rem) scale(0.97);
-  }
-}
-
-/* The rows below it. Their content is unchanged, so the visible motion is the
-   group animating from the old box to the new one — the slide upwards. The
-   crossfade of the two identical snapshots is retimed to match so it can't
-   finish early and pop. Slightly longer than the fade, and eased to decelerate,
-   which keeps the list from snapping into place. */
-::view-transition-group(.note-staying),
-::view-transition-old(.note-staying),
-::view-transition-new(.note-staying) {
-  animation-duration: 300ms;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* The heading count (NoteCount), which ticks down in the same transition. The
-   old number rolls up and out while the new one rises into its place, so the
-   digits read as replaced rather than crossfaded on top of each other. */
-::view-transition-old(note-count) {
-  animation: 180ms cubic-bezier(0.4, 0, 1, 1) both count-out;
-}
-::view-transition-new(note-count) {
-  animation: 240ms cubic-bezier(0.22, 1, 0.36, 1) 90ms both count-in;
-}
-
-/* Snapshots are stretched to the group's box by default, which distorts the
-   digits whenever the two differ in width (10 → 9). Sizing them to their own
-   intrinsic box keeps the glyphs undistorted while the group resizes. */
-::view-transition-old(note-count),
-::view-transition-new(note-count) {
-  height: 100%;
-  width: auto;
-}
-
-@keyframes count-out {
-  to {
-    opacity: 0;
-    transform: translateY(-55%);
-  }
-}
-
-@keyframes count-in {
-  from {
-    opacity: 0;
-    transform: translateY(55%);
-  }
-}
-
-/* The word beside it. Unchanged in the usual case, so nothing is visible here
-   except when the number's width changes and the label has to slide over — or
-   at the 1 ↔ 2 boundary, where it crossfades between "Note" and "Notes".
-
-   Held back until the outgoing digit has faded: closing the gap for 10 → 9
-   means sliding into space the old "10" still occupies, which collides as
-   "10Notes" if it starts immediately. Landing with the incoming digit instead
-   makes the two read as one movement. */
-::view-transition-group(note-count-label),
-::view-transition-old(note-count-label),
-::view-transition-new(note-count-label) {
-  animation-delay: 130ms;
-  animation-duration: 200ms;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-  animation-fill-mode: backwards;
-}
-
-/* Clicks during the ~300ms shouldn't land on the frozen overlay. */
 ::view-transition {
   pointer-events: none;
 }
@@ -447,22 +222,12 @@ body {
   }
 }
 
-/* Rendered note markdown (MarkdownView). Hand-rolled rather than a
-   typography plugin, kept intentionally minimal. */
+/* Rendered note markdown (MarkdownView). Hand-rolled, intentionally minimal. */
 .markdown-body {
-  /* Every size below this is em-relative, so scaling the root of the block
-     carries the headings, code and lists with it. --editor-font-scale is set
-     on the editor card by the text-size control; rendered notes outside that
-     card (there are none today) fall back to 1.
-
-     1.1875rem is 19px, the old 1.0625rem (17px) re-based by the same step the
-     source pane took — see the note there. Kept a whole pixel like every other
-     size in this file, which puts it a hair over the exact multiple; the two
-     panes end up 2% further apart in relative size than before, which is not a
-     difference the eye has any way of finding. */
-  font-size: calc(1.1875rem * var(--editor-font-scale, 1));
+  font-size: 16px;
   line-height: 1.75;
-  color: color-mix(in srgb, var(--ink) 88%, var(--paper));
+  color: var(--ink);
+  overflow-wrap: anywhere;
 }
 
 .markdown-body > :first-child {
@@ -556,8 +321,8 @@ body {
 
 .markdown-body pre {
   overflow-x: auto;
-  border: 1px solid var(--line);
-  border-radius: 0.5em;
+  background: var(--paper-sunk);
+  border-radius: var(--radius-control);
   padding: 1em;
 }
 
@@ -589,15 +354,39 @@ body {
   color: var(--ink);
 }
 
+/* A section break is an asterism, never a rule. */
 .markdown-body hr {
   border: none;
-  border-top: 1px solid var(--line-strong);
   margin: 2em 0;
+  height: auto;
+  color: var(--ink-faint);
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  text-align: center;
+  text-indent: 0.3em;
+}
+
+.markdown-body hr::before {
+  content: "⁂";
 }
 
 .markdown-body img {
-  max-width: 100%;
-  border-radius: 0.5rem;
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-control);
+}
+
+.markdown-body p:has(> img:only-child) {
+  margin-bottom: 0.5em;
+}
+
+/* An emphasised line right after an image block is its caption. */
+.markdown-body p:has(> img:only-child) + p > em:only-child {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-style: normal;
 }
 
 .markdown-body a {
@@ -611,34 +400,343 @@ body {
   text-decoration-color: var(--accent);
 }
 
+/* Inline hashtag references carry their own --h inline (see
+   rehype-hashtag). No pill, no background — a tag reference is a word in the
+   sentence, not a form field. */
+.markdown-body a.hashtag {
+  color: oklch(var(--tag-text-l) var(--tag-text-c) var(--h));
+  text-decoration: none;
+  font-weight: 500;
+  border-radius: var(--radius-control);
+  transition: background-color var(--tint-motion) ease;
+}
+
+.markdown-body a.hashtag:hover,
+.markdown-body a.hashtag:focus-visible {
+  /* Negative margins match the padding so lighting up can't reflow the
+     line. */
+  background-color: oklch(var(--tag-l) var(--tag-c) var(--h) / var(--tint-row));
+  margin: 0 -0.25em;
+  padding: 0 0.25em;
+  text-decoration: none;
+}
+
+/* A #name matching no existing tag — same treatment as an unresolved
+   wikilink, minus the click, since tags are only ever created in the bar. */
+.markdown-body .hashtag-unresolved {
+  color: var(--ink-faint);
+  font-style: normal;
+  border-bottom: 1px dashed var(--line);
+}
+
 .markdown-body a.wikilink-unresolved {
   color: var(--ink-faint);
   text-decoration: none;
   border-bottom: 1px dashed var(--line-strong);
 }
 
-/* Shiki output (see rehype-shiki-lazy.ts). Every token carries the light
-   colour inline and the dark one in --shiki-dark; these rules choose. Either
-   theme's own background is dropped in favour of the app's sunk-paper tone, so
-   code blocks sit in the same family as the rest of the page. */
+/* Shiki output (rehype-shiki-lazy.ts): each token carries the light colour
+   inline and the dark one in --shiki-dark. Either theme's own background is
+   dropped for the app's sunk-paper tone. */
 .markdown-body .shiki {
   background-color: var(--paper-sunk) !important;
 }
 
-/* Font style is the one thing dual-theme output never writes inline — both
-   themes read it from a variable, so this rule serves the light theme too. */
 .markdown-body .shiki span {
   font-style: var(--shiki-light-font-style, normal);
   font-weight: var(--shiki-light-font-weight, inherit);
 }
 
-/* !important because the light colour is an inline style attribute, which no
-   amount of selector specificity outranks. Spans without a colour of their own
-   inherit --shiki-dark from the <pre>, which holds the theme's default
-   foreground — so this covers unhighlighted text as well as tokens. */
+/* !important: the light colour is an inline style attribute, which no
+   selector specificity outranks. */
 [data-theme="dark"] .markdown-body .shiki,
 [data-theme="dark"] .markdown-body .shiki span {
   color: var(--shiki-dark) !important;
   font-style: var(--shiki-dark-font-style, normal);
   font-weight: var(--shiki-dark-font-weight, inherit);
+}
+
+/* ===========================================================================
+   THE LINELESS SYSTEM
+   Nothing is separated by a rule. Spacing does the grouping, a 2–3% tonal
+   step marks the zones, and hue marks the subject — held to exactly, or the
+   whole thing collapses.
+   =========================================================================== */
+
+/* The whole spacing scale. --space-row/--space-group must stay at roughly a
+   2.5x ratio or groups stop reading as separate. If rows run together, raise
+   --space-row — never add a line back. */
+:root {
+  --space-hair: 4px;
+  --space-item: 8px;
+  --space-row: 26px;
+  --space-group: 28px;
+  --space-block: 32px;
+
+  /* Zones get the larger radius; controls and hover tints get the smaller.
+     Content blocks and index rows get neither — a radius there reads as a
+     card. */
+  --radius-zone: 10px;
+  --radius-control: 6px;
+}
+
+/* Every tag has a hue (lib/tags/hue.ts); chroma and lightness are locked here
+   so twelve tags read as one palette. OKLCH rather than HSL because HSL's
+   lightness isn't perceptual — a hue-rotated HSL palette shouts in yellow and
+   vanishes in blue at the same nominal lightness.
+
+   --h is a registered custom property so it can be interpolated: everything
+   referencing it transitions together off one variable changing. */
+@property --h {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 210;
+}
+
+:root {
+  --tag-c: 0.13;
+  --tag-l: 0.55;
+  --tag-text-l: 0.45;
+  --tag-text-c: 0.11;
+
+  /* Intensity by area, inverse: the larger the painted region, the less
+     chroma before it stops reading as a tint and starts reading as a block. */
+  --wash-alpha: 0.12; /* the content pane */
+  --tint-row: 0.12; /* an index row under the cursor */
+  --tint-selected: 0.16; /* the current tag in the rail */
+  /* The tag-scoped search field — a stronger step of the same wash rather
+     than a tint over the neutral --field, whose base is dark enough here
+     that any amount of hue mixed into it still read as a grey box with a
+     colour cast, not a part of the wash. */
+  --field-tint-base: var(--surface);
+  --field-tint: 0.2;
+
+  --hue-motion: 420ms;
+  --tint-motion: 200ms;
+  /* Faster than --tint-motion: reaching the remove control means crossing
+     the name first, and at 200ms that two-step change strobes. */
+  --tag-motion: 120ms;
+}
+
+[data-theme="dark"] {
+  --tag-l: 0.72;
+  --tag-text-l: 0.78;
+  /* Less than half the light theme's: a bright tone over dark reads as
+     colour sooner than a dark tone over pale. */
+  --wash-alpha: 0.05;
+  /* --field itself is close to --paper here, dark enough against --surface
+     to still register as a box, so the dark field keeps that base instead
+     of --surface. */
+  --field-tint-base: var(--field);
+  --field-tint: 0.16;
+}
+
+/* Declared on the using element rather than as a --tag-color custom property
+   on :root — a var(--h) reference resolves where it's declared, so a :root
+   one would freeze every element at the root's hue. */
+.hue-dot {
+  background-color: oklch(var(--tag-l) var(--tag-c) var(--h));
+}
+
+/* A child tag is its parent's hue, quieter and smaller — the entire nesting
+   cue. */
+.hue-dot-child {
+  background-color: oklch(var(--tag-l) var(--tag-c) var(--h) / 0.6);
+}
+
+/* Opaque, composited by hand: the sticky headers fade content out against
+   this exact colour, and a gradient can only match a background it can
+   name. */
+.hue-wash {
+  background-color: color-mix(
+    in srgb,
+    oklch(var(--tag-l) var(--tag-c) var(--h)) calc(var(--wash-alpha) * 100%),
+    var(--surface)
+  );
+}
+
+.hue-text {
+  color: oklch(var(--tag-text-l) var(--tag-text-c) var(--h));
+}
+
+/* The tag-scoped search field (IndexSearch on a tag view) — tinted from the
+   same --h as the pane wash it sits on, rather than the flat neutral
+   --field, so it reads as a deeper pool of the same colour instead of a grey
+   box dropped on top. */
+.hue-field {
+  background-color: color-mix(
+    in srgb,
+    oklch(var(--tag-l) var(--tag-c) var(--h)) calc(var(--field-tint) * 100%),
+    var(--field-tint-base)
+  );
+}
+
+/* Hover and keyboard focus are the same declaration on purpose: with no
+   borders, the tint is the focus ring. */
+.hue-row:hover,
+.hue-row:focus-visible,
+.hue-row[data-active="true"] {
+  background-color: oklch(var(--tag-l) var(--tag-c) var(--h) / var(--tint-row));
+}
+
+.hue-row-selected {
+  background-color: oklch(
+    var(--tag-l) var(--tag-c) var(--h) / var(--tint-selected)
+  );
+}
+
+/* The pane carries this, so anything referencing --h inside it transitions
+   for free when the hue changes on navigation. */
+.hue-shift {
+  transition:
+    --h var(--hue-motion) ease,
+    background-color var(--hue-motion) ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --hue-motion: 0ms;
+    --tint-motion: 0ms;
+    --tag-motion: 0ms;
+  }
+}
+
+/* End of a list: with no closing border, an asterism says "this is the
+   bottom" instead of leaving it ambiguous with a fold cut-off. */
+.asterism {
+  color: var(--ink-faint);
+  font-size: 13px;
+  letter-spacing: 0.3em;
+  text-align: center;
+  /* letter-spacing tracks after the glyph too, which would push a centred
+     character left of true centre. */
+  text-indent: 0.3em;
+}
+
+/* Sticky headers: a blur and short fade rather than a rule. */
+.sticky-head {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(12px);
+}
+
+.sticky-head::after {
+  content: "";
+  position: absolute;
+  inset: 100% 0 auto 0;
+  height: 22px;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  mask-image: linear-gradient(to bottom, #000, transparent);
+}
+
+/* Neutral row hover tint — for rows with no hue of their own (tinting them in
+   whatever --h is inherited would be confused with "this is the tag you're
+   on"). */
+.row-tint {
+  transition: background-color var(--tint-motion) ease;
+}
+
+.row-tint:hover,
+.row-tint:focus-visible {
+  background-color: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+
+/* "You are here" for a row with no tag behind it — All notes, Untagged,
+   Images. */
+.row-selected {
+  background-color: color-mix(in srgb, var(--ink) 11%, transparent);
+}
+
+/* The tint answers for focus one level in as well. The sort select is the one
+   place the tint sits on a wrapper rather than on the focusable thing itself —
+   its chevron has to be a sibling of the select to inherit currentColor — so
+   without this the control would light for the pointer and stay dark for the
+   keyboard. */
+.row-tint:has(:focus-visible) {
+  background-color: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+
+/* The global focus ring is dropped here — the tint already answers "what's
+   under the pointer/caret", and a second louder answer would contradict the
+   first. Descendants included, for the wrapper case above: a browser fires
+   :focus-visible on a select for a plain click, so that ring showed up on
+   every use of the sort control rather than only for the keyboard. */
+.row-tint:focus-visible,
+.row-tint :focus-visible,
+.hue-row:focus-visible {
+  outline: none;
+}
+
+/* A tag wherever it's rendered as interface (tag bar, breadcrumb): bare text
+   at rest, a pill in its own hue on interaction. Padding is cancelled by an
+   equal negative margin so the pill grows into space the row already
+   reserved. */
+.tag-pill {
+  border-radius: 9999px;
+  transition: background-color var(--tag-motion) ease;
+}
+
+/* The bleed variant, for rows where a pill appearing under the cursor must
+   not push its neighbours — the right side is asymmetric because the remove
+   control already carries its own space. */
+.tag-pill-bleed {
+  margin-left: -8px;
+  padding-left: 8px;
+  margin-right: -3px;
+  padding-right: 3px;
+}
+
+.tag-pill:hover,
+.tag-pill:focus-visible,
+.tag-pill:focus-within {
+  background-color: oklch(var(--tag-l) var(--tag-c) var(--h) / var(--tint-row));
+}
+
+/* A pill for a link with no tag behind it (e.g. "All notes" in the
+   breadcrumb) — tints in ink rather than an inherited --h that would mean
+   nothing there. Declared after the hue rule so it wins on elements carrying
+   both. */
+.tag-pill-ink:hover,
+.tag-pill-ink:focus-visible,
+.tag-pill-ink:focus-within {
+  background-color: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+
+/* Hovering the remove control previews the removal: red pill, struck-through
+   name. The strikethrough isn't transitioned — fading in would read as
+   unreadable rather than as a warning. */
+.tag-pill:has(.tag-remove:hover),
+.tag-pill:has(.tag-remove:focus-visible) {
+  background-color: color-mix(in srgb, var(--danger) 14%, transparent);
+}
+
+.tag-pill:has(.tag-remove:hover) .tag-name,
+.tag-pill:has(.tag-remove:focus-visible) .tag-name {
+  text-decoration: line-through;
+}
+
+/* Held in layout at all times (opacity, not display) so revealing it can't
+   push the next tag sideways. Still hit-testable while transparent — a
+   pointer can only reach it via the pill that reveals it. */
+.tag-remove {
+  opacity: 0;
+  transition:
+    opacity var(--tag-motion) ease,
+    color var(--tag-motion) ease;
+}
+
+.tag-pill:hover .tag-remove,
+.tag-pill:focus-within .tag-remove,
+.tag-remove[data-pinned="true"] {
+  opacity: 1;
+}
+
+/* An index row's highlight bleeds past the text column: negative margins
+   cancel the padding so lighting up changes no geometry. */
+.bleed-row {
+  margin-inline: -12px;
+  padding-inline: 12px;
+  border-radius: var(--radius-control);
 }

@@ -2,7 +2,7 @@
 // between notes — each note mounts a fresh NoteEditor, and a choice that reset
 // on every navigation would have to be re-made constantly.
 //
-// Same external-store shape as [list-state], and for the same two reasons:
+// Same external-store shape as [tag preferences], and for the same two reasons:
 // sessionStorage doesn't exist during the server render, and restoring in an
 // effect is what `useSyncExternalStore` exists to replace. sessionStorage
 // rather than local: which model you're asking is a property of what you're

@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { SaveStatus } from "@/hooks/use-autosave";
 
-const SAVED_VISIBLE_MS = 2000;
-// Longer than the "Saved" pill: this one is a sentence to read, not a glance.
+// Long enough to read a sentence, not a glance.
 const HINT_VISIBLE_MS = 4500;
 
 type Props = {
@@ -13,10 +12,19 @@ type Props = {
   onSave: () => void;
 };
 
+/**
+ * What's left of the save chrome.
+ *
+ * The "Saved" confirmation is gone: the metadata line under the title already
+ * reads "Edited just now" the moment a save lands, which says the same thing
+ * in the place the reader is already looking, and a green pill flying in every
+ * few seconds while typing was the loudest thing in the editor.
+ *
+ * What remains is the case that genuinely needs interrupting — a save that
+ * failed — plus a one-off answer for anyone who reaches for ⌘S out of habit.
+ */
 export function SaveToast({ status, onSave }: Props) {
-  const [showSaved, setShowSaved] = useState(false);
   const [showHint, setShowHint] = useState(false);
-  const prevStatus = useRef<SaveStatus>(status);
 
   const onSaveRef = useRef(onSave);
   useEffect(() => {
@@ -24,25 +32,13 @@ export function SaveToast({ status, onSave }: Props) {
   }, [onSave]);
 
   useEffect(() => {
-    const wasSaving = prevStatus.current === "saving";
-    prevStatus.current = status;
-    // Only confirm a save that just landed — an existing note mounts already
-    // in "saved", and toasting that would greet every page load.
-    if (status !== "saved" || !wasSaving) return;
-    setShowSaved(true);
-    const timer = setTimeout(() => setShowSaved(false), SAVED_VISIBLE_MS);
-    return () => clearTimeout(timer);
-  }, [status]);
-
-  useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     function onKeyDown(event: KeyboardEvent) {
       const save = event.key === "s" && (event.metaKey || event.ctrlKey);
       if (!save || event.altKey) return;
-      // Swallow the browser's "save page" dialog and honour the intent
-      // anyway — pressing it shouldn't be a no-op just because it's
-      // unnecessary.
+      // Swallow the browser's "save page" dialog and honour the intent anyway
+      // — pressing it shouldn't be a no-op just because it's unnecessary.
       event.preventDefault();
       onSaveRef.current();
       setShowHint(true);
@@ -57,47 +53,31 @@ export function SaveToast({ status, onSave }: Props) {
     };
   }, []);
 
-  // The failure toast has no dismiss: it stays until a save actually
-  // succeeds, which is the point — an unsaved note shouldn't be dismissible
-  // into looking fine. Conflicts are left to the inline banner, which is the
-  // only place the two resolutions can be offered.
+  // No dismiss on the failure notice, deliberately: an unsaved note shouldn't
+  // be dismissible into looking fine. It goes when a save actually succeeds.
   const failed = status === "error";
-  if (!failed && !showSaved && !showHint) return null;
+  if (!failed && !showHint) return null;
 
   return (
-    // top-20 clears the collapsed CornerNav disc. Opening the disc does cover
-    // this, but that only happens on a deliberate hover/tap up there.
-    <div className="pointer-events-none fixed right-6 top-20 z-30 flex flex-col items-end gap-2">
-      {failed ? (
-        <div
+    <div className="pointer-events-none fixed bottom-6 right-6 z-30 flex max-w-xs flex-col items-end gap-2 text-right">
+      {failed && (
+        <p
           role="alert"
-          className="toast-enter pointer-events-auto flex items-center gap-3 rounded-full border border-accent/40 bg-accent-wash py-2.5 pl-5 pr-2.5 text-base text-ink shadow-lg shadow-shade/10"
+          className="toast-enter pointer-events-auto rounded-[var(--radius-control)] bg-surface px-4 py-2.5 text-[13px] text-ink shadow-lg shadow-shade/15"
         >
-          <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-accent" />
-          Couldn&apos;t save this note
+          Couldn&apos;t save this note.{" "}
           <button
             type="button"
             onClick={() => onSave()}
-            className="rounded-full bg-accent px-4 py-1.5 text-base font-medium text-paper transition-colors hover:bg-accent-hover"
+            className="text-ink-muted underline underline-offset-2 hover:text-ink"
           >
             Retry
           </button>
-        </div>
-      ) : (
-        showSaved && (
-          <div
-            role="status"
-            className="toast-enter pointer-events-auto flex items-center gap-2.5 rounded-full border border-green/30 bg-green-wash px-5 py-2.5 text-base font-medium text-green shadow-lg shadow-shade/10"
-          >
-            <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-green" />
-            Saved
-          </div>
-        )
+        </p>
       )}
       {showHint && (
-        <p className="toast-enter max-w-xs rounded-2xl border border-line bg-surface px-4 py-2.5 text-sm text-ink-muted shadow-lg shadow-shade/10">
-          No need — this note saves itself as you type. If a save ever fails,
-          you&apos;ll be told right here.
+        <p className="toast-enter rounded-[var(--radius-control)] bg-surface px-4 py-2.5 text-[13px] text-ink-muted shadow-lg shadow-shade/15">
+          No need — this note saves itself as you type.
         </p>
       )}
     </div>

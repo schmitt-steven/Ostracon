@@ -6,16 +6,10 @@ import {
   closeBrackets,
   closeBracketsKeymap,
   completionKeymap,
+  type CompletionContext,
+  type CompletionResult,
 } from "@codemirror/autocomplete";
-import {
-  defaultKeymap,
-  history,
-  historyKeymap,
-  redo,
-  redoDepth,
-  undo,
-  undoDepth,
-} from "@codemirror/commands";
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import {
   bracketMatching,
@@ -28,23 +22,35 @@ import {
 import { languages } from "@codemirror/language-data";
 import { lintKeymap } from "@codemirror/lint";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
-import { EditorState, Prec } from "@codemirror/state";
+import {
+  EditorState,
+  Prec,
+  RangeSetBuilder,
+  StateEffect,
+} from "@codemirror/state";
 import {
   crosshairCursor,
+  Decoration,
   drawSelection,
   dropCursor,
   EditorView,
-  highlightActiveLine,
   highlightSpecialChars,
   keymap,
   placeholder as placeholderExt,
   rectangularSelection,
+  ViewPlugin,
+  type DecorationSet,
+  type ViewUpdate,
 } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
+import { tagHue } from "@/lib/tags/hue";
+import { scanTags } from "@/lib/tags/parse";
 
 /**
- * `basicSetup` from the `codemirror` package, minus every gutter: line
- * numbers, the fold arrows beside them, and the active-line gutter highlight.
+ * `basicSetup` from the `codemirror` package, minus every gutter — line
+ * numbers, the fold arrows beside them, the active-line gutter highlight — and
+ * minus the active-line background, which on a pane with no border reads as a
+ * stripe painted across the page rather than as a cursor cue.
  * Notes are prose, not code — numbered lines are noise here, and dropping the
  * gutter entirely lets the text sit flush against the editor's left edge
  * rather than leaving an empty column behind.
@@ -63,10 +69,11 @@ const editorSetup = [
   syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
   bracketMatching(),
   closeBrackets(),
-  autocompletion(),
+  // No autocompletion() here — the editor adds its own configured instance
+  // below, and two of them would be two conflicting configurations of the
+  // same facet.
   rectangularSelection(),
   crosshairCursor(),
-  highlightActiveLine(),
   highlightSelectionMatches(),
   keymap.of([
     ...closeBracketsKeymap,
@@ -85,27 +92,32 @@ const appTheme = EditorView.theme({
   "&": {
     color: "var(--ink)",
     backgroundColor: "transparent",
-    height: "100%",
-    // Scaled rather than replaced, so the source pane keeps its own base size
-    // (mono reads smaller than prose at the same nominal px) while tracking
-    // the preview pane step for step. The fallback matters: the variable is
-    // set on the editor card, and this theme is also what a bare CodeMirror
-    // outside it would use.
-    //
-    // 17px is the old 15.5px re-based: a step up read better than the original
-    // default, so it became the default rather than something to be re-set on
-    // every device. Rounded from 17.05 — 0.3% off exact, invisible, and a
-    // whole pixel is the kinder number to reason from next time.
-    fontSize: "calc(17px * var(--editor-font-scale, 1))",
+    // Content-driven, never a fixed box. The editor grows with what's in it
+    // and the pane around it scrolls — a note is as tall as it is, and the
+    // 900px-tall bordered card this used to sit in was the single loudest
+    // thing on the screen no matter how little was written.
+    height: "auto",
   },
+  // Sans, at the same 16px/1.75 the rendered side uses. The two modes are
+  // then the same text in the same rhythm, one with its markup showing, which
+  // is what makes Split read as one document rather than two panes.
   ".cm-content": {
-    fontFamily: "var(--font-plex-mono, monospace)",
+    fontFamily: "var(--font-plex-sans), system-ui, sans-serif",
+    fontSize: "16px",
+    lineHeight: "1.75",
     caretColor: "var(--accent)",
-    padding: "1rem",
+    padding: "0",
+  },
+  // The scroller has to stop scrolling for the height above to mean anything:
+  // with its own overflow it would clip to whatever box it was given instead
+  // of letting the content set the height.
+  ".cm-scroller": {
+    overflow: "visible",
+    fontFamily: "inherit",
+    lineHeight: "inherit",
   },
   // CodeMirror's base theme pads every line by 6px on the left and 2px on the
-  // right, which would land on top of the padding above and pull the text off
-  // centre. Zeroed so the inset is exactly the 1rem set on the content.
+  // right, which would inset the text from the pane's own column.
   ".cm-line": {
     padding: "0",
   },
@@ -113,8 +125,20 @@ const appTheme = EditorView.theme({
     borderLeftColor: "var(--accent)",
     borderLeftWidth: "2px",
   },
-  ".cm-activeLine": {
-    backgroundColor: "color-mix(in srgb, var(--accent) 5%, transparent)",
+  // Inline hashtag references, in their tag's hue. The --h each one carries is
+  // set per decoration (see hashtagHighlighter); this only says what to do with
+  // it, so the two themes' different lightness still applies.
+  ".cm-hashtag": {
+    color: "oklch(var(--tag-text-l) var(--tag-text-c) var(--h))",
+    fontWeight: "500",
+  },
+  // A `#name` that matches no existing tag. It gets no hue because it isn't
+  // one — the underline says "this looked like a reference and isn't", which
+  // is the whole feedback needed: tags are made in the bar above, and typing
+  // one into the prose no longer files anything.
+  ".cm-hashtag-unresolved": {
+    color: "var(--ink-faint)",
+    borderBottom: "1px dashed var(--line)",
   },
   // Unfocused, plus the native selection in nested inputs (the search panel),
   // which CodeMirror leaves to the browser.
@@ -142,17 +166,26 @@ const appTheme = EditorView.theme({
   // editorSetup brings the search panel and autocomplete tooltips, which
   // otherwise fall back to CodeMirror's built-in light baseTheme and stay
   // cream-on-cream once the app is in its dark palette. Same tokens as the
-  // rest, so they follow whichever theme is active.
+  // rest, so they follow whichever theme is active — and no stroke on either,
+  // since neither is a card.
   ".cm-panels": {
     backgroundColor: "var(--surface)",
     color: "var(--ink)",
   },
-  ".cm-panels.cm-panels-top": { borderBottom: "1px solid var(--line)" },
-  ".cm-panels.cm-panels-bottom": { borderTop: "1px solid var(--line)" },
   ".cm-tooltip": {
     backgroundColor: "var(--surface)",
     color: "var(--ink)",
-    border: "1px solid var(--line)",
+    border: "none",
+    borderRadius: "var(--radius-control)",
+    boxShadow: "0 8px 24px color-mix(in srgb, var(--shade) 22%, transparent)",
+    overflow: "hidden",
+  },
+  ".cm-tooltip-autocomplete > ul > li[aria-selected]": {
+    backgroundColor: "color-mix(in srgb, var(--ink) 9%, transparent)",
+    color: "var(--ink)",
+  },
+  ".cm-tooltip-autocomplete > ul > li": {
+    padding: "4px 10px",
   },
   ".cm-searchMatch": {
     backgroundColor: "color-mix(in srgb, var(--accent) 22%, transparent)",
@@ -161,6 +194,97 @@ const appTheme = EditorView.theme({
     backgroundColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
   },
 });
+
+/**
+ * Paints every `#name` in the source pane: in its tag's hue when that tag
+ * exists, muted when it doesn't.
+ *
+ * The whole document is scanned rather than only the visible ranges: the
+ * masking that keeps `#include` inside a code fence from counting needs to see
+ * where that fence opened, which a viewport slice may well not contain. Notes
+ * are prose, so the document is small and this is cheaper than being clever
+ * about it.
+ */
+function hashtagDecorations(
+  view: EditorView,
+  known: Set<string>,
+): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>();
+  const doc = view.state.doc.toString();
+  for (const match of scanTags(doc)) {
+    builder.add(
+      match.from,
+      match.to,
+      known.has(match.name)
+        ? Decoration.mark({
+            class: "cm-hashtag",
+            attributes: { style: `--h:${tagHue(match.name)}` },
+          })
+        : Decoration.mark({ class: "cm-hashtag-unresolved" }),
+    );
+  }
+  return builder.finish();
+}
+
+/**
+ * Announces that the set of existing tags has changed, so the decorations can
+ * be rebuilt without a document edit. Adding a tag in the bar has to light up
+ * every `#name` in the prose that was waiting for it — the reference resolving
+ * the instant the tag exists is what makes the two halves feel like one thing.
+ */
+const knownTagsChanged = StateEffect.define<null>();
+
+function hashtagHighlighter(getKnown: () => Set<string>) {
+  return ViewPlugin.fromClass(
+    class {
+      decorations: DecorationSet;
+
+      constructor(view: EditorView) {
+        this.decorations = hashtagDecorations(view, getKnown());
+      }
+
+      update(update: ViewUpdate) {
+        const retagged = update.transactions.some((tr) =>
+          tr.effects.some((effect) => effect.is(knownTagsChanged)),
+        );
+        if (update.docChanged || retagged) {
+          this.decorations = hashtagDecorations(update.view, getKnown());
+        }
+      }
+    },
+    { decorations: (plugin) => plugin.decorations },
+  );
+}
+
+/**
+ * Completes `#` against the tags that exist.
+ *
+ * This is the only list there is, and it's the point: a reference can name an
+ * existing tag or nothing at all, so completing from the collection isn't a
+ * convenience here, it's the vocabulary.
+ *
+ * Reads the list through a getter rather than closing over an array, so a tag
+ * added in the bar a moment ago is offered without rebuilding the editor —
+ * which would take the undo history with it.
+ */
+function hashtagCompletion(getKnown: () => Set<string>) {
+  return (context: CompletionContext): CompletionResult | null => {
+    const before = context.matchBefore(/#[\p{L}\p{N}_/-]*/u);
+    if (!before) return null;
+    // A bare `#` at the very start of a line is a heading, not a tag.
+    const lineStart = context.state.doc.lineAt(before.from).from;
+    if (before.from === lineStart) return null;
+
+    return {
+      from: before.from,
+      options: [...getKnown()].map((tag) => ({
+        label: `#${tag}`,
+        type: "keyword",
+      })),
+      validFor: /^#[\p{L}\p{N}_/-]*$/u,
+    };
+  };
+}
 
 /**
  * Syntax colours for the source pane, drawn from the app's tokens.
@@ -194,7 +318,12 @@ const appHighlight = HighlightStyle.define([
   { tag: t.link, color: "var(--action)" },
   { tag: t.url, color: "var(--action)", textDecoration: "underline" },
   { tag: t.labelName, color: "var(--ink-muted)" },
-  { tag: t.monospace, color: "var(--accent)" },
+  {
+    tag: t.monospace,
+    color: "var(--accent)",
+    // The pane is set in sans now, so code has to say so itself.
+    fontFamily: "var(--font-plex-mono), monospace",
+  },
   { tag: t.escape, color: "var(--ink-faint)" },
   { tag: t.character, color: "var(--accent)" },
   { tag: t.contentSeparator, color: "var(--ink-faint)" },
@@ -325,18 +454,6 @@ function anchorAtCursor(view: EditorView): { x: number; y: number } {
   return { x: box.left + 16, y: box.top + 16 };
 }
 
-// Clicking a toolbar button moves focus out of the editor, so hand it back
-// afterwards: the caret CodeMirror just restored is where the user wants to
-// resume typing, and ⌘Z has to keep working without a click into the text.
-function runHistoryCommand(
-  view: EditorView | null,
-  command: (view: EditorView) => boolean,
-) {
-  if (!view) return;
-  command(view);
-  view.focus();
-}
-
 /**
  * Where an AI prompt was opened from. Two ways in: selecting text, or the ask
  * shortcut at the bare cursor — hence `text` may be empty, which is what
@@ -356,20 +473,15 @@ export type AiAnchor = {
 /** Where an accepted answer goes: over the selection, or after the block. */
 export type AnswerPlacement = "replace" | "below";
 
-/** Whether each direction has anything left to step through. */
-export type HistoryState = {
-  canUndo: boolean;
-  canRedo: boolean;
-};
-
 export type EditorHandle = {
   /** Scrolls the given 1-based source line into view at the top. */
   scrollToLine: (line: number) => void;
   /** Re-measures after the pane goes from hidden back to visible. */
   remeasure: () => void;
-  /** Same history as ⌘Z / ⇧⌘Z — the keymap and these share one undo stack. */
-  undo: () => void;
-  redo: () => void;
+  /** Puts the caret in the document — what ⌘K's "Write" command needs. */
+  focus: () => void;
+  /** Appends text at the end, on its own line. Used by "Suggest tags". */
+  append: (text: string) => void;
   /**
    * Claims `from`..`to` as the range an in-flight answer belongs to. The range
    * is mapped through every edit until it's used, so a note that keeps being
@@ -395,8 +507,12 @@ type Props = {
   onSelectionMenu?: (anchor: AiAnchor | null) => void;
   /** Fires on the ask shortcut (⌘J / Ctrl-J), selection or not. */
   onAskShortcut?: (anchor: AiAnchor) => void;
-  /** Fires only when a direction flips between empty and non-empty. */
-  onHistoryChange?: (history: HistoryState) => void;
+  /**
+   * Every tag name that exists. A `#name` in the body is a reference to one of
+   * these — completed from them, and drawn as unresolved when it matches none.
+   * Tags are created in the tag bar above the editor, never in here.
+   */
+  knownTags: string[];
   placeholder?: string;
   className?: string;
   ref?: Ref<EditorHandle>;
@@ -408,7 +524,7 @@ export function CodeMirrorEditor({
   onLineClick,
   onSelectionMenu,
   onAskShortcut,
-  onHistoryChange,
+  knownTags,
   placeholder,
   className,
   ref,
@@ -431,15 +547,16 @@ export function CodeMirrorEditor({
   useEffect(() => {
     onAskShortcutRef.current = onAskShortcut;
   }, [onAskShortcut]);
-  const onHistoryChangeRef = useRef(onHistoryChange);
+  // Read by the completion source and the highlighter, both built once when
+  // the view is created and needing to keep seeing the current list without
+  // the view being rebuilt around them.
+  const knownRef = useRef<Set<string>>(new Set(knownTags));
   useEffect(() => {
-    onHistoryChangeRef.current = onHistoryChange;
-  }, [onHistoryChange]);
-
-  // Last values reported upward. The update listener runs on every keystroke
-  // and every cursor move, but the buttons only care about the empty/non-empty
-  // flip, so anything else would be a re-render of the whole editor for nothing.
-  const historyRef = useRef<HistoryState>({ canUndo: false, canRedo: false });
+    knownRef.current = new Set(knownTags);
+    // Unlike completion, which reads the set when it runs, the decorations are
+    // cached — so they have to be told.
+    viewRef.current?.dispatch({ effects: knownTagsChanged.of(null) });
+  }, [knownTags]);
 
   // True between mousedown and mouseup inside the editor. A drag fires a
   // selection update on every mousemove, and anchoring the menu to each one
@@ -467,11 +584,23 @@ export function CodeMirrorEditor({
     remeasure() {
       viewRef.current?.requestMeasure();
     },
-    undo() {
-      runHistoryCommand(viewRef.current, undo);
+    focus() {
+      viewRef.current?.focus();
     },
-    redo() {
-      runHistoryCommand(viewRef.current, redo);
+    append(text) {
+      const view = viewRef.current;
+      if (!view) return;
+      const end = view.state.doc.length;
+      // One blank line before it, unless the note is empty or already ends in
+      // one — appending tags shouldn't glue them onto the last sentence.
+      const tail = view.state.sliceDoc(Math.max(0, end - 2), end);
+      const lead = end === 0 ? "" : tail.endsWith("\n\n") ? "" : tail.endsWith("\n") ? "\n" : "\n\n";
+      view.dispatch({
+        changes: { from: end, insert: `${lead}${text}` },
+        selection: { anchor: end + lead.length + text.length },
+        scrollIntoView: true,
+      });
+      view.focus();
     },
     beginAnswer(from, to) {
       answerRangeRef.current = { from, to };
@@ -573,6 +702,14 @@ export function CodeMirrorEditor({
           ]),
         ),
         markdown({ codeLanguages: languages }),
+        hashtagHighlighter(() => knownRef.current),
+        // `override` rather than an extra source: the default sources would
+        // otherwise also fire inside a `#`, offering word completions from the
+        // document alongside the tags.
+        autocompletion({
+          override: [hashtagCompletion(() => knownRef.current)],
+          icons: false,
+        }),
         EditorView.lineWrapping,
         placeholderExt(placeholder ?? ""),
         appTheme,
@@ -594,16 +731,6 @@ export function CodeMirrorEditor({
           // ones are skipped mid-drag and reported by the mouseup listener.
           if (update.selectionSet && !draggingRef.current) {
             reportSelection(update.view);
-          }
-
-          // Not gated on docChanged: undo() itself empties the undo stack
-          // without the document differing from where redo would put it back.
-          const canUndo = undoDepth(update.state) > 0;
-          const canRedo = redoDepth(update.state) > 0;
-          const previous = historyRef.current;
-          if (canUndo !== previous.canUndo || canRedo !== previous.canRedo) {
-            historyRef.current = { canUndo, canRedo };
-            onHistoryChangeRef.current?.(historyRef.current);
           }
 
           if (update.docChanged) {
