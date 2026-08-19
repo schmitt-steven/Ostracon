@@ -733,6 +733,29 @@ body {
   opacity: 1;
 }
 
+/* The palette's secondary zones — the preview pane and the footer. A 2–3%
+   tonal step against --surface is what separates them from the list, in place
+   of the border a two-column dialog reaches for by default. Mixed in --ink so
+   the step goes darker on paper and lighter on ink without a second rule: the
+   token flips with the theme, and the *contrast* is what carries the meaning,
+   not the direction. */
+.palette-zone {
+  background-color: color-mix(in srgb, var(--ink) 3.5%, var(--surface));
+}
+
+/* A search hit inside a title or an excerpt. Deliberately the same treatment
+   as ::selection above, at the same strength: both mean "this is the text you
+   asked about", and a hit is not a thing you can click, so it must not borrow
+   --action. The negative margin cancels the padding — lighting up a word can't
+   be allowed to reflow the line it sits in. */
+.search-hit {
+  background-color: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 2px;
+  margin: 0 -2px;
+}
+
 /* An index row's highlight bleeds past the text column: negative margins
    cancel the padding so lighting up changes no geometry. */
 .bleed-row {

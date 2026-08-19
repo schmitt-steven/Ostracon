@@ -3,11 +3,9 @@
 import Link from "next/link";
 import {
   useEffect,
-  useImperativeHandle,
   useMemo,
   useRef,
   useState,
-  type Ref,
 } from "react";
 import { useTagHues } from "@/hooks/use-tag-hues";
 import { isValidTag, normalizeTag } from "@/lib/tags/parse";
@@ -25,11 +23,9 @@ type Props = {
    * its answer until someone asks.
    */
   onSuggest: () => string[];
-  ref?: Ref<TagBarHandle>;
 };
 
 /** Lets ⌘K open the field the same way the `+ tag` control does. */
-export type TagBarHandle = { open: () => void };
 
 /** How many completions the list shows at once. */
 const OPTION_LIMIT = 8;
@@ -75,7 +71,7 @@ type Option = { tag: string; suggested: boolean };
  * outlines, no chips, no visible delete buttons. Everything else here is
  * revealed by reaching for it.
  */
-export function TagBar({ tags, allTags, onChange, onSuggest, ref }: Props) {
+export function TagBar({ tags, allTags, onChange, onSuggest }: Props) {
   const { hueOf } = useTagHues();
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -101,7 +97,6 @@ export function TagBar({ tags, allTags, onChange, onSuggest, ref }: Props) {
     setDraft("");
   }
 
-  useImperativeHandle(ref, () => ({ open }));
 
   /**
    * The list under the field: what this note looks like it wants first, then

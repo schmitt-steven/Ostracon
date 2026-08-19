@@ -27,6 +27,21 @@ const LINE_PREFIX = /^\s*(#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+)/gm;
 const INLINE_MARKS = /[*_~`|]/g;
 
 /**
+ * How many images a body embeds.
+ *
+ * All three forms are counted off the same patterns the length discount uses,
+ * so "this note has images" and "images don't inflate its rank" can never
+ * disagree about what an image is.
+ */
+export function countImages(bodyMd: string): number {
+  return (
+    (bodyMd.match(IMAGE_INLINE)?.length ?? 0) +
+    (bodyMd.match(IMAGE_REFERENCE)?.length ?? 0) +
+    (bodyMd.match(IMAGE_HTML)?.length ?? 0)
+  );
+}
+
+/**
  * Number of characters of readable text in a markdown body, with images and
  * markup discounted. Whitespace is collapsed so that reformatting a note
  * (hard-wrapping a paragraph, say) doesn't change its rank.

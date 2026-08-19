@@ -13,6 +13,13 @@ export type Command = {
   label: string;
   /** Groups the palette's list. Sentence case, like everything else. */
   group: string;
+  /**
+   * The muted line under the label in the palette: what this does, in a
+   * fragment. Every row there states why it is on screen, and a command with
+   * nothing to say falls back to its group — "Editor" is a true answer even
+   * when it isn't a good one.
+   */
+  detail?: string;
   /** Extra words to match against — never shown. */
   keywords?: string;
   /** Shown right-aligned, in mono. */

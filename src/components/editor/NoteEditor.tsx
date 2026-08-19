@@ -15,7 +15,6 @@ import { useAiCompletion, type AiRequest } from "@/hooks/use-ai-completion";
 import { useAutosave } from "@/hooks/use-autosave";
 import { useCompactViewport } from "@/hooks/use-compact-viewport";
 import { useTagHues } from "@/hooks/use-tag-hues";
-import { registerCommands } from "@/lib/command/registry";
 import {
   getProviderChoice,
   getServerProviderChoice,
@@ -43,8 +42,8 @@ import { NoteDeleteButton } from "./NoteDeleteButton";
 import { NotePinButton } from "./NotePinButton";
 import { PreviewPane, type PreviewHandle } from "./PreviewPane";
 import { SaveToast } from "./SaveToast";
-import { TagBar, type TagBarHandle } from "./TagBar";
-import { ViewModeToggle, VIEW_MODES, type ViewMode } from "./ViewModeToggle";
+import { TagBar } from "./TagBar";
+import { ViewModeToggle, type ViewMode } from "./ViewModeToggle";
 
 /**
  * An answer being reviewed. The text lives here rather than in the document
@@ -159,7 +158,6 @@ export function NoteEditor({
   const editorRef = useRef<EditorHandle>(null);
   const previewRef = useRef<PreviewHandle>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
-  const tagBarRef = useRef<TagBarHandle>(null);
 
   const [aiMenu, setAiMenu] = useState<AiAnchor | null>(null);
   const [answer, setAnswer] = useState<AiAnswer | null>(null);
@@ -410,38 +408,13 @@ export function NoteEditor({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [backHref, router]);
 
-  // ⌘K's view-specific half. Registered from here because these are the only
-  // commands that mean anything while a note is open.
-  useEffect(() => {
-    const modes = compact
-      ? VIEW_MODES.filter(({ value }) => value !== "split")
-      : VIEW_MODES;
-    return registerCommands([
-      ...modes.map(({ value, label }) => ({
-        id: `mode-${value}`,
-        label: `${label} mode`,
-        group: "This note",
-        // "split" only matches while there is a split to switch to — on a
-        // phone it would land on Write, which isn't what was typed.
-        keywords: `view editor preview markdown${compact ? "" : " split"}`,
-        run: () => {
-          setMode(value);
-          if (value !== "preview") editorRef.current?.focus();
-        },
-      })),
-      {
-        id: "add-tags",
-        label: "Add tags",
-        group: "This note",
-        keywords: "tag hashtag topic file suggest",
-        // Opens the tag bar's field rather than doing anything itself. The
-        // suggestions for this note are the first rows in it, so the command
-        // and the bar are one behaviour with two ways in — and neither writes
-        // to the note without a click.
-        run: () => tagBarRef.current?.open(),
-      },
-    ]);
-  }, [compact]);
+  // Nothing is registered into ⌘K from here any more. The mode switches and
+  // "Add tags" were duplicates of controls already on screen — the toggle sits
+  // in the header and the tag bar is a click away above the body — and a
+  // palette that mirrors every visible control is a second interface to keep
+  // in step rather than a shortcut. Contextual commands are still supported
+  // (lib/command/registry); a view that has a verb with nowhere else to live
+  // can register one.
 
   function handleContainerBlur(e: React.FocusEvent<HTMLDivElement>) {
     // Only flush when focus leaves the editor entirely — not when it just
@@ -651,7 +624,6 @@ export function NoteEditor({
             same moment the title is — "what is this and where does it go" —
             and because a bar under the text is a bar you scroll to find. */}
         <TagBar
-          ref={tagBarRef}
           tags={tags}
           allTags={allTags}
           onChange={updateTags}

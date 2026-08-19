@@ -217,13 +217,17 @@ const SNIPPET_STRIP: [RegExp, string][] = [
 ];
 
 /**
- * The one muted line under a title in the index.
+ * A note's prose with its markup taken off: one line, no syntax, no hashtags.
  *
- * Hashtags come out because the row already renders the note's tags in their
- * own hues immediately after this text — leaving them in the prose would print
- * every tag twice, once as grey punctuation and once as colour.
+ * Split out from [noteSnippet] because the palette needs the same text without
+ * the truncation — it cuts its own window around whichever word matched, which
+ * is rarely in the first 120 characters.
+ *
+ * Hashtags come out because every surface that shows this text renders the
+ * note's tags in their own hues alongside it — leaving them in the prose would
+ * print every tag twice, once as grey punctuation and once as colour.
  */
-export function noteSnippet(bodyMd: string, limit = 120): string {
+export function plainText(bodyMd: string): string {
   let text = bodyMd;
   for (const [pattern, replacement] of SNIPPET_STRIP) {
     text = text.replace(pattern, replacement);
@@ -236,7 +240,12 @@ export function noteSnippet(bodyMd: string, limit = 120): string {
     text = text.slice(0, from) + text.slice(to);
   }
 
-  text = text.replace(/\s+/g, " ").trim();
+  return text.replace(/\s+/g, " ").trim();
+}
+
+/** The one muted line under a title in the index. */
+export function noteSnippet(bodyMd: string, limit = 120): string {
+  const text = plainText(bodyMd);
   if (text.length <= limit) return text;
   // Cut at a word boundary when there's one within reach, so the ellipsis
   // doesn't land mid-word.
