@@ -81,8 +81,8 @@ export function IndexSearch({ value, onChange, onArm, scope, tinted }: Props) {
         placeholder={`Search ${scope}`}
         aria-label={`Search ${scope} by title, text and tags`}
         spellCheck={false}
-        className={`w-full rounded-[var(--radius-control)] py-1.5 pl-8 pr-2 text-[13px] text-ink outline-none placeholder:text-ink-faint ${
-          tinted ? "hue-field" : "bg-field"
+        className={`well w-full rounded-[var(--radius-control)] py-1.5 pl-8 pr-2 text-[13px] text-ink outline-none placeholder:text-ink-faint ${
+          tinted ? "hue-field" : "bg-sunk"
         }`}
       />
     </div>

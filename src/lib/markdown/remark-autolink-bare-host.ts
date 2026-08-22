@@ -79,7 +79,7 @@ export function remarkAutolinkBareHost() {
             // this isn't, but a hand-written `<https://…>` can leave one), an
             // email's domain, or a path segment.
             const before =
-              match.index === 0 ? "" : match.input[match.index - 1] ?? "";
+              match.index === 0 ? "" : (match.input[match.index - 1] ?? "");
             if (before && /[@/\w.-]/.test(before)) return false;
 
             const link: Link = {

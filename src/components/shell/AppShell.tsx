@@ -15,6 +15,7 @@ import {
   subscribeRailOpen,
   toggleRailOpen,
 } from "@/lib/ui/rail-state";
+import { KnownTagsProvider } from "./KnownTags";
 import { Rail, type RailData } from "./Rail";
 
 type Props = {
@@ -26,8 +27,20 @@ type Props = {
 
 /**
  * The shell both views share: a fixed rail and a flexing main pane, 14px
- * apart, with no line between them. What separates the two is a 2–3% step in
- * lightness — the rail is the lighter field — and the gap itself.
+ * apart, with no line between them. What separates them is the gap itself and
+ * the fact that both are lifted off --paper, which shows through it.
+ *
+ * The rail is a flat --paper panel and stays one. It is the quietest surface
+ * in the app — a column of names you read past on the way to the thing you
+ * actually want — and every treatment that would make it interesting (a veil,
+ * a blur, a grain) makes it compete with the pane it exists to get you to.
+ * What it shares with everything else is the *hover*: see THE GLASS FINISH in
+ * globals.css, which is where this app's glass lives.
+ *
+ * A blur here would also be a bug rather than a style. A `backdrop-filter`
+ * other than `none` makes an element the containing block for every
+ * fixed-position descendant, and the rail hosts three — its two row menus and
+ * the rename dialog — which its own `overflow-hidden` would then clip away.
  *
  * Below 1000px the rail becomes an overlay drawer and the shell-level controls
  * move to a bottom bar. That breakpoint is where the spacing ratio has to
@@ -58,81 +71,83 @@ export function AppShell({ rail, tagNames, children }: Props) {
   );
 
   return (
-    <div className="flex h-dvh gap-[14px] p-[14px] max-[999px]:p-2 max-[999px]:pb-0">
-      <aside
-        // Width is the only thing that animates; the rail swaps to its strip
-        // layout on the first frame. Cross-fading the contents as well would
-        // draw the eye to the fold, which is the opposite of what folding
-        // something away is for.
-        className={`hidden shrink-0 overflow-hidden rounded-[var(--radius-zone)] bg-paper transition-[width] duration-200 ease-out motion-reduce:transition-none min-[1000px]:block ${
-          railOpen ? "w-60" : "w-[52px]"
-        }`}
-      >
-        <Rail
-          data={rail}
-          collapsed={!railOpen}
-          onToggleCollapsed={toggleRailOpen}
-        />
-      </aside>
-
-      {drawerOpen && (
-        <div className="fixed inset-0 z-40 min-[1000px]:hidden">
-          <button
-            type="button"
-            aria-label="Close menu"
-            onClick={() => setDrawerOpen(false)}
-            className="absolute inset-0 bg-shade/40"
+    <KnownTagsProvider tags={tagNames}>
+      <div className="flex h-dvh gap-[14px] p-[14px] max-[999px]:p-2 max-[999px]:pb-0">
+        <aside
+          // Width is the only thing that animates; the rail swaps to its strip
+          // layout on the first frame. Cross-fading the contents as well would
+          // draw the eye to the fold, which is the opposite of what folding
+          // something away is for.
+          className={`bg-paper hidden shrink-0 overflow-hidden rounded-[var(--radius-zone)] transition-[width] duration-200 ease-out motion-reduce:transition-none min-[1000px]:block ${
+            railOpen ? "w-60" : "w-[52px]"
+          }`}
+        >
+          <Rail
+            data={rail}
+            collapsed={!railOpen}
+            onToggleCollapsed={toggleRailOpen}
           />
-          <div className="absolute inset-y-2 left-2 w-64 overflow-hidden rounded-[var(--radius-zone)] bg-paper shadow-xl shadow-shade/25">
-            <Rail data={rail} onNavigate={() => setDrawerOpen(false)} />
-          </div>
-        </div>
-      )}
+        </aside>
 
-      {/* min-w-0 so a long title inside wraps instead of forcing this track
+        {drawerOpen && (
+          <div className="fixed inset-0 z-40 min-[1000px]:hidden">
+            <button
+              type="button"
+              aria-label="Close menu"
+              onClick={() => setDrawerOpen(false)}
+              className="scrim absolute inset-0"
+            />
+            <div className="bg-paper lift-3 absolute inset-y-2 left-2 w-64 overflow-hidden rounded-[var(--radius-zone)]">
+              <Rail data={rail} onNavigate={() => setDrawerOpen(false)} />
+            </div>
+          </div>
+        )}
+
+        {/* min-w-0 so a long title inside wraps instead of forcing this track
           wider than the viewport — the overflow bug that used to let stray
           characters escape the toolbar. */}
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-zone)]">
-        {children}
-      </main>
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-zone)]">
+          {children}
+        </main>
 
-      {/* Bottom bar, touch only. The controls that live in the pane header on
+        {/* Bottom bar, touch only. The controls that live in the pane header on
           a wide screen sit at thumb height here instead. */}
-      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around gap-2 bg-paper/90 px-4 py-2 backdrop-blur-md min-[1000px]:hidden">
-        {/* "Notes", not "Tags": the drawer is the whole rail — All notes,
+        <div className="glass lift-2 fixed inset-x-0 bottom-0 z-30 flex items-center justify-around gap-2 px-4 py-2 min-[1000px]:hidden">
+          {/* "Notes", not "Tags": the drawer is the whole rail — All notes,
             Untagged and Images sit above the tag tree in it — and naming it
             after one of its sections undersold where the button goes. */}
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          className="row-tint flex items-center gap-2 rounded-[var(--radius-control)] px-3 py-2 text-[13px] text-ink-muted"
-        >
-          <ListIcon />
-          Notes
-        </button>
-        <button
-          type="button"
-          onClick={() => setPaletteOpen(true)}
-          className="row-tint flex items-center gap-2 rounded-[var(--radius-control)] px-3 py-2 text-[13px] text-ink-muted"
-        >
-          <SearchIcon />
-          Search
-        </button>
-        <Link
-          href="/notes/new"
-          className="row-tint flex items-center gap-2 rounded-[var(--radius-control)] px-3 py-2 text-[13px] text-ink-muted"
-        >
-          <PlusIcon />
-          New note
-        </Link>
-      </div>
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            className="row-tint flex items-center gap-2 rounded-[var(--radius-control)] px-3 py-2 text-[13px] text-ink-muted"
+          >
+            <ListIcon />
+            Notes
+          </button>
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            className="row-tint flex items-center gap-2 rounded-[var(--radius-control)] px-3 py-2 text-[13px] text-ink-muted"
+          >
+            <SearchIcon />
+            Search
+          </button>
+          <Link
+            href="/notes/new"
+            className="row-tint flex items-center gap-2 rounded-[var(--radius-control)] px-3 py-2 text-[13px] text-ink-muted"
+          >
+            <PlusIcon />
+            New note
+          </Link>
+        </div>
 
-      <CommandPalette
-        tags={tagNames}
-        open={paletteOpen}
-        onOpenChange={setPaletteOpen}
-      />
-    </div>
+        <CommandPalette
+          tags={tagNames}
+          open={paletteOpen}
+          onOpenChange={setPaletteOpen}
+        />
+      </div>
+    </KnownTagsProvider>
   );
 }
 

@@ -1,5 +1,5 @@
 import "server-only";
-import { asc, desc, eq, isNotNull } from "drizzle-orm";
+import { desc, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import { links, notes } from "@/db/schema";
 import { MAX_PINNED_NOTES } from "./pins";
@@ -130,10 +130,15 @@ export function filterNotes(
   return all.filter((note) => note.tags.some((t) => tagMatches(t, tag)));
 }
 
-export type PinnedNote = { slug: string; title: string };
+export type PinnedNote = { id: string; slug: string; title: string };
 
 /**
- * The pinned notes, in the order they were pinned.
+ * The pinned notes, most recently pinned first.
+ *
+ * Newest first because the rail's pinned section reads top-down and the note
+ * you just pinned is the one you pinned it to reach. It is only the arrival
+ * order — [sortByPinOrder] puts anything the user has moved where they left
+ * it — but it is the order every un-moved row is shown in.
  *
  * Its own query rather than a filter over [listNotesOverview]: the rail needs
  * two columns of at most five rows, the overview reads and parses every note
@@ -145,12 +150,17 @@ export type PinnedNote = { slug: string; title: string };
  * growing a sixth line.
  */
 export async function listPinnedNotes(): Promise<PinnedNote[]> {
-  return db
-    .select({ slug: notes.slug, title: notes.title })
-    .from(notes)
-    .where(isNotNull(notes.pinnedAt))
-    .orderBy(asc(notes.pinnedAt))
-    .limit(MAX_PINNED_NOTES);
+  return (
+    db
+      // The id comes along for the rail's own unpin, which addresses the note by
+      // id the way [setNotePinned] does everywhere else; the slug is what the
+      // row links to.
+      .select({ id: notes.id, slug: notes.slug, title: notes.title })
+      .from(notes)
+      .where(isNotNull(notes.pinnedAt))
+      .orderBy(desc(notes.pinnedAt))
+      .limit(MAX_PINNED_NOTES)
+  );
 }
 
 export type Note = {

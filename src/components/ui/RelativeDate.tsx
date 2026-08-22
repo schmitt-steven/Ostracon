@@ -34,7 +34,9 @@ export function RelativeDate({ date, long = false, className }: Props) {
       suppressHydrationWarning
       className={className}
     >
-      {long ? longRelative(parsed, reference) : shortRelative(parsed, reference)}
+      {long
+        ? longRelative(parsed, reference)
+        : shortRelative(parsed, reference)}
     </time>
   );
 }

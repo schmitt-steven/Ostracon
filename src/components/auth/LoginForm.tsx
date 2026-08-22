@@ -33,10 +33,7 @@ function useCooldown(state: LoginState): number {
 }
 
 export function LoginForm() {
-  const [state, formAction, pending] = useActionState(
-    loginAction,
-    undefined,
-  );
+  const [state, formAction, pending] = useActionState(loginAction, undefined);
   const cooldown = useCooldown(state);
   const locked = cooldown > 0;
 
@@ -50,13 +47,13 @@ export function LoginForm() {
           autoFocus
           required
           disabled={locked}
-          className="rounded-lg border border-line bg-paper px-4 py-3 text-base font-normal normal-case tracking-normal text-ink outline-none transition-colors focus:border-action disabled:opacity-50"
+          className="well rounded-[var(--radius-control)] bg-sunk px-4 py-3 text-base font-normal normal-case tracking-normal text-ink outline-none transition-colors focus:bg-action-wash disabled:opacity-50"
         />
       </label>
       {state?.error && (
         <p
           role="alert"
-          className="rounded-lg bg-accent-wash px-4 py-2.5 text-base text-accent-hover"
+          className="rounded-[var(--radius-control)] bg-accent-wash px-4 py-2.5 text-base text-accent-hover"
         >
           {state.error}
           {locked && ` Try again in ${formatCountdown(cooldown)}.`}
@@ -65,7 +62,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={pending || locked}
-        className="rounded-lg bg-action px-4 py-3 text-base font-medium text-paper transition-colors hover:bg-action-hover disabled:opacity-50"
+        className="rounded-[var(--radius-control)] bg-action px-4 py-3 text-base font-medium text-paper transition-colors hover:bg-action-hover disabled:opacity-50"
       >
         {pending ? "Signing in…" : "Sign in"}
       </button>

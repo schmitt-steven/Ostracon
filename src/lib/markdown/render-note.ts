@@ -1,7 +1,10 @@
 import "server-only";
 import { listKnownTags } from "@/lib/notes/queries";
 import { normalizeTagList, knownTagSet } from "@/lib/tags/parse";
-import { extractWikilinkTitles, resolveWikilinkTitles } from "@/lib/notes/wikilinks";
+import {
+  extractWikilinkTitles,
+  resolveWikilinkTitles,
+} from "@/lib/notes/wikilinks";
 import { renderMarkdown } from "./pipeline";
 
 /**

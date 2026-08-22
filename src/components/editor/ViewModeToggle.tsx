@@ -5,7 +5,7 @@ export type ViewMode = "write" | "split" | "preview";
 export const VIEW_MODES: { value: ViewMode; label: string }[] = [
   { value: "write", label: "Write" },
   { value: "preview", label: "Preview" },
-   { value: "split", label: "Split" },
+  { value: "split", label: "Split" },
 ];
 
 type Props = {
@@ -32,10 +32,20 @@ type Props = {
  * the button is labelled with the side you aren't on, and pressing it goes
  * there.
  *
- * The active state is a small step in surface tone and a step in text
- * contrast. Nothing here is coloured: colour in this design means "this is a
- * tag", and spending it on a view toggle would dilute the one thing hue is
- * for.
+ * Both shapes are made of parts the rest of the app is already made of. The
+ * track is a `.well` — the same hole-in-a-panel the search field and the
+ * filter field are cut as — and the marker is `.row-selected`, the neutral
+ * "you are here" the rail paints under All notes. A segmented control drawn
+ * in tones of its own would have been a fourth idea of what "recessed" and
+ * "selected" look like; there are supposed to be one of each.
+ *
+ * The well is filled in translucent ink rather than --sunk, unlike those two
+ * fields: they sit on the rail, which is a flat surface, and this sits in the
+ * note header over the pane's coloured wash, where a flat grey box reads as a
+ * grey box dropped on top instead of a step down into what's behind it.
+ *
+ * Nothing here is coloured: colour in this design means "this is a tag", and
+ * spending it on a view toggle would dilute the one thing hue is for.
  */
 export function ViewModeToggle({ mode, onChange }: Props) {
   // Split collapses to the writing surface on a narrow screen, so the compact
@@ -52,15 +62,22 @@ export function ViewModeToggle({ mode, onChange }: Props) {
       <div
         role="group"
         aria-label="View mode"
+        // h-7 is the pin and delete buttons' height — the three controls end
+        // this row, and a track standing taller than the pair beside it was
+        // the one thing in the header not sitting on the same line.
+        //
         // p-0.5 is the track's inset, and the marker's `inset-y-0.5` /
         // `left-0.5` / `-4px` below are that same 2px — the marker sits inside
-        // the track rather than on top of its edge.
-        className="relative hidden shrink-0 rounded-[var(--radius-control)] bg-[color-mix(in_srgb,var(--ink)_5%,transparent)] p-0.5 min-[1000px]:grid min-[1000px]:grid-cols-3"
+        // the track rather than on top of its edge. The shade is taken down
+        // the way the search trigger takes it down: the well's default lip is
+        // set for a field you type into, and at this height it reads as a line
+        // ruled across the top rather than as depth.
+        className="well [--well-shade:0.2] relative hidden h-7 shrink-0 rounded-[var(--radius-control)] bg-[color-mix(in_srgb,var(--ink)_5%,transparent)] p-0.5 min-[1000px]:grid min-[1000px]:grid-cols-3"
       >
         <span
           aria-hidden
           style={{ transform: `translateX(${index * 100}%)` }}
-          className="pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc((100%-4px)/3)] rounded-[calc(var(--radius-control)-2px)] bg-[color-mix(in_srgb,var(--ink)_8%,transparent)] transition-transform duration-200 ease-out motion-reduce:transition-none"
+          className="row-selected pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc((100%-4px)/3)] rounded-[calc(var(--radius-control)-2px)] transition-transform duration-[var(--tint-motion)] ease-out motion-reduce:transition-none"
         />
         {VIEW_MODES.map(({ value, label }) => {
           const active = mode === value;
@@ -72,8 +89,10 @@ export function ViewModeToggle({ mode, onChange }: Props) {
               aria-pressed={active}
               // Equal columns with a floor, so the marker's third always
               // matches the segment under it and the track doesn't jitter as
-              // the labels change length.
-              className={`relative min-w-[68px] rounded-[calc(var(--radius-control)-2px)] px-3 py-1 text-[13px] transition-colors duration-200 motion-reduce:transition-none ${
+              // the labels change length. No vertical padding: the grid
+              // stretches each segment to the track, so the height is set in
+              // one place instead of being added up from three.
+              className={`relative min-w-[68px] rounded-[calc(var(--radius-control)-2px)] px-3 text-[13px] transition-colors duration-[var(--tint-motion)] motion-reduce:transition-none ${
                 active ? "text-ink" : "text-ink-faint hover:text-ink-muted"
               }`}
             >
@@ -89,7 +108,7 @@ export function ViewModeToggle({ mode, onChange }: Props) {
       <button
         type="button"
         onClick={() => onChange(previewing ? "write" : "preview")}
-        className="row-tint flex shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] px-2 py-1 text-[13px] text-ink-muted min-[1000px]:hidden"
+        className="row-tint flex h-7 shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] px-2 text-[13px] text-ink-muted min-[1000px]:hidden"
       >
         {previewing ? <PencilIcon /> : <EyeIcon />}
         {previewing ? "Write" : "Preview"}

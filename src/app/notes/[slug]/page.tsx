@@ -18,9 +18,11 @@ export default async function NotePage({
 }: PageProps<"/notes/[slug]">) {
   await requireAuth();
   const { slug } = await params;
-  // Set by the editor when it redirects here right after creating the note —
-  // the user is still writing, so don't open in preview.
-  const { created } = await searchParams;
+  // Which index this was opened from — see [resolveContextTag]. Passed on raw
+  // and resolved in the editor, against the tag list as it stands there: the
+  // tags are editable on this very screen, and a breadcrumb validated once on
+  // the server would go on naming a tag the user has just taken off the note.
+  const { from } = await searchParams;
   const note = await getNoteBySlug(slug);
   if (!note) notFound();
 
@@ -47,8 +49,8 @@ export default async function NotePage({
       defaultTitle={defaultNoteTitle(note.createdAt)}
       initialBodyMd={body}
       initialTags={tags}
+      openedFrom={typeof from === "string" ? from : undefined}
       initialPreviewHtml={previewHtml}
-      initialMode={created === "1" ? "write" : undefined}
       pinned={note.pinnedAt !== null}
       updatedAt={note.updatedAt.toISOString()}
       backlinks={backlinks}

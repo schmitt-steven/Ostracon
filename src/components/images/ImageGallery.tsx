@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { LocalDate } from "@/components/ui/LocalDate";
 import type { StoredImage } from "@/lib/images/queries";
+import { noteHref } from "@/lib/tags/routes";
 
 // Two columns on a phone, three once there's room. The pane's text column is
 // capped at 680px, so past that breakpoint a tile never exceeds ~215px — hence
@@ -27,7 +28,7 @@ function Thumbnail({ image, eager }: { image: StoredImage; eager: boolean }) {
       {/* Tone and radius, no stroke and no shadow — a bordered, elevated tile
           is a card, and the design has none. The sunk paper is enough to seat
           a transparent PNG. */}
-      <div className="relative aspect-4/3 overflow-hidden rounded-[var(--radius-control)] bg-paper-sunk">
+      <div className="relative aspect-4/3 overflow-hidden rounded-[var(--radius-control)] bg-sunk">
         <Image
           src={image.url}
           // The filename is the only description that exists — nothing records
@@ -63,7 +64,7 @@ export function ImageGallery({ images }: { images: StoredImage[] }) {
       {images.map((image, i) => (
         <li key={image.url}>
           <Link
-            href={`/notes/${image.note.slug}`}
+            href={noteHref(image.note.slug)}
             // The filename is otherwise nowhere in the UI — the caption line
             // is spent on the note, which is the more useful label.
             title={image.filename}

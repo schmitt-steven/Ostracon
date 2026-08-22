@@ -45,7 +45,9 @@ export async function loginAction(
     // return above — so the throttle bounds how fast this table can grow.
     await logFailure(key, password);
     const cooldown = await recordFailure(key);
-    return cooldown > 0 ? throttled(cooldown) : { error: "Incorrect password." };
+    return cooldown > 0
+      ? throttled(cooldown)
+      : { error: "Incorrect password." };
   }
   await clearFailures(key);
   await pruneFailureLog();

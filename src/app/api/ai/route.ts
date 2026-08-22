@@ -44,7 +44,9 @@ const RequestSchema = z.object({
 export async function POST(request: Request) {
   await requireAuth();
 
-  const parsed = RequestSchema.safeParse(await request.json().catch(() => null));
+  const parsed = RequestSchema.safeParse(
+    await request.json().catch(() => null),
+  );
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }

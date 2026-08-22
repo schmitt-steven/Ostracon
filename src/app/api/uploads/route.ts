@@ -19,10 +19,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
   if (!file.type.startsWith("image/")) {
-    return NextResponse.json({ error: "Only images are supported" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Only images are supported" },
+      { status: 400 },
+    );
   }
   if (file.size > MAX_BYTES) {
-    return NextResponse.json({ error: "Image too large (max 10MB)" }, { status: 413 });
+    return NextResponse.json(
+      { error: "Image too large (max 10MB)" },
+      { status: 413 },
+    );
   }
 
   const pathname = `notes/${Date.now()}-${sanitizeFilename(file.name || "image")}`;

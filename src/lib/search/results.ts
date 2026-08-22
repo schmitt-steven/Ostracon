@@ -83,5 +83,7 @@ function matchedTag(
  * is MiniSearch's score, title-boosted — survives inside each band.
  */
 export function byReason<T extends { reason: MatchReason }>(results: T[]): T[] {
-  return [...results].sort((a, b) => reasonRank(a.reason) - reasonRank(b.reason));
+  return [...results].sort(
+    (a, b) => reasonRank(a.reason) - reasonRank(b.reason),
+  );
 }

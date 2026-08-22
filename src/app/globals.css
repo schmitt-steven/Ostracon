@@ -1,62 +1,64 @@
 @import "tailwindcss";
 
-/* Warm paper, deep-blue ink, burnt-orange accent. The dark theme swaps the
-   two materials (ink navy becomes paper, paper cream becomes ink) rather than
-   inverting — --action is the one token whose hue actually differs between
-   themes. Every component styles itself from these tokens, so a theme is
-   exactly this block. */
+/* Neutral cool-grey ground, deep-blue ink, burnt-orange accent. The dark
+   theme swaps the two materials (ink navy becomes paper, paper cream becomes
+   ink) rather than inverting — --action is the one token whose hue actually
+   differs between themes. Every component styles itself from these tokens, so
+   a theme is exactly this block.
+
+   THREE GROUNDS, AND ONLY THREE. Everything with a background in this app is
+   one of them, and which one is decided by depth, never by component:
+
+     --paper    the page itself. Nothing is drawn on it directly; it is what
+                shows *through* and *between* the things that float on it.
+     --surface  the material every panel and pane is made of — the rail, the
+                palette, every menu, every dialog, the reading pane. If it is
+                a surface you look at, it is this one.
+     --sunk     a well cut into a panel: search fields, code blocks, the grey
+                behind an image that hasn't loaded. Always a step *away* from
+                --surface in the direction of --paper, in both themes.
+
+   The greys sit on one hue line (a hair cool, ~250°) so no ground reads warm
+   next to another. Only --accent and its wash are allowed to be warm. */
 :root {
   color-scheme: light;
 
-  --paper: #eaeaea;
-  --paper-sunk: #f0f0f0;
-  --surface: #f0f0f0;
-  /* Ground for the two search fields — visible against --paper without going
-     as dark as --line-strong. */
-  --field: #d8d8d3;
-  --surface-hover: #f1f5fd;
+  --paper: #e6e8ec;
+  --surface: #f4f5f8;
+  --sunk: #dee1e7;
 
   /* Same navy at three depths; contrast is tuned against the worst ground
-     each step lands on (the tag pills sit on --accent-wash / --paper-sunk),
-     not against --paper alone. */
+     each step lands on (the tag pills sit on --accent-wash / --sunk), not
+     against --surface alone. */
   --ink: #0a1a33;
   --ink-muted: #42506a;
-  --ink-faint: #565f6b;
+  --ink-faint: #5a6478;
 
   /* Orange is ambient only (wash, bullets, links); anything clickable is
      --action, so the two never compete for "this is actionable". */
   --accent: #c25a1e;
   --accent-hover: #a94a15;
   --accent-wash: #f7e5d1;
-  /* The auto "created/modified today" tag gets its own pair since --accent
-     itself is under the 4.5:1 floor as small text. */
-  --auto-tag: #9a4212;
-  --auto-tag-wash: var(--accent-wash);
 
   --action: #1d4e8f;
   --action-hover: #163d73;
   --action-wash: #dfe8f7;
-  --action-seat: var(--action-wash);
 
+  /* Code strings only (CodeMirrorEditor's highlight style). It has no wash
+     because nothing is ever painted green here — if that changes, the wash
+     belongs back in this block rather than mixed at the call site. */
   --green: #2f6b46;
-  --green-wash: #e1eddc;
 
   --danger: #a32e28;
   --danger-hover: #8a231e;
   --danger-wash: #f6dedb;
 
-  --line: #dcdcd9;
-  --line-strong: #c3c3c0;
+  --line: #d6d9df;
+  --line-strong: #bcc0c9;
 
   /* Not --ink — that flips to cream in dark mode and would turn shadows into
      halos. */
   --shade: #0e0f11;
-
-  --glow-top: 12%;
-  --glow-low: 7%;
-
-  --background: var(--paper);
-  --foreground: var(--ink);
 }
 
 /* Applied from data-theme on <html>, stamped pre-paint by the inline script
@@ -65,79 +67,66 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  --paper: #131315;
-  /* Inverts direction from the light theme: below this there's only black, so
-     "sunk" has to step up rather than down. */
-  --paper-sunk: #303033;
-  --surface: #26262a;
-  /* Ground for the two search fields — pulled back near --paper rather than
-     toward --surface, so it stays a shade rather than a highlight. */
-  --field: #19191b;
-  --surface-hover: #241f19;
+  /* The same three grounds in the same order — panel above page, well below
+     panel. The dark theme used to invert that middle step (its "sunk" was
+     *lighter* than its surface, so a code block glowed on ink and dented on
+     paper); it doesn't any more. A well is a well in both themes, and the
+     floor it steps toward is the page, not black. */
+  --paper: #0e0f12;
+  --surface: #1a1c21;
+  --sunk: #121418;
 
   --ink: #fbf7f2;
   --ink-muted: #c1bab0;
-  --ink-faint: #9e978d;
+  --ink-faint: #99938c;
 
   /* Ambient/actionable split now spelled in two warm hues (terracotta,
      amber) instead of across the wheel, since navy became the paper. */
   --accent: #d9794e;
   --accent-hover: #e88f63;
   --accent-wash: #2e1e14;
-  /* Blue is the hue this theme has going spare, so the auto-tag takes it
-     instead of a third warm tone. */
-  --auto-tag: #8dbcf5;
-  --auto-tag-wash: #1a2b45;
 
   --action: #eba55f;
   --action-hover: #f6b877;
   --action-wash: #33261a;
-  --action-seat: color-mix(in srgb, var(--action-wash) 50%, var(--surface));
 
   --green: #7cba90;
-  --green-wash: #1a2a20;
 
   --danger: #e5615a;
   --danger-hover: #f0776f;
   --danger-wash: #331a1a;
 
-  --line: #2e3033;
-  --line-strong: #414447;
+  --line: #2b2e34;
+  --line-strong: #3e424a;
 
   --shade: #05070a;
-
-  --glow-top: 10%;
-  --glow-low: 6%;
 }
 
+/* The tokens that components reach for as utilities, and only those. Anything
+   exported here becomes `bg-*`/`text-*`/`border-*`, so a token that survives
+   its last call site goes on offering itself in autocomplete for years.
+
+   Three are deliberately not here — --green, --line-strong and --shade. Each
+   is still very much alive, but only inside this file (the code highlighter,
+   the unresolved-wikilink underline, the `--lift-*` shadows), and a utility
+   nothing calls is a utility that invites a call that shouldn't be made. */
 @theme inline {
   --color-paper: var(--paper);
-  --color-paper-sunk: var(--paper-sunk);
-  --color-field: var(--field);
   --color-surface: var(--surface);
-  --color-surface-hover: var(--surface-hover);
+  --color-sunk: var(--sunk);
   --color-ink: var(--ink);
   --color-ink-muted: var(--ink-muted);
   --color-ink-faint: var(--ink-faint);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-wash: var(--accent-wash);
-  --color-auto-tag: var(--auto-tag);
-  --color-auto-tag-wash: var(--auto-tag-wash);
   --color-action: var(--action);
   --color-action-hover: var(--action-hover);
   --color-action-wash: var(--action-wash);
-  --color-action-seat: var(--action-seat);
-  --color-green: var(--green);
-  --color-green-wash: var(--green-wash);
   --color-danger: var(--danger);
   --color-danger-hover: var(--danger-hover);
   --color-danger-wash: var(--danger-wash);
   --color-line: var(--line);
-  --color-line-strong: var(--line-strong);
-  --color-shade: var(--shade);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
 
   --font-sans: var(--font-plex-sans);
   --font-mono: var(--font-plex-mono);
@@ -185,6 +174,97 @@ body {
 :focus-visible {
   outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
   outline-offset: 2px;
+}
+
+/* ── The scrollbar ─────────────────────────────────────────────────────────
+   The same rule the rest of the app follows: no rails, no borders, no track.
+   A scrollbar here is one soft ink capsule floating in the gutter, and the
+   gutter itself is nothing — the surface underneath runs straight through it,
+   so a scrolling list inside the palette or a menu doesn't get a grey channel
+   cut down its edge.
+
+   The float is the `border` + `background-clip: content-box` trick: the thumb
+   is painted only inside its content box, so a transparent border is a real
+   inset the capsule sits in, at every edge including the two ends. Padding
+   would not do it — a scrollbar thumb's box is laid out by the engine, and
+   this is the one property that reaches inside it.
+
+   Mixed in --ink rather than given a colour, so the capsule is dark on paper
+   and pale on ink without a second declaration, and stays faint enough to read
+   as a position rather than as a control until you reach for it.
+
+   `scrollbar-width`/`scrollbar-color` are the same intent for Firefox, which
+   has no pseudo-elements: thin, no track, same thumb tone. It can't inset the
+   thumb, so there it is a hairline against the edge rather than a floating
+   capsule — the closest the property allows. */
+:root {
+  /* The gutter. The capsule is this minus twice --scroll-inset, so the two
+     move together: widen the gutter without touching the inset and you get a
+     fatter bar, not a floatier one. */
+  --scroll-size: 12px;
+  --scroll-inset: 4px;
+  /* How far the bar stops short of each end of its scroller. The thumb is
+     sized as a fraction of the track, so this shortens the capsule as well as
+     pulling it in — which is the point: a bar that runs corner to corner is a
+     rail, and a rail is the thing this isn't. */
+  --scroll-end: 10px;
+  --scroll-thumb: color-mix(in srgb, var(--ink) 16%, transparent);
+  --scroll-thumb-live: color-mix(in srgb, var(--ink) 30%, transparent);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: var(--scroll-size);
+  height: var(--scroll-size);
+  background: transparent;
+}
+
+/* Both explicitly nothing. A track left at its default is the grey channel
+   this whole block exists to remove, and the corner is the little square
+   where two scrollbars meet — the one piece that gives away a styled bar as
+   painted-over chrome. */
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Split by axis rather than given one `margin`, which on a vertical bar would
+   also squeeze the track sideways and undo the inset the thumb floats in. */
+::-webkit-scrollbar-track:vertical {
+  margin-block: var(--scroll-end);
+}
+
+::-webkit-scrollbar-track:horizontal {
+  margin-inline: var(--scroll-end);
+}
+
+/* The stepper arrows, gone. Nothing else in the app is a raised button. */
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scroll-thumb);
+  background-clip: content-box;
+  border: var(--scroll-inset) solid transparent;
+  border-radius: 9999px;
+  /* The floor, for a very long note where the proportional length would be a
+     dot you can't grab. Kept low so it doesn't fight --scroll-end on a short
+     pane — a floor taller than the track it sits in is a bar that fills the
+     whole scroller again. */
+  min-height: 2rem;
+}
+
+/* :active as well as :hover — dragging the thumb takes the pointer off it the
+   moment the drag overshoots, and a capsule that dims mid-drag reads as having
+   been dropped. */
+::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--scroll-thumb-live);
 }
 
 /* SaveToast, dropping in below the corner nav. */
@@ -313,7 +393,7 @@ body {
 .markdown-body code {
   font-family: var(--font-mono), monospace;
   font-size: 0.875em;
-  background: var(--paper-sunk);
+  background: var(--sunk);
   color: color-mix(in srgb, var(--accent) 80%, var(--ink));
   border-radius: 0.25em;
   padding: 0.15em 0.4em;
@@ -321,7 +401,7 @@ body {
 
 .markdown-body pre {
   overflow-x: auto;
-  background: var(--paper-sunk);
+  background: var(--sunk);
   border-radius: var(--radius-control);
   padding: 1em;
 }
@@ -349,7 +429,7 @@ body {
 }
 
 .markdown-body th {
-  background: var(--paper-sunk);
+  background: var(--sunk);
   font-weight: 600;
   color: var(--ink);
 }
@@ -439,7 +519,7 @@ body {
    inline and the dark one in --shiki-dark. Either theme's own background is
    dropped for the app's sunk-paper tone. */
 .markdown-body .shiki {
-  background-color: var(--paper-sunk) !important;
+  background-color: var(--sunk) !important;
 }
 
 .markdown-body .shiki span {
@@ -475,9 +555,221 @@ body {
 
   /* Zones get the larger radius; controls and hover tints get the smaller.
      Content blocks and index rows get neither — a radius there reads as a
-     card. */
+     card. Nothing in the app is allowed a third value — `rounded-2xl` on one
+     menu and `rounded-[var(--radius-zone)]` on the next is the kind of drift
+     that makes two panels doing the same job look like two components from
+     two apps. */
   --radius-zone: 10px;
   --radius-control: 6px;
+
+  /* Every pane's header is this tall — the index's, the gallery's, the
+     editor's. It is a token rather than each header's own natural height
+     because [PaneScroller] has to stand its content off by exactly this much,
+     and a measured height would mean a ResizeObserver and a jump on hydration.
+     16px of air above and below a 28px control, which is what the controls in
+     those headers (the mode switcher, the pin) already are. */
+  --head-h: 60px;
+}
+
+/* ===========================================================================
+   TWO MATERIALS
+   Everything with a background is made of one of them, and which one is
+   decided by whether it floats.
+
+     .pane   The ground you read on — the note, the index, the gallery. Opaque
+             --surface, four soft coloured lights pushed to the corners, and a
+             damper in the middle so the calmest region is where the text
+             column sits. Fills its track. Never floats, never blurs: there is
+             nothing behind it to report.
+
+     .glass  What floats over a pane — the palette, every menu, every dialog,
+             the toast, the touch bar. A veil of --paper, the rail's ground, a
+             blur that reports what's underneath, a sheen down the lit edge and
+             a rim in ink where nothing is lighting it. One `--lift-*` for the
+             shadow.
+
+   Neither is textured. The nano-etch belongs to `.pane-etched` and to exactly
+   one surface — the note you write on. A grain repeated across the rail, the
+   menus and the panels stops being a material and becomes wallpaper.
+
+   Two grounds, one each, and no third: a pane is --surface, everything that
+   floats is --paper. That is the rail's colour, so a menu, a dialog and the
+   command palette are all the rail's material lifted off the page — which is
+   the answer to "why does the search menu look like it came from a different
+   app". A --surface veil over a --surface pane was invisible anyway, and left
+   the rim and the shadow doing all the work.
+
+   Both are finished the same way where you touch them: see THE GLASS FINISH
+   below, which is where the glass in this app actually shows.
+   =========================================================================== */
+
+:root {
+  /* What the veil is mixed from: --paper, so every floating surface is the
+     rail's ground rather than a colour of its own. */
+  --glass-ground: var(--paper);
+  /* And how solid. High on purpose — these are surfaces you read, and the
+     floor is set by the smallest text that ever sits on one (the palette's
+     11px section headings). The blur is what says "there is something behind
+     this", not the transparency; a veil thin enough to see the page through
+     is a veil thin enough to read the page through. */
+  --glass-a: 0.88;
+  --glass-blur: 22px;
+  /* The lit edge, along the top. Near-white on a near-white panel is almost
+     nothing in the light theme, which is correct — there the rim and the
+     shadow draw the edge, and the sheen is a hint. */
+  --glass-sheen: 0.5;
+  /* The other three edges. Mixed in --ink rather than a fixed dark, so it
+     flips to a pale rim in the dark theme without a second declaration —
+     "ink" is the right answer in both, it's just a different ink. */
+  --glass-rim: 0.07;
+
+  /* The nano-etch. 3px is a texture; 8px is a grid and reads as one. Off
+     everywhere but `.pane-etched` — see there for why it is one surface only.
+     0 removes it. */
+  --etch: 0;
+  --etch-pitch: 4px;
+
+  /* Which way light falls. Both flip with the ground: on pale paper the etch
+     is a scratch and the sheen is barely there, on ink it is the reverse. */
+  --sheen-ink: 255 255 255;
+  --etch-ink: 0 0 0;
+
+  /* Three elevations, and nothing invents a fourth. What separates them is
+     how far the thing is off the page, which is the same question as how much
+     of the app it interrupts:
+       1  seated — a control, an inline card
+       2  opened — a menu, a popover, the toast
+       3  modal  — the palette, a dialog, the touch drawer */
+  --lift-1:
+    0 1px 2px color-mix(in srgb, var(--shade) 5%, transparent),
+    0 6px 16px color-mix(in srgb, var(--shade) 6%, transparent);
+  --lift-2:
+    0 2px 6px color-mix(in srgb, var(--shade) 7%, transparent),
+    0 14px 34px color-mix(in srgb, var(--shade) 10%, transparent);
+  --lift-3:
+    0 6px 14px color-mix(in srgb, var(--shade) 10%, transparent),
+    0 34px 72px color-mix(in srgb, var(--shade) 18%, transparent);
+}
+
+[data-theme="dark"] {
+  /* A touch more transparent and a touch more blurred: over ink there is more
+     tonal room to give away before text stops reading. */
+  --glass-a: 0.86;
+  --glass-blur: 26px;
+  /* And the sheen inverts its job — here the panel is darker than white, so a
+     white top edge is the loudest cue the material has. */
+  --glass-sheen: 0.08;
+  --glass-rim: 0.09;
+
+  --sheen-ink: 255 255 255;
+  --etch-ink: 255 255 255;
+
+  /* A shadow over ink has to be several times deeper before it registers at
+     all — the same shade at 6% is invisible on #0e0f12. */
+  --lift-1:
+    0 1px 2px color-mix(in srgb, var(--shade) 22%, transparent),
+    0 6px 16px color-mix(in srgb, var(--shade) 28%, transparent);
+  --lift-2:
+    0 2px 6px color-mix(in srgb, var(--shade) 30%, transparent),
+    0 14px 34px color-mix(in srgb, var(--shade) 42%, transparent);
+  --lift-3:
+    0 6px 14px color-mix(in srgb, var(--shade) 38%, transparent),
+    0 34px 72px color-mix(in srgb, var(--shade) 60%, transparent);
+}
+
+/* The floating material.
+ *
+ * The texture rides `background-image` rather than a pseudo-element, and that
+ * is not an optimisation: a ::before or ::after paints above the element's
+ * non-positioned children, so every menu, dialog and toast would need its
+ * contents lifted with `position: relative` to stay out from under its own
+ * highlight. A background always paints under content, and it composes — the
+ * etch and the sweep are layers of one stack, switched by two variables.
+ *
+ * `blur()` and nothing else in the filter. A `saturate()` here — the usual
+ * second half of a glass recipe — pushes the chroma of whatever is behind it,
+ * and behind these is the pane wash at its strongest lights: the surface came
+ * out a hotter patch of colour than the pane it was lying on, which is the one
+ * thing a see-through thing must not do. Glass reports what's under it. */
+.glass {
+  --lift: 0 0 rgb(0 0 0 / 0);
+  /* Reset, not a default: --etch inherits, and a menu opened inside a `.pane`
+     would otherwise pick up the pane's 0.85 and come out grained like a wall.
+     Each surface says for itself whether it is large enough to want texture. */
+  --etch: 0;
+  backdrop-filter: blur(var(--glass-blur));
+  background-color: color-mix(
+    in srgb,
+    var(--glass-ground) calc(var(--glass-a) * 100%),
+    transparent
+  );
+  background-image:
+    /* 1 — the etch, if this surface asked for it. */
+    linear-gradient(
+      rgb(var(--etch-ink) / calc(0.05 * var(--etch))) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgb(var(--etch-ink) / calc(0.035 * var(--etch))) 1px,
+      transparent 1px
+    ),
+    /* 2 — the sweep: one light entering from the top-left corner and gone by
+       the middle. What makes the panel read as a sheet catching a light rather
+       than as a flat fill with a border. */
+    linear-gradient(
+        152deg,
+        rgb(var(--sheen-ink) / calc(0.5 * var(--glass-sheen))) 0%,
+        rgb(var(--sheen-ink) / calc(0.14 * var(--glass-sheen))) 34%,
+        transparent 62%
+      );
+  background-size:
+    var(--etch-pitch) var(--etch-pitch),
+    var(--etch-pitch) var(--etch-pitch),
+    auto;
+  box-shadow:
+    inset 0 1px 0 rgb(var(--sheen-ink) / var(--glass-sheen)),
+    inset 0 0 0 1px
+      color-mix(in srgb, var(--ink) calc(var(--glass-rim) * 100%), transparent),
+    var(--lift);
+}
+
+/* The command palette. It covers most of the window, holds the smallest type
+   in the app, and is the one surface you stop and read a list on — so it takes
+   the veil almost solid and lets the blur alone say what's behind it. */
+.glass-dense {
+  --glass-a: 0.96;
+}
+
+/* `.glass` folds --lift into its own box-shadow, alongside the sheen and the
+   rim. Anything that floats without being glass — the touch drawer, which is
+   painted --paper — needs the shadow spelled out, and `:not(.glass)` keeps the
+   two from fighting over the same property. */
+.lift-1 {
+  --lift: var(--lift-1);
+}
+.lift-2 {
+  --lift: var(--lift-2);
+}
+.lift-3 {
+  --lift: var(--lift-3);
+}
+
+.lift-1:not(.glass),
+.lift-2:not(.glass),
+.lift-3:not(.glass) {
+  box-shadow: var(--lift);
+}
+
+/* A scrim under anything modal. One value, so two dialogs never dim the app
+   by two different amounts. */
+.scrim {
+  background-color: color-mix(in srgb, var(--shade) 42%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+[data-theme="dark"] .scrim {
+  background-color: color-mix(in srgb, var(--shade) 62%, transparent);
 }
 
 /* Every tag has a hue (lib/tags/hue.ts); chroma and lightness are locked here
@@ -500,14 +792,15 @@ body {
   --tag-text-c: 0.11;
 
   /* Intensity by area, inverse: the larger the painted region, the less
-     chroma before it stops reading as a tint and starts reading as a block. */
-  --wash-alpha: 0.12; /* the content pane */
+     chroma before it stops reading as a tint and starts reading as a block.
+     (The largest region of all — a whole pane — is no longer one of these: it
+     is four lights and a damper now, under `.pane`.) */
   --tint-row: 0.12; /* an index row under the cursor */
   --tint-selected: 0.16; /* the current tag in the rail */
   /* The tag-scoped search field — a stronger step of the same wash rather
-     than a tint over the neutral --field, whose base is dark enough here
-     that any amount of hue mixed into it still read as a grey box with a
-     colour cast, not a part of the wash. */
+     than a tint over the neutral --sunk, whose base is dark enough here that
+     any amount of hue mixed into it still read as a grey box with a colour
+     cast, not a part of the wash. */
   --field-tint-base: var(--surface);
   --field-tint: 0.2;
 
@@ -521,13 +814,10 @@ body {
 [data-theme="dark"] {
   --tag-l: 0.72;
   --tag-text-l: 0.78;
-  /* Less than half the light theme's: a bright tone over dark reads as
-     colour sooner than a dark tone over pale. */
-  --wash-alpha: 0.05;
-  /* --field itself is close to --paper here, dark enough against --surface
-     to still register as a box, so the dark field keeps that base instead
-     of --surface. */
-  --field-tint-base: var(--field);
+  /* --sunk itself is close to --paper here, dark enough against --surface to
+     still register as a box, so the dark field keeps that base instead of
+     --surface. */
+  --field-tint-base: var(--sunk);
   --field-tint: 0.16;
 }
 
@@ -544,15 +834,72 @@ body {
   background-color: oklch(var(--tag-l) var(--tag-c) var(--h) / 0.6);
 }
 
-/* Opaque, composited by hand: the sticky headers fade content out against
-   this exact colour, and a gradient can only match a background it can
-   name. */
-.hue-wash {
-  background-color: color-mix(
-    in srgb,
-    oklch(var(--tag-l) var(--tag-c) var(--h)) calc(var(--wash-alpha) * 100%),
-    var(--surface)
-  );
+/* The same colour, grown into a control: the swatch at the head of a tag's own
+   index. A 9px disc beside 28px type is a legend — it says what colour this tag
+   is and nothing whatsoever about being pressable, which is exactly how it
+   read. The rim and the seat are what change that, not the diameter, so it sits
+   at 16px: the size of the pin's glyph at the other end of the heading row,
+   which keeps the two ends of that row weighted the same.
+
+   The rim is mixed from --ink rather than drawn in a fixed grey, so it keeps
+   its edge under a pale swatch on pale paper and a dark one on the dark surface
+   without a second declaration — and it is an inset shadow rather than a
+   border so the disc doesn't grow by two pixels when the rim is there. */
+.hue-swatch {
+  background-color: oklch(var(--tag-l) var(--tag-c) var(--h));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--ink) 30%, transparent),
+    var(--lift-1);
+}
+
+/* ── The twelve slots ──────────────────────────────────────────────────────
+   The colour palette's swatches, wherever it is opened from — the rail's menu
+   or the index heading. They have to answer two questions at once: which one
+   is under the pointer, and which one is already this tag's.
+
+   So the two marks differ in kind, not in strength. A rim that is merely
+   darker than another rim is one you can only read by comparing it with the
+   eleven beside it, which is precisely the work a selected state exists to
+   save.
+
+     hover      a hairline on the inside of the edge. The colour, drawn round.
+     selected   the same hairline with a pale band inside it, so the disc reads
+                as a target rather than as a dot. Two rings, not a thicker one.
+
+   Both rings are a pixel each. The pale one was two, which is a quarter of a
+   16px disc's radius spent on the mark — enough that the chosen swatch showed
+   less of its own colour than the eleven it was chosen over, and the colour is
+   the thing being picked. A hairline is all a second ring needs to be to read
+   as a separate ring, and the 1.25× scale on the selected slot carries it.
+
+   Both are inset, so neither changes the swatch's footprint and the row of
+   twelve never reflows under the pointer. `--sheen-ink` for the pale band
+   rather than a fixed white: it is the same "which way light falls" token the
+   materials use, so the band stays the light side of the colour in both
+   themes.
+
+   The selected rule comes second on purpose — same specificity as the hover
+   one, so source order is what keeps the chosen swatch wearing its own mark
+   while the pointer is on it. */
+.hue-slot:hover,
+.hue-slot:focus-visible {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.hue-slot[aria-pressed="true"] {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--ink) 45%, transparent),
+    inset 0 0 0 2px rgb(var(--sheen-ink) / 0.9);
+}
+
+/* The rows that aren't tags — pinned notes, All notes, Untagged, Images —
+   carry a ring instead of a disc. It puts their names on the same left edge
+   as every tag name in the rail, which is the whole point of it, while an
+   unfilled circle stays visibly not-a-tag: filled in grey it would read as a
+   tag whose colour hadn't loaded. */
+.rail-dot {
+  border: 1px solid var(--ink-faint);
+  opacity: 0.55;
 }
 
 .hue-text {
@@ -560,9 +907,9 @@ body {
 }
 
 /* The tag-scoped search field (IndexSearch on a tag view) — tinted from the
-   same --h as the pane wash it sits on, rather than the flat neutral
-   --field, so it reads as a deeper pool of the same colour instead of a grey
-   box dropped on top. */
+   same --h as the pane wash it sits on, rather than the flat neutral --sunk,
+   so it reads as a deeper pool of the same colour instead of a grey box
+   dropped on top. */
 .hue-field {
   background-color: color-mix(
     in srgb,
@@ -585,12 +932,210 @@ body {
   );
 }
 
-/* The pane carries this, so anything referencing --h inside it transitions
-   for free when the hue changes on navigation. */
-.hue-shift {
-  transition:
-    --h var(--hue-motion) ease,
-    background-color var(--hue-motion) ease;
+/* ── .pane: colour wash + nano-etch ───────────────────────────────────────
+   The reading material, and every full-height view is made of it — the note,
+   the index, the gallery. Four soft lights placed off-centre plus a damper in
+   the middle, so the calmest region of the pane is exactly where the text
+   column sits, and a nano-etch over the top to stop a large flat area from
+   looking like an unpainted div.
+
+   Which four colours is decided per view in lib/tags/wash.ts — from the
+   note's own tags, or the index's one tag, or a near-neutral palette when
+   there are none — and arrives as --wash-h1..4 (hue) and --wash-c1..4 (how
+   much of the palette's chroma that light gets). Everything else is here.
+
+   One pseudo-element, not two: the etch rides the same background stack as
+   the wash and blends into it with background-blend-mode, which does what a
+   separate soft-light layer would without the stacking context that layer
+   needs — the pane holds fixed-position overlays (the AI card, the save
+   toast) whose z-order is the whole page's, not this pane's.
+
+   Two knobs, and they are the point of the file:
+     --wash-film  strength of the colour, all four lights and the damper
+                  together. 0 is a plain --surface pane.
+     --etch       strength of the etch, shared with .glass so the floating
+                  surfaces are grained to match. 0 removes it. */
+
+@property --wash-h1 {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 275;
+}
+@property --wash-h2 {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 232;
+}
+@property --wash-h3 {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 250;
+}
+@property --wash-h4 {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 200;
+}
+/* Chroma as a multiple of --tag-c, so the theme keeps saying how saturated
+   colour is allowed to get and a light only says how much of that it takes.
+   The initial values are the untagged palette, so a pane that never gets the
+   custom properties set still looks like the design rather than like a bug. */
+@property --wash-c1 {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0.3;
+}
+@property --wash-c2 {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0.22;
+}
+@property --wash-c3 {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0.1;
+}
+@property --wash-c4 {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0.14;
+}
+
+.pane {
+  position: relative;
+  background-color: var(--surface);
+
+  /* Per-light alpha, before --wash-film. Descending on purpose: the wash is
+     one light with three answers to it, not four equals. lib/tags/wash.ts
+     hands the note's own tag hues over in this order, so a real tag always
+     outranks a hue this app invented to fill the wheel. */
+  --wash-a1: 0.15;
+  --wash-a2: 0.11;
+  --wash-a3: 0.09;
+  --wash-a4: 0.07;
+  /* The damper. Scaled by --wash-film with the lights, so turning the colour
+     down doesn't leave a grey thumbprint over the middle of the pane. */
+  --wash-damp: 0.14;
+
+  --wash-film: 1.3;
+
+  /* The damper's job is to put the middle back to plain --surface, so it has
+     to push against whatever direction the lights pull. On pale paper they
+     darken, so the damper is white. */
+  --wash-damp-ink: 255 255 255;
+
+  /* The wash cross-fades between notes rather than cutting, which is what
+     makes moving between two notes read as one surface changing colour
+     instead of as a page swap. --h rides along for the tag pills inside. */
+  transition-property:
+    --h, --wash-h1, --wash-h2, --wash-h3, --wash-h4, --wash-c1, --wash-c2,
+    --wash-c3, --wash-c4;
+  transition-duration: var(--hue-motion);
+  transition-timing-function: ease;
+}
+
+[data-theme="dark"] .pane {
+  /* A bright tone over dark reads as colour sooner than a dark tone over
+     pale — the same ratio --tint-row and --tint-selected use. */
+  --wash-film: 1;
+  /* Here the lights lift the surface, so the damper is what takes light away.
+     (The etch's own ink flips at the root, with the rest of the material
+     tokens — it is shared with .glass and only has to be said once.) */
+  --wash-damp-ink: 0 0 0;
+}
+
+/* The nano-etch, and the two reading surfaces are the only things that get it:
+   the note you write on and the index you pick one from. It earns its place
+   there and nowhere else — those are the views you sit in front of, the ones
+   with the largest unbroken areas of flat colour, and the ones where a surface
+   that feels like paper rather than like a div is the whole point. Clicking a
+   row used to change the material the app was made of, the same way a flat
+   index under a washed note did before the wash was shared; it doesn't now.
+
+   On a rail, a menu or a dialog the same grain reads as wallpaper — repeated
+   often enough, a texture stops being a material. */
+.pane-etched {
+  --etch: 0.85;
+}
+
+.pane::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* The stack's own ground, so the soft-light etch has something defined to
+     blend against rather than transparency. */
+  background-color: var(--surface);
+  background-image:
+    /* 1 — the etch, on top of everything and blended into it below. */
+    linear-gradient(
+      rgb(var(--etch-ink) / calc(0.05 * var(--etch))) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgb(var(--etch-ink) / calc(0.035 * var(--etch))) 1px,
+      transparent 1px
+    ),
+    /* 2 — the four lights, pushed to the corners deliberately. */
+    radial-gradient(
+        58% 46% at 10% 4%,
+        oklch(
+          var(--tag-l) calc(var(--tag-c) * var(--wash-c1)) var(--wash-h1) /
+            calc(var(--wash-a1) * var(--wash-film))
+        ),
+        transparent 72%
+      ),
+    radial-gradient(
+      46% 40% at 95% 12%,
+      oklch(
+        var(--tag-l) calc(var(--tag-c) * var(--wash-c2)) var(--wash-h2) /
+          calc(var(--wash-a2) * var(--wash-film))
+      ),
+      transparent 72%
+    ),
+    radial-gradient(
+      52% 44% at 74% 92%,
+      oklch(
+        var(--tag-l) calc(var(--tag-c) * var(--wash-c3)) var(--wash-h3) /
+          calc(var(--wash-a3) * var(--wash-film))
+      ),
+      transparent 72%
+    ),
+    radial-gradient(
+      40% 34% at 30% 74%,
+      oklch(
+        var(--tag-l) calc(var(--tag-c) * var(--wash-c4)) var(--wash-h4) /
+          calc(var(--wash-a4) * var(--wash-film))
+      ),
+      transparent 72%
+    ),
+    /* 3 — the damper under them: what keeps long paragraphs readable. */
+    radial-gradient(
+        90% 70% at 50% 50%,
+        rgb(var(--wash-damp-ink) / calc(var(--wash-damp) * var(--wash-film))),
+        transparent 80%
+      );
+  background-size:
+    var(--etch-pitch) var(--etch-pitch),
+    var(--etch-pitch) var(--etch-pitch),
+    auto,
+    auto,
+    auto,
+    auto,
+    auto;
+  /* Soft-light lets the etch self-attenuate in the damped centre, so the
+     text column gets the least of it without any masking. */
+  background-blend-mode:
+    soft-light, soft-light, normal, normal, normal, normal, normal;
+}
+
+/* Lifts the content off the film. position alone, no z-index: a stacking
+   context here would trap the pane's fixed overlays underneath the shell's
+   bottom bar, and tree order already puts a positioned child above a
+   ::before. */
+.pane > * {
+  position: relative;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -613,15 +1158,76 @@ body {
   text-indent: 0.3em;
 }
 
-/* Sticky headers: a blur and short fade rather than a rule. */
-.sticky-head {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  backdrop-filter: blur(12px);
+/* The pane's scrolling box, and the header that floats over it.
+
+   The header is not inside the scroller, and that is the whole of these two
+   rules. A scroll container clips its children to the *scrollport* — the
+   padding box minus the scrollbar gutter — so a full-bleed child of one stops
+   a bar's width short of the pane's right edge the moment the scrollbar takes
+   width instead of overlaying. Nothing paints into that gutter; the clip is
+   applied after layout, so neither a negative margin nor a wider border
+   reaches it. A header that must run edge to edge therefore has to be outside
+   the box that owns the bar. See [PaneScroller], which pairs these.
+
+   The padding is what the header used to occupy in flow, now reserved for it,
+   and the track margin keeps the bar from running up behind the glass — it
+   starts where the header ends. */
+.pane-scroller {
+  padding-top: var(--head-h);
+  /* And the same distance again for anything that scrolls itself into view —
+     the index's arrow keys, the editor's cursor. "Nearest" means the top of
+     the scrollport, which is under the header; this is what moves that edge
+     down to where the reader can actually see. */
+  scroll-padding-top: var(--head-h);
 }
 
-.sticky-head::after {
+.pane-scroller::-webkit-scrollbar-track:vertical {
+  margin-block: calc(var(--head-h) + var(--scroll-end)) var(--scroll-end);
+}
+
+.head-layer {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 20;
+}
+
+/* A pane's header. The one piece of glass that is *not* .glass, and for a
+   reason worth writing down: every other floating surface has the page behind
+   it, so a veil of --surface reads as the panel's own colour. This one has the
+   pane's wash directly behind it — a veil of --surface here would grey out the
+   gradient it is lying on and come out as a flat band across it.
+
+   So it takes a veil of pure light instead: 34% white over paper, all but
+   nothing over ink, with the blur doing the hiding. Scrolled text passes under
+   as a smear, which is the honest thing for a bar you can see through, and the
+   colour under it stays the colour under it.
+
+   At rest it is nothing at all: at the top of a pane there is nothing to hide,
+   so the wash runs unbroken behind the breadcrumb. The fade strip below the bar
+   is off with it — blurring the title while it is still sitting in plain view
+   is a smear over content nothing is covering.
+
+   Its height is --head-h, and that number is set on the row *inside* it rather
+   than here: the row is already a centred flex line, so a min-height there
+   centres its contents for free. Setting it here instead would mean making
+   this box a grid or a flex container, and the `mx-auto max-w-[680px]` column
+   every one of these headers holds stops stretching the moment it becomes a
+   grid or flex item — an auto margin outranks stretch, so the column collapses
+   to its content and the breadcrumb and the sort control end up huddled in the
+   middle of the bar. `position: relative` and nothing else about layout. */
+.pane-head {
+  --head-glass-a: 0.34;
+  position: relative;
+  background-color: transparent;
+  backdrop-filter: none;
+  transition:
+    background-color var(--tint-motion) ease,
+    backdrop-filter var(--tint-motion) ease;
+}
+
+/* The fade below the bar: a short blurred strip rather than a rule. Hung off
+   the header itself, so it follows whatever height that turns out to be. */
+.pane-head::after {
   content: "";
   position: absolute;
   inset: 100% 0 auto 0;
@@ -629,22 +1235,182 @@ body {
   pointer-events: none;
   backdrop-filter: blur(6px);
   mask-image: linear-gradient(to bottom, #000, transparent);
+  opacity: 0;
+  transition: opacity var(--tint-motion) ease;
+}
+
+[data-theme="dark"] .pane-head {
+  /* A light veil over a dark ground shows at a fraction of the strength it
+     needs over pale paper — the same ratio the wash uses between themes. */
+  --head-glass-a: 0.03;
+}
+
+/* The glass arrives once text has started passing under it. Either the header
+   carries the flag or an ancestor does — [PaneScroller] sets it on the frame
+   holding the scroller and the header both, which is what lets a
+   server-rendered page have a live header without becoming a client component
+   to hold one boolean. */
+[data-scrolled="true"] .pane-head,
+.pane-head[data-scrolled="true"] {
+  background-color: rgb(var(--sheen-ink) / var(--head-glass-a));
+  backdrop-filter: blur(var(--glass-blur));
+}
+
+[data-scrolled="true"] .pane-head::after,
+.pane-head[data-scrolled="true"]::after {
+  opacity: 1;
+}
+
+/* ===========================================================================
+   THE GLASS FINISH
+   Where the glass in this app actually is: not on the panels, on the things
+   you touch.
+
+   A tint alone — 7% ink under the pointer — is a flat swatch. It says "this
+   row" and nothing else. The finish adds the two cues that make a lit surface
+   read as a piece of material rather than as a rectangle of colour: a hairline
+   of light along the top edge, where a real edge would catch it, and a soft
+   fall of light down from that edge, gone by two-thirds. The tint underneath
+   still says *which* surface is lit and in what colour; this only says that the
+   thing being lit is glass.
+
+   It is deliberately faint. On paper the sheen is barely a value — the ground
+   is already near-white, and anything you can name as "a white line" there is
+   too much. On ink it does most of the work, which is the same trade the whole
+   theme makes: light surfaces are drawn by their shadows, dark ones by their
+   highlights.
+
+   One declaration, one selector list. Every lit state in the app is in it, so
+   a row, a tag pill and a menu item cannot drift into three different ideas of
+   what "under the pointer" looks like.
+   =========================================================================== */
+
+:root {
+  /* The hairline along the top edge. */
+  --seat-sheen: 0.5;
+  /* The light falling from it. */
+  --seat-fall: 0.05;
+  /* A well is the same idea inverted, and it takes three marks rather than
+     one — which is the whole difference between a hole in a surface and a box
+     with a border drawn round it:
+
+       --well-shade  the shadow the top lip casts down into the well
+       --well-lip    the light the *bottom* lip catches, coming back up. The
+                     counterpart of --seat-sheen at the opposite edge, for the
+                     opposite reason: a seat is lit from above, and a well is
+                     lit from below by what the shadow at the top didn't reach.
+                     It is what gives the lower half of a field its weight —
+                     without it the box reads as top-heavy.
+       --well-rim    the hairline round what's left. Kept well under the other
+                     two: at anything like equal weight all three collapse back
+                     into one drawn border. */
+  --well-shade: 0.07;
+  --well-lip: 0.8;
+  --well-rim: 0.04;
+}
+
+[data-theme="dark"] {
+  --seat-sheen: 0.075;
+  --seat-fall: 0.035;
+  --well-shade: 0.42;
+  /* Far less than on paper, for the reason every light in this theme is less:
+     a white edge over ink shows at a fraction of the strength it needs over
+     pale. */
+  --well-lip: 0.07;
+  --well-rim: 0.09;
+}
+
+/* At rest: a gradient of nothing, declared so the lit one has something of the
+   same type to interpolate from. A gradient that appears from `none` cuts. */
+.row-tint,
+.hue-row,
+.tag-pill,
+.bleed-row {
+  background-image: linear-gradient(
+    rgb(var(--sheen-ink) / 0),
+    rgb(var(--sheen-ink) / 0)
+  );
+  transition:
+    background-color var(--tint-motion) ease,
+    background-image var(--tint-motion) ease,
+    box-shadow var(--tint-motion) ease;
+}
+
+/* Faster on a tag pill, for the reason .tag-motion exists: reaching the remove
+   control means crossing the name first, and at 200ms that two-step strobes. */
+.tag-pill {
+  transition-duration: var(--tag-motion);
+}
+
+.row-tint:hover,
+.row-tint:focus-visible,
+.row-tint:has(:focus-visible),
+.row-tint-host:hover:not(:has(> .row-toggle:hover)) > a.row-tint,
+.row-selected,
+.hue-row:hover,
+.hue-row:focus-visible,
+.hue-row[data-active="true"],
+.hue-row-selected,
+.tag-pill:hover,
+.tag-pill:focus-visible,
+.tag-pill:focus-within {
+  background-image: linear-gradient(
+    rgb(var(--sheen-ink) / var(--seat-fall)),
+    rgb(var(--sheen-ink) / 0) 72%
+  );
+  box-shadow: inset 0 1px 0 rgb(var(--sheen-ink) / var(--seat-sheen));
+}
+
+/* A field is the one thing that is *not* seated glass — it is a hole in the
+   panel, so the light stops at its lip. Same cues, inverted: the shadow goes
+   to the top edge where the seat's hairline was, and the hairline goes to the
+   bottom, where the inside of a real well catches the light coming back up.
+
+   Listed top lip, bottom lip, rim — box-shadow paints the first on top, so the
+   two lips win over the rim at the edges they share with it. */
+.well {
+  box-shadow:
+    inset 0 1px 1px
+      color-mix(in srgb, var(--ink) calc(var(--well-shade) * 100%), transparent),
+    inset 0 -1px 0 rgb(var(--sheen-ink) / var(--well-lip)),
+    inset 0 0 0 1px
+      color-mix(in srgb, var(--ink) calc(var(--well-rim) * 100%), transparent);
 }
 
 /* Neutral row hover tint — for rows with no hue of their own (tinting them in
    whatever --h is inherited would be confused with "this is the tag you're
-   on"). */
-.row-tint {
-  transition: background-color var(--tint-motion) ease;
-}
-
+   on"). The finish above supplies the sheen and the transition; these say what
+   colour. */
 .row-tint:hover,
 .row-tint:focus-visible {
   background-color: color-mix(in srgb, var(--ink) 7%, transparent);
 }
 
-/* "You are here" for a row with no tag behind it — All notes, Untagged,
-   Images. */
+/* A rail row's ⋯ button has to sit outside its link, so the pointer resting on
+   the button leaves the link itself un-hovered. The tint answers for the whole
+   row instead: reaching for a row's menu shouldn't put that row back to rest
+   under your hand.
+
+   The link and only the link — the buttons that share the row (⋯, and the
+   tree's disclosure chevron) keep their own :hover. They are separate targets
+   sitting on top of the row, and a square that fills in whenever the pointer
+   is anywhere on the entry is telling you it's under the pointer when it
+   isn't.
+
+   The chevron is the exception the :not() carves out. It hangs off the row's
+   left edge and overlaps it by a few pixels, so lighting both at once draws
+   two tinted rectangles with a seam down the overlap — and unlike the ⋯, it
+   isn't a control *on* this row: it opens the tags underneath it. So while the
+   pointer is on the chevron, only the chevron answers. */
+.row-tint-host:hover:not(:has(> .row-toggle:hover)) > a.row-tint {
+  background-color: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+
+/* "You are here", neutral — for a row with no tag behind it (All notes,
+   Untagged, Images), and for the mode switcher's marker, which is the same
+   statement about a segment rather than a row. Not row-only despite the name:
+   what it means is "this is the one selected, and nothing coloured is
+   involved". */
 .row-selected {
   background-color: color-mix(in srgb, var(--ink) 11%, transparent);
 }
@@ -675,7 +1441,6 @@ body {
    reserved. */
 .tag-pill {
   border-radius: 9999px;
-  transition: background-color var(--tag-motion) ease;
 }
 
 /* The bleed variant, for rows where a pill appearing under the cursor must
@@ -733,14 +1498,22 @@ body {
   opacity: 1;
 }
 
-/* The palette's secondary zones — the preview pane and the footer. A 2–3%
-   tonal step against --surface is what separates them from the list, in place
-   of the border a two-column dialog reaches for by default. Mixed in --ink so
-   the step goes darker on paper and lighter on ink without a second rule: the
-   token flips with the theme, and the *contrast* is what carries the meaning,
-   not the direction. */
-.palette-zone {
-  background-color: color-mix(in srgb, var(--ink) 3.5%, var(--surface));
+/* A secondary zone inside a floating panel — the palette's preview column and
+   its key legend, the AI card's title strip and its button strip, the AI
+   menu's provider row. A 2–3% tonal step is what separates them from the panel
+   body, in place of the border a panel like this reaches for by default; these
+   were the last horizontal rules left in the app. Mixed in --ink so the step
+   goes darker on paper and lighter on ink without a second rule: the token
+   flips with the theme, and the *contrast* is what carries the meaning, not
+   the direction.
+
+   Mixed to `transparent` rather than to --surface: the palette is glass now,
+   and an opaque zone painted inside it would be a solid patch in the middle of
+   a see-through panel. A tint composites over whatever the glass is showing,
+   which is what "a step darker than the panel" has to mean on a panel with no
+   fixed colour of its own. */
+.zone-step {
+  background-color: color-mix(in srgb, var(--ink) 4%, transparent);
 }
 
 /* A search hit inside a title or an excerpt. Deliberately the same treatment

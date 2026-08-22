@@ -103,7 +103,7 @@ export function DeleteRowButton({
         <div
           role="dialog"
           aria-label={`Delete ${name}?`}
-          className="absolute right-0 top-full z-20 mt-2 w-56 rounded-[var(--radius-zone)] border border-line bg-surface p-3 shadow-lg shadow-shade/20"
+          className="glass lift-2 absolute right-0 top-full z-20 mt-2 w-56 rounded-[var(--radius-zone)] p-3"
         >
           <p className="text-[13px] text-ink">
             Delete <span className="font-medium">{name}</span>?

@@ -30,13 +30,22 @@ export function PalettePreview({ row, tags, hueOf }: Props) {
       // Not a live region: `aria-activedescendant` on the input already
       // announces the row this pane is describing, and a second announcement
       // of the same move is what makes a palette exhausting to hear.
-      className="palette-zone hidden min-h-0 flex-col px-6 py-5 md:flex"
+      //
+      // Held off the palette's right and bottom edges rather than filling the
+      // column to them, so the tonal step reads as a card lying on the panel
+      // instead of as a second panel butted against it. The margin is what
+      // makes the radius legible — a rounded corner flush into the frame's own
+      // corner is just a nick out of the panel. Same --radius-zone as the
+      // palette around it: this is a zone, and the app has exactly two radii.
+      className="zone-step mb-3 mr-3 mt-3 hidden min-h-0 flex-col rounded-[var(--radius-zone)] px-5 py-4 md:flex"
     >
       <p className="shrink-0 pb-3 text-[11px] uppercase tracking-wider text-ink-faint">
         Preview
       </p>
       {row?.kind === "note" && <NotePreview row={row} hueOf={hueOf} />}
-      {row?.kind === "tag" && <TagPreview row={row} tags={tags} hueOf={hueOf} />}
+      {row?.kind === "tag" && (
+        <TagPreview row={row} tags={tags} hueOf={hueOf} />
+      )}
       {row?.kind === "action" && <ActionPreview row={row} />}
     </aside>
   );
@@ -201,7 +210,9 @@ function ActionPreview({ row }: { row: Extract<Row, { kind: "action" }> }) {
     <Pane
       meta={
         row.action.shortcut ? (
-          <Meta label={row.action.shortcut}>Runs this without arrowing to it</Meta>
+          <Meta label={row.action.shortcut}>
+            Runs this without arrowing to it
+          </Meta>
         ) : undefined
       }
     >

@@ -26,6 +26,7 @@ import { excerpt, highlight } from "@/lib/search/highlight";
 import { tagMatches } from "@/lib/tags/parse";
 import {
   ALL_NOTES_HREF,
+  noteHref,
   tagFromSegments,
   tagHref,
   UNTAGGED_HREF,
@@ -249,7 +250,10 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
       });
     }
 
-    if (!needle || commandMatches("Go to untagged notes", "orphan none", needle)) {
+    if (
+      !needle ||
+      commandMatches("Go to untagged notes", "orphan none", needle)
+    ) {
       list.push({
         id: "untagged",
         label: "Go to untagged notes",
@@ -370,7 +374,9 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
   // Keeps the highlighted row in view when the arrows walk past the fold.
   useEffect(() => {
     listRef.current
-      ?.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(activeId ?? "")}"]`)
+      ?.querySelector<HTMLElement>(
+        `[data-row-id="${CSS.escape(activeId ?? "")}"]`,
+      )
       ?.scrollIntoView({ block: "nearest" });
   }, [activeId]);
 
@@ -389,7 +395,9 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
       return;
     }
     close();
-    if (row.kind === "note") router.push(`/notes/${row.note.slug}`);
+    // A scoped search is an index too: picking a note out of "Notes in #infra"
+    // opens it under #infra, the same as clicking it in that tag's list.
+    if (row.kind === "note") router.push(noteHref(row.note.slug, scope));
     else router.push(tagHref(row.name));
   }
 
@@ -397,7 +405,10 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
     if (event.key === "ArrowDown" || (event.key === "n" && event.ctrlKey)) {
       event.preventDefault();
       move(1);
-    } else if (event.key === "ArrowUp" || (event.key === "p" && event.ctrlKey)) {
+    } else if (
+      event.key === "ArrowUp" ||
+      (event.key === "p" && event.ctrlKey)
+    ) {
       event.preventDefault();
       move(-1);
     } else if (event.key === "Enter") {
@@ -432,7 +443,7 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-shade/40 p-4 sm:p-6"
+      className="scrim fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
       onClick={(event) => {
         if (event.target === event.currentTarget) close();
       }}
@@ -445,7 +456,7 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
         // than sizing to its contents: a palette that grows and shrinks as
         // results arrive moves the row you were aiming at out from under the
         // pointer.
-        className="flex h-[36rem] max-h-full w-full max-w-[65rem] flex-col overflow-hidden rounded-[var(--radius-zone)] bg-surface shadow-2xl shadow-shade/30"
+        className="glass glass-dense lift-3 flex h-[36rem] max-h-full w-full max-w-[65rem] flex-col overflow-hidden rounded-[var(--radius-zone)]"
       >
         <div className="flex shrink-0 items-center gap-2.5 px-6 py-5">
           <SearchGlyph />
@@ -461,8 +472,8 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
             >
               <span aria-hidden className="hue-dot size-[7px] rounded-full" />
               <span className="hue-text max-w-40 truncate">
-                {/* `/*` only when there is something beneath to sweep in. */}
-                #{scope}
+                {/* `/*` only when there is something beneath to sweep in. */}#
+                {scope}
                 {scopeHasChildren && "/*"}
               </span>
               <button
@@ -539,7 +550,14 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
             id="palette-list"
             role="listbox"
             aria-label="Results"
-            className="min-h-0 overflow-y-auto px-3 pb-4"
+            // The right inset is a margin, not padding, and that is the whole
+            // of it: a scrollbar's gutter is taken off the *border* box, so
+            // padding puts the bar outside the inset — hard against the seam
+            // with the preview, reading as that panel's furniture rather than
+            // this list's. A margin moves the border edge instead, and the bar
+            // comes with it, landing beside the rows it measures. The two are
+            // the same distance, so the rows keep the width they had.
+            className="mr-3 min-h-0 overflow-y-auto pb-4 pl-3"
           >
             {emptyLine && (
               <p className="px-3 pb-1 pt-6 text-center text-[13px] text-ink-faint">
@@ -572,7 +590,7 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
           <PalettePreview row={active} tags={tags} hueOf={hueOf} />
         </div>
 
-        <div className="palette-zone flex shrink-0 items-center justify-between gap-4 px-6 py-3 text-[12px] text-ink-faint">
+        <div className="zone-step flex shrink-0 items-center justify-between gap-4 px-6 py-3 text-[12px] text-ink-faint">
           {/* A legend, not a status line: every key the palette has stays
               listed, and the ones that would do nothing right now are dimmed
               rather than removed. Swapping them in and out means you only ever
@@ -804,9 +822,7 @@ function newNote(
     detail,
     icon: "note",
     run: () =>
-      router.push(
-        params.size > 0 ? `/notes/new?${params}` : "/notes/new",
-      ),
+      router.push(params.size > 0 ? `/notes/new?${params}` : "/notes/new"),
   };
 }
 

@@ -36,7 +36,10 @@ function pattern(terms: string[]): RegExp | null {
     (a, b) => b.length - a.length,
   );
   if (usable.length === 0) return null;
-  return new RegExp(`(?<![\\p{L}\\p{N}])(${usable.map(escape).join("|")})`, "giu");
+  return new RegExp(
+    `(?<![\\p{L}\\p{N}])(${usable.map(escape).join("|")})`,
+    "giu",
+  );
 }
 
 /**

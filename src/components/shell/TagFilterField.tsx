@@ -79,7 +79,7 @@ export function TagFilterField({ value, onChange }: Props) {
         placeholder="Filter tags"
         aria-label="Filter tags"
         spellCheck={false}
-        className="w-full rounded-[var(--radius-control)] bg-field py-1.5 pl-8 pr-2 text-[13px] text-ink outline-none placeholder:text-ink-faint"
+        className="well w-full rounded-[var(--radius-control)] bg-sunk py-1.5 pl-8 pr-2 text-[13px] text-ink outline-none placeholder:text-ink-faint"
       />
     </div>
   );

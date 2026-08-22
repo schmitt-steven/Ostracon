@@ -1,12 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTagHues } from "@/hooks/use-tag-hues";
 import { isValidTag, normalizeTag } from "@/lib/tags/parse";
 import { tagHref } from "@/lib/tags/routes";
@@ -30,7 +25,6 @@ type Props = {
 /** How many completions the list shows at once. */
 const OPTION_LIMIT = 8;
 
-
 /**
  * The height of every item in the row, in px.
  *
@@ -48,7 +42,7 @@ const LONG_PRESS_MS = 450;
 // `#a/b/c/d/e` is long enough to throw a list clear across the window, and the
 // row it lands in is the same row either way.
 const DROPDOWN =
-  "absolute top-full left-0 z-30 mt-1.5 max-h-72 w-max max-w-[min(20rem,calc(100vw-3rem))] overflow-y-auto rounded-[var(--radius-zone)] bg-surface p-1.5 shadow-lg shadow-shade/20";
+  "glass lift-2 absolute top-full left-0 z-30 mt-1.5 max-h-72 w-max max-w-[min(20rem,calc(100vw-3rem))] overflow-y-auto rounded-[var(--radius-zone)] p-1.5";
 
 const DROPDOWN_ROW =
   "hue-row block w-full truncate rounded-[var(--radius-control)] px-3 py-1.5 text-left text-[13px] text-ink";
@@ -96,7 +90,6 @@ export function TagBar({ tags, allTags, onChange, onSuggest }: Props) {
     setHighlighted(-1);
     setDraft("");
   }
-
 
   /**
    * The list under the field: what this note looks like it wants first, then
@@ -267,9 +260,11 @@ export function TagBar({ tags, allTags, onChange, onSuggest }: Props) {
                 <li key={option.tag}>
                   {/* The two groups are labelled only when both are present —
                       one unlabelled list is just the list. */}
-                  {index === 0 && option.suggested && suggestedCount < options.length && (
-                    <p className={GROUP_LABEL}>Suggested for this note</p>
-                  )}
+                  {index === 0 &&
+                    option.suggested &&
+                    suggestedCount < options.length && (
+                      <p className={GROUP_LABEL}>Suggested for this note</p>
+                    )}
                   {index === suggestedCount && suggestedCount > 0 && (
                     <p className={GROUP_LABEL}>All tags</p>
                   )}

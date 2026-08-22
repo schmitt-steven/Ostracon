@@ -13,8 +13,6 @@ export type TagHues = {
   preferences: TagPreferences;
   /** The hue to render a tag in: its family's override, else its derived one. */
   hueOf: (name: string) => number;
-  /** Whether the family's hue was chosen rather than derived. */
-  isOverridden: (name: string) => boolean;
 };
 
 /**
@@ -37,10 +35,5 @@ export function useTagHues(): TagHues {
     [preferences],
   );
 
-  const isOverridden = useCallback(
-    (name: string) => preferences.hues[tagRoot(name)] !== undefined,
-    [preferences],
-  );
-
-  return { preferences, hueOf, isOverridden };
+  return { preferences, hueOf };
 }

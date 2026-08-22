@@ -46,20 +46,28 @@ export function buildTagTree(notes: TaggedNote[]): TagNode[] {
         stats.set(name, { count: 1, lastUsed: note.updatedAt });
       } else {
         current.count++;
-        if (note.updatedAt > current.lastUsed) current.lastUsed = note.updatedAt;
+        if (note.updatedAt > current.lastUsed)
+          current.lastUsed = note.updatedAt;
       }
     }
   }
 
   const nodes = new Map<string, TagNode>();
   for (const [name, { count, lastUsed }] of stats) {
-    nodes.set(name, { name, leaf: tagLeaf(name), count, lastUsed, children: [] });
+    nodes.set(name, {
+      name,
+      leaf: tagLeaf(name),
+      count,
+      lastUsed,
+      children: [],
+    });
   }
 
   const roots: TagNode[] = [];
   for (const node of nodes.values()) {
     const slash = node.name.lastIndexOf("/");
-    const parent = slash === -1 ? undefined : nodes.get(node.name.slice(0, slash));
+    const parent =
+      slash === -1 ? undefined : nodes.get(node.name.slice(0, slash));
     if (parent) parent.children.push(node);
     else roots.push(node);
   }

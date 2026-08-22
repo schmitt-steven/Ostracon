@@ -127,9 +127,9 @@ export function AiAnswerCard({
       role="dialog"
       aria-label="AI answer"
       style={{ left, top, width: CARD_WIDTH }}
-      className="fixed z-50 flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-lg shadow-shade/10"
+      className="glass lift-2 fixed z-50 flex flex-col overflow-hidden rounded-[var(--radius-zone)]"
     >
-      <div className="flex items-center gap-2.5 border-b border-line px-4 py-2.5">
+      <div className="zone-step flex items-center gap-2.5 px-4 py-2.5">
         <span aria-hidden className="shrink-0 text-xl leading-none text-action">
           ✦
         </span>
@@ -184,14 +184,16 @@ export function AiAnswerCard({
         )}
       </div>
 
-      <div className="flex items-center gap-1.5 border-t border-line px-3 py-2">
+      <div className="zone-step flex items-center gap-1.5 px-3 py-2">
         <button
           type="button"
           disabled={empty}
           onClick={() => onInsert(defaultPlacement)}
           className="rounded-full bg-action px-3.5 py-1.5 text-sm whitespace-nowrap font-medium text-paper transition-colors hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {defaultPlacement === "replace" ? "Replace selection" : "Insert below"}
+          {defaultPlacement === "replace"
+            ? "Replace selection"
+            : "Insert below"}
         </button>
         {/* The other placement stays available as a secondary, so a rewrite
             can be kept alongside the original when that's what's wanted. */}
@@ -202,7 +204,7 @@ export function AiAnswerCard({
             onClick={() =>
               onInsert(defaultPlacement === "replace" ? "below" : "replace")
             }
-            className="rounded-full border border-line-strong px-3 py-1.5 text-sm whitespace-nowrap text-ink-muted transition-colors hover:border-ink hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-full bg-sunk px-3 py-1.5 text-sm whitespace-nowrap text-ink-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
           >
             {defaultPlacement === "replace" ? "Insert below" : "Replace"}
           </button>
@@ -211,9 +213,9 @@ export function AiAnswerCard({
           type="button"
           disabled={empty}
           onClick={() => {
-            void navigator.clipboard.writeText(trimmed).then(() =>
-              setCopied(true),
-            );
+            void navigator.clipboard
+              .writeText(trimmed)
+              .then(() => setCopied(true));
           }}
           className="rounded-full px-3 py-1.5 text-sm whitespace-nowrap text-ink-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
         >

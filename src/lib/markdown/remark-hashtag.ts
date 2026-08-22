@@ -31,54 +31,57 @@ export type TagResolver = (name: string) => boolean;
 
 export function remarkHashtag(options: { known: TagResolver }) {
   return (tree: Root) => {
-    findAndReplace(tree, [
+    findAndReplace(
+      tree,
       [
-        HASHTAG_RE,
-        (
-          _match: string,
-          rawName: string,
-          match: { index: number; input: string },
-        ): PhrasingContent | false => {
-          // Same rule the indexer uses: a `#` only opens a tag at the start of
-          // the text or after whitespace. Returning false leaves the text
-          // exactly as written, which is what keeps `example.com/#anchor` and
-          // `[jump](#section)` from turning into tags.
-          const before =
-            match.index === 0 ? "" : match.input[match.index - 1] ?? "";
-          if (before !== "" && !/\s/.test(before)) return false;
+        [
+          HASHTAG_RE,
+          (
+            _match: string,
+            rawName: string,
+            match: { index: number; input: string },
+          ): PhrasingContent | false => {
+            // Same rule the indexer uses: a `#` only opens a tag at the start of
+            // the text or after whitespace. Returning false leaves the text
+            // exactly as written, which is what keeps `example.com/#anchor` and
+            // `[jump](#section)` from turning into tags.
+            const before =
+              match.index === 0 ? "" : (match.input[match.index - 1] ?? "");
+            if (before !== "" && !/\s/.test(before)) return false;
 
-          const name = normalizeTag(rawName);
-          // The label keeps the user's own capitalisation in both branches;
-          // only the identity behind it is normalised.
-          const label = { type: "text" as const, value: `#${rawName}` };
+            const name = normalizeTag(rawName);
+            // The label keeps the user's own capitalisation in both branches;
+            // only the identity behind it is normalised.
+            const label = { type: "text" as const, value: `#${rawName}` };
 
-          if (!options.known(name)) {
-            // No node type in mdast means "styled inline span", so this is an
-            // emphasis carrying an hName override — the standard way to reach
-            // an arbitrary element from mdast, and cheaper than teaching the
-            // rest of the pipeline a custom node type for one muted span.
-            const unresolved: Emphasis = {
-              type: "emphasis",
+            if (!options.known(name)) {
+              // No node type in mdast means "styled inline span", so this is an
+              // emphasis carrying an hName override — the standard way to reach
+              // an arbitrary element from mdast, and cheaper than teaching the
+              // rest of the pipeline a custom node type for one muted span.
+              const unresolved: Emphasis = {
+                type: "emphasis",
+                children: [label],
+                data: {
+                  hName: "span",
+                  hProperties: { className: ["hashtag-unresolved"] },
+                },
+              };
+              return unresolved;
+            }
+
+            const link: Link = {
+              type: "link",
+              url: tagHref(name),
               children: [label],
-              data: {
-                hName: "span",
-                hProperties: { className: ["hashtag-unresolved"] },
-              },
+              data: { hProperties: { className: ["hashtag"] } },
             };
-            return unresolved;
-          }
-
-          const link: Link = {
-            type: "link",
-            url: tagHref(name),
-            children: [label],
-            data: { hProperties: { className: ["hashtag"] } },
-          };
-          return link;
-        },
+            return link;
+          },
+        ],
       ],
-    ],
-    // A hashtag inside link text would otherwise become a link inside a link.
-    { ignore: ["link", "linkReference", "definition"] });
+      // A hashtag inside link text would otherwise become a link inside a link.
+      { ignore: ["link", "linkReference", "definition"] },
+    );
   };
 }

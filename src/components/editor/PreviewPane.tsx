@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type Ref,
+} from "react";
 import { WikilinkNav } from "@/components/render/WikilinkNav";
 import { renderPreview } from "@/lib/markdown/actions";
 
@@ -74,25 +80,29 @@ export function PreviewPane({
     return () => clearTimeout(timer);
   }, [active, bodyMd, rendered, tagKey, renderedTags, tags]);
 
-  useImperativeHandle(ref, () => ({
-    scrollToLine(line) {
-      const root = scrollerRef.current;
-      if (!root) return;
-      const blocks = [...root.querySelectorAll<HTMLElement>("[data-line]")];
-      // Last block that starts at or before the line — the one the cursor is
-      // actually sitting inside, since a block spans until the next one.
-      let target: HTMLElement | undefined;
-      for (const block of blocks) {
-        if (Number(block.dataset.line) <= line) target = block;
-        else break;
-      }
-      // scrollIntoView rather than scrollTo on this element: the pane no
-      // longer scrolls itself (its height is content-driven now), so the
-      // scrolling ancestor is the whole note view and only the browser knows
-      // which one that is.
-      target?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    },
-  }), []);
+  useImperativeHandle(
+    ref,
+    () => ({
+      scrollToLine(line) {
+        const root = scrollerRef.current;
+        if (!root) return;
+        const blocks = [...root.querySelectorAll<HTMLElement>("[data-line]")];
+        // Last block that starts at or before the line — the one the cursor is
+        // actually sitting inside, since a block spans until the next one.
+        let target: HTMLElement | undefined;
+        for (const block of blocks) {
+          if (Number(block.dataset.line) <= line) target = block;
+          else break;
+        }
+        // scrollIntoView rather than scrollTo on this element: the pane no
+        // longer scrolls itself (its height is content-driven now), so the
+        // scrolling ancestor is the whole note view and only the browser knows
+        // which one that is.
+        target?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      },
+    }),
+    [],
+  );
 
   function handleClick(event: React.MouseEvent<HTMLDivElement>) {
     // Wikilinks navigate (WikilinkNav) — don't also yank the editor around.

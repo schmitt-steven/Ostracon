@@ -58,7 +58,8 @@ export function rehypeShikiLazy() {
       );
       if (!codeNode) return;
       const requested = languageFromClassName(codeNode.properties.className);
-      const lang = requested && requested in bundledLanguages ? requested : "text";
+      const lang =
+        requested && requested in bundledLanguages ? requested : "text";
       targets.push({
         parent,
         index,

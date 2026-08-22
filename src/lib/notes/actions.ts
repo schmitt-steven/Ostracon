@@ -7,6 +7,7 @@ import { db } from "@/db/client";
 import { notes } from "@/db/schema";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { deleteNoteImages } from "@/lib/images/cleanup";
+import { isUploadedBlobUrl, referencedUrls } from "@/lib/images/references";
 import {
   isValidTag,
   normalizeTag,
@@ -48,20 +49,60 @@ function tagsFor(tags: string[]): string[] {
 }
 
 /**
- * The day the note was started, for a note whose title was left empty. Read
- * from the row rather than taken as `now` so the fallback stays put: the
- * editor keeps sending the empty title it still holds locally, and each of
- * those saves has to land on the same title the last one did.
+ * The note as it stands, read before an update overwrites it.
+ *
+ * Two things need it. `createdAt` is the day title's anchor, so a note saved
+ * with an empty title keeps landing on the day it was started rather than on
+ * today. The rest is the previous state to diff against — see [shellChanged].
  */
-async function dayTitleFor(id: string): Promise<string> {
+async function currentNote(id: string) {
   const [row] = await db
-    .select({ createdAt: notes.createdAt })
+    .select({
+      createdAt: notes.createdAt,
+      title: notes.title,
+      tags: notes.tags,
+      contentMd: notes.contentMd,
+    })
     .from(notes)
     .where(eq(notes.id, id))
     .limit(1);
-  // A missing row means the note was deleted mid-edit; the update below is
-  // about to no-op on that same absence, so any title will do here.
-  return defaultNoteTitle(row?.createdAt ?? new Date());
+  return row;
+}
+
+/** The uploads a note holds, as the rail counts them (see listNotesOverview). */
+function uploadSet(contentMd: string): string {
+  return [...new Set(referencedUrls(contentMd).filter(isUploadedBlobUrl))]
+    .sort()
+    .join("\n");
+}
+
+/**
+ * Whether this save changed anything the surrounding shell is showing.
+ *
+ * `refresh()` re-runs the whole route tree — layout included — on the client,
+ * and it used to fire on every save, which meant a full server render every
+ * 800ms of typing. Almost none of those had anything to correct: the rail
+ * shows the tag tree and its counts, the titles of pinned notes, and how many
+ * uploads the collection holds, and prose moves none of them. So it fires when
+ * one of those three actually moved, and body edits pay nothing.
+ *
+ * It also has to stay this quiet for a second reason. A newly created note
+ * swaps its URL under a still-mounted editor (see NoteEditor's onCreated), so
+ * for the rest of that session the router's address and its rendered tree
+ * belong to different routes — and a refresh would resolve that disagreement
+ * by tearing the editor down, which is the exact thing the swap exists to
+ * avoid.
+ */
+function shellChanged(
+  before: { title: string; tags: string[]; contentMd: string } | undefined,
+  after: { title: string; tags: string[]; contentMd: string },
+): boolean {
+  if (!before) return true;
+  return (
+    before.title !== after.title ||
+    before.tags.join("\n") !== after.tags.join("\n") ||
+    uploadSet(before.contentMd) !== uploadSet(after.contentMd)
+  );
 }
 
 export type CreateNoteResult = { id: string; slug: string; version: number };
@@ -89,6 +130,18 @@ export async function createNote(input: unknown): Promise<CreateNoteResult> {
 const UpdateInput = NoteInput.extend({
   id: z.uuid(),
   expectedVersion: z.number().int(),
+  /**
+   * Whether the caller's rendered tree still matches the URL it sits under.
+   *
+   * False for an editor that created its note and swapped its own URL to it
+   * (see NoteEditor's onCreated): from then until the next real navigation the
+   * router's address says /notes/[slug] while the mounted tree is still
+   * /notes/new's, and `refresh()` would settle that disagreement by throwing
+   * the editor away mid-sentence — the exact thing the swap exists to prevent.
+   * The save itself is unaffected; only the shell goes without its update, and
+   * the `revalidatePath` calls below mean the first navigation away collects it.
+   */
+  canRefreshShell: z.boolean().default(true),
 });
 
 export type UpdateNoteResult =
@@ -104,12 +157,23 @@ export type UpdateNoteResult =
 
 export async function updateNote(input: unknown): Promise<UpdateNoteResult> {
   await requireAuth();
-  const { id, title, bodyMd, tags: submitted, expectedVersion } =
-    UpdateInput.parse(input);
+  const {
+    id,
+    title,
+    bodyMd,
+    tags: submitted,
+    expectedVersion,
+    canRefreshShell,
+  } = UpdateInput.parse(input);
   const tags = tagsFor(submitted);
+  const before = await currentNote(id);
   // Clearing the title is the same intent as never having typed one, so it
-  // lands back on the day title instead of leaving the note nameless.
-  const finalTitle = title.trim() ? title : await dayTitleFor(id);
+  // lands back on the day title instead of leaving the note nameless. A
+  // missing row means the note was deleted mid-edit; the update below is about
+  // to no-op on that same absence, so any title will do.
+  const finalTitle = title.trim()
+    ? title
+    : defaultNoteTitle(before?.createdAt ?? new Date());
   const contentMd = stringifyContentMd({ title: finalTitle, tags }, bodyMd);
 
   // Slug is intentionally never re-derived from title here — fixed at
@@ -141,10 +205,17 @@ export async function updateNote(input: unknown): Promise<UpdateNoteResult> {
   }
 
   const affectedSlugs = await syncLinksForNote(id, bodyMd);
+  // Unconditional, unlike the refresh below: these only mark caches stale, so
+  // whatever the user opens next is correct however small the edit was.
   revalidatePath("/");
   revalidatePath(`/notes/${updated.slug}`);
   for (const s of affectedSlugs) revalidatePath(`/notes/${s}`);
-  refresh();
+  if (
+    canRefreshShell &&
+    shellChanged(before, { title: finalTitle, tags, contentMd })
+  ) {
+    refresh();
+  }
   return { ok: true, version: updated.version, slug: updated.slug };
 }
 
@@ -178,6 +249,8 @@ export async function deleteNote(input: unknown): Promise<void> {
 const PinInput = z.object({
   id: z.uuid(),
   pinned: z.boolean(),
+  /** As in [UpdateInput] — a swapped-URL editor must not be refreshed out. */
+  canRefreshShell: z.boolean().default(true),
 });
 
 export type PinNoteResult = {
@@ -185,6 +258,12 @@ export type PinNoteResult = {
   pinned: boolean;
   /** The pin was refused because MAX_PINNED_NOTES are already pinned. */
   full: boolean;
+  /**
+   * The note's slug, or null if the row was gone. The caller needs it to name
+   * this note in the rail's pinned order (see [notePinKey]), which lives in the
+   * browser — and the buttons that pin address the note by id, not slug.
+   */
+  slug: string | null;
 };
 
 /**
@@ -202,7 +281,7 @@ export type PinNoteResult = {
  */
 export async function setNotePinned(input: unknown): Promise<PinNoteResult> {
   await requireAuth();
-  const { id, pinned } = PinInput.parse(input);
+  const { id, pinned, canRefreshShell } = PinInput.parse(input);
 
   if (!pinned) {
     const [row] = await db
@@ -210,8 +289,8 @@ export async function setNotePinned(input: unknown): Promise<PinNoteResult> {
       .set({ pinnedAt: null })
       .where(eq(notes.id, id))
       .returning({ slug: notes.slug });
-    if (row) revalidatePinned(row.slug);
-    return { pinned: false, full: false };
+    if (row) revalidatePinned(row.slug, canRefreshShell);
+    return { pinned: false, full: false, slug: row?.slug ?? null };
   }
 
   const [row] = await db
@@ -230,8 +309,8 @@ export async function setNotePinned(input: unknown): Promise<PinNoteResult> {
     .returning({ slug: notes.slug });
 
   if (row) {
-    revalidatePinned(row.slug);
-    return { pinned: true, full: false };
+    revalidatePinned(row.slug, canRefreshShell);
+    return { pinned: true, full: false, slug: row.slug };
   }
 
   // Nothing matched, and the clause can't say which of its three conditions
@@ -239,12 +318,16 @@ export async function setNotePinned(input: unknown): Promise<PinNoteResult> {
   // unpinned means the section is full; gone means the note was deleted
   // elsewhere and there is nothing to report either way.
   const [current] = await db
-    .select({ pinnedAt: notes.pinnedAt })
+    .select({ pinnedAt: notes.pinnedAt, slug: notes.slug })
     .from(notes)
     .where(eq(notes.id, id))
     .limit(1);
   const alreadyPinned = current?.pinnedAt != null;
-  return { pinned: alreadyPinned, full: current !== undefined && !alreadyPinned };
+  return {
+    pinned: alreadyPinned,
+    full: current !== undefined && !alreadyPinned,
+    slug: current?.slug ?? null,
+  };
 }
 
 /**
@@ -252,10 +335,12 @@ export async function setNotePinned(input: unknown): Promise<PinNoteResult> {
  * note's own route never rendered — `refresh` is what re-runs the layout for
  * the page the press came from.
  */
-function revalidatePinned(slug: string): void {
+function revalidatePinned(slug: string, canRefreshShell: boolean): void {
   revalidatePath("/");
   revalidatePath(`/notes/${slug}`);
-  refresh();
+  // The button holds its own pressed state, so withholding this costs only the
+  // rail's section, and only until the next navigation collects it.
+  if (canRefreshShell) refresh();
 }
 
 const RenameTagInput = z.object({

@@ -107,5 +107,7 @@ export async function clearFailures(key: string): Promise<void> {
   await db.delete(loginAttempts).where(eq(loginAttempts.ip, key));
   await db
     .delete(loginAttempts)
-    .where(lt(loginAttempts.lastFailureAt, new Date(Date.now() - STREAK_RESET_MS)));
+    .where(
+      lt(loginAttempts.lastFailureAt, new Date(Date.now() - STREAK_RESET_MS)),
+    );
 }

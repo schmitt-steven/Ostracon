@@ -134,9 +134,11 @@ export function extractTags(bodyMd: string): string[] {
  * — the bar validates before it commits, so a bad name reaching here came from
  * a hand-written request.
  *
- * Order is load-bearing: the first tag is the note's primary one, and it's
- * what the editor washes the pane in. Sorting here would make the wash colour
- * depend on the alphabet instead of on what the note is about.
+ * Order is load-bearing: the first tag is what a note is read under when it
+ * was reached from somewhere with no tag of its own — a bookmark, a backlink,
+ * the rail (see [resolveContextTag]) — and so what the editor washes the pane
+ * in. Sorting here would make the wash colour depend on the alphabet instead
+ * of on what the note is about.
  */
 export function normalizeTagList(names: string[]): string[] {
   const seen = new Set<string>();

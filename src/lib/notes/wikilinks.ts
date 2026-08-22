@@ -26,7 +26,11 @@ export async function resolveWikilinkTitles(
   const normalized = [...new Set(titles.map((t) => t.toLowerCase()))];
 
   const rows = await db
-    .select({ slug: notes.slug, title: notes.title, createdAt: notes.createdAt })
+    .select({
+      slug: notes.slug,
+      title: notes.title,
+      createdAt: notes.createdAt,
+    })
     .from(notes)
     .where(inArray(sql`lower(${notes.title})`, normalized));
 

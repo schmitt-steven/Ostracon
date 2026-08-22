@@ -71,7 +71,7 @@ export function AiMenu({
       ref={menuRef}
       role="menu"
       style={{ left, top, width: MENU_WIDTH }}
-      className="fixed z-50 overflow-hidden rounded-2xl border border-line bg-surface shadow-lg shadow-shade/10"
+      className="glass lift-2 fixed z-50 overflow-hidden rounded-[var(--radius-zone)]"
     >
       {providers === null ? (
         <p className="px-4 py-3 text-sm text-ink-faint">Loading providers…</p>
@@ -96,7 +96,7 @@ export function AiMenu({
             placeholder={
               hasSelection ? "Ask about the selection…" : "Ask about this note…"
             }
-            className="w-full rounded-xl border border-line bg-paper px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-action"
+            className="well w-full rounded-[var(--radius-control)] bg-sunk px-3 py-2 text-sm text-ink outline-none transition-colors focus:bg-action-wash"
           />
         </form>
       ) : (
@@ -119,7 +119,7 @@ export function AiMenu({
       )}
 
       {usable.length > 0 && (
-        <div className="flex items-center gap-2 border-t border-line px-3 py-2">
+        <div className="zone-step flex items-center gap-2 px-3 py-2">
           <select
             value={provider?.available ? provider.id : (usable[0]?.id ?? "")}
             onChange={(e) => onProviderChange(e.target.value)}
