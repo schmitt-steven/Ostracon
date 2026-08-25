@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useMemo, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { renameTag } from "@/lib/notes/actions";
 import {
   isValidTag,
@@ -106,12 +107,22 @@ export function TagRenameDialog({ tag, noteCount, onClose }: Props) {
     });
   }
 
-  return (
+  // Into <body>, as [ContextMenu] is and for a sharper version of the same
+  // reason: `fixed` is a utility, and this app's own rules are unlayered, so
+  // any of them that sets `position` on an ancestor's child outranks it —
+  // `.pane > *` does exactly that, and a caller that happens to render this as
+  // a direct child of its pane (the tag directory) got a dialog laid out in
+  // flow below a full-height scroller instead of over the viewport. Portalling
+  // takes the question away from the call site rather than asking three of them
+  // to remember where they mount it.
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-label={`Rename #${tag}`}
-      className="scrim fixed inset-0 z-50 flex items-start justify-center p-6 pt-[18vh]"
+      // Centred, like the log-out dialog: this one is short, holds a single
+      // field, and has no list under it that wanted the room at the bottom.
+      className="scrim fixed inset-0 z-50 flex items-center justify-center p-6"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -246,6 +257,7 @@ export function TagRenameDialog({ tag, noteCount, onClose }: Props) {
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

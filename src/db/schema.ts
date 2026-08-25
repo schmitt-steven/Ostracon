@@ -91,6 +91,65 @@ export const loginFailures = pgTable(
   ],
 );
 
+// One row per successful login — that is, per device that holds a valid
+// cookie. The cookie names its row by id and proves it with an HMAC, so this
+// table is not what makes a token *authentic*; it's what makes a token
+// *current*. Without it a signed cookie is valid until it ages out, which
+// leaves no way to sign one device out, and nothing to show when asking which
+// devices are signed in.
+//
+// See lib/auth/session-store for the operations, and lib/auth/session for what
+// the cookie itself carries.
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    /**
+     * When this session stops being accepted regardless of anything else.
+     *
+     * Duplicates the age check the token already carries, on purpose: it lets
+     * a session be listed or pruned without minting or parsing a token, and it
+     * means shortening SESSION_MAX_AGE_SECONDS doesn't retroactively strand
+     * rows whose real deadline was set under the old value.
+     */
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    /**
+     * Set when the session is signed out — from this device or another one.
+     * A row rather than a delete so a future UI can show what was revoked and
+     * when; pruneSessions sweeps them once that's no longer interesting.
+     */
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    /**
+     * Captured once, at login. This is the pair that identifies the *device*
+     * ("Safari on iPhone"), so it has to stay fixed — overwriting it as the
+     * session travels would turn the only stable label into a moving one.
+     */
+    createdIp: text("created_ip"),
+    createdUserAgent: text("created_user_agent"),
+    /**
+     * Updated as the session is used, throttled to keep an ordinary page view
+     * from costing a write. The address is here rather than above because a
+     * change in it is the interesting signal — same device, new network, or
+     * else a cookie that has travelled.
+     */
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastSeenIp: text("last_seen_ip"),
+    /** A name the owner gives the device later; null until they do. */
+    label: text("label"),
+  },
+  (t) => [
+    // Covers the "which sessions are live" listing, newest first.
+    index("sessions_last_seen_at_idx").on(t.lastSeenAt),
+    // Prunes read by deadline.
+    index("sessions_expires_at_idx").on(t.expiresAt),
+  ],
+);
+
 export const links = pgTable(
   "links",
   {

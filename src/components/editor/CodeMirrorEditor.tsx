@@ -27,6 +27,8 @@ import {
   rectangularSelection,
 } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
+import { uploadImage } from "@/lib/images/upload-client";
+import { isAllowedImageType } from "@/lib/images/upload-rules";
 
 /**
  * `basicSetup` from the `codemirror` package, minus every gutter — line
@@ -225,20 +227,6 @@ const appHighlight = HighlightStyle.define([
   { tag: t.invalid, color: "var(--danger)" },
 ]);
 
-async function uploadImage(file: File): Promise<string> {
-  const formData = new FormData();
-  formData.append("file", file);
-  const res = await fetch("/api/uploads", { method: "POST", body: formData });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as {
-      error?: string;
-    } | null;
-    throw new Error(body?.error ?? "Upload failed");
-  }
-  const data = (await res.json()) as { url: string };
-  return data.url;
-}
-
 // Replaces the placeholder by searching the CURRENT document for its exact
 // text rather than relying on the offsets captured at paste time: the user
 // may have kept typing elsewhere while the upload was in flight, which
@@ -256,28 +244,56 @@ function replacePlaceholder(
   });
 }
 
+/**
+ * A placeholder no other pending upload is using.
+ *
+ * The replacement above finds its target by searching for this text, so two
+ * images dropped together under the same name — `Screenshot.png` twice, from
+ * two folders — would otherwise share a marker, and whichever upload landed
+ * first would take both.
+ */
+function uniqueMarker(doc: string, taken: string[], name: string): string {
+  const label = name || "image";
+  let marker = `![Uploading ${label}…]()`;
+  for (let n = 2; doc.includes(marker) || taken.includes(marker); n += 1) {
+    marker = `![Uploading ${label} (${n})…]()`;
+  }
+  return marker;
+}
+
+/** Square brackets would close the alt text early and break the image. */
+function altFor(name: string): string {
+  return name.replace(/[[\]]/g, " ").trim() || "image";
+}
+
+/** Sends one file and swaps its placeholder for the result, or for a failure. */
+function startUpload(view: EditorView, file: File, marker: string): void {
+  void uploadImage(file).then(
+    (url) => replacePlaceholder(view, marker, `![${altFor(file.name)}](${url})`),
+    () => replacePlaceholder(view, marker, "![Image upload failed]()"),
+  );
+}
+
 function imagePasteHandler() {
   return EditorView.domEventHandlers({
     paste(event, view) {
       const files = event.clipboardData?.files;
+      // The same allowlist the drop path and the upload route use — a pasted
+      // SVG is refused here rather than at the far end of an upload.
       const imageFile = files
-        ? [...files].find((f) => f.type.startsWith("image/"))
+        ? [...files].find((f) => isAllowedImageType(f.type))
         : undefined;
       if (!imageFile) return false;
 
       event.preventDefault();
-      const marker = `![Uploading ${imageFile.name || "image"}…]()`;
+      const marker = uniqueMarker(view.state.doc.toString(), [], imageFile.name);
       const { from, to } = view.state.selection.main;
       view.dispatch({
         changes: { from, to, insert: marker },
         selection: { anchor: from + marker.length },
       });
 
-      void uploadImage(imageFile).then(
-        (url) =>
-          replacePlaceholder(view, marker, `![${imageFile.name}](${url})`),
-        () => replacePlaceholder(view, marker, "![Image upload failed]()"),
-      );
+      startUpload(view, imageFile, marker);
       return true;
     },
   });
@@ -373,6 +389,14 @@ export type EditorHandle = {
   focus: () => void;
   /** Appends text at the end, on its own line. Used by "Suggest tags". */
   append: (text: string) => void;
+  /**
+   * Uploads images and writes them into the note as their own block.
+   *
+   * `at` is where the pointer let go, in viewport coordinates: a drop lands
+   * where you aimed it rather than wherever the caret happened to be. Coming
+   * from the file dialog there is nothing to aim, and the caret is the answer.
+   */
+  insertImages: (files: File[], at?: { x: number; y: number }) => void;
   /**
    * Claims `from`..`to` as the range an in-flight answer belongs to. The range
    * is mapped through every edit until it's used, so a note that keeps being
@@ -493,6 +517,56 @@ export function CodeMirrorEditor({
           changes: { from: end, insert: `${lead}${text}` },
           selection: { anchor: end + lead.length + text.length },
           scrollIntoView: true,
+        });
+        view.focus();
+      },
+      insertImages(files, at) {
+        const view = viewRef.current;
+        if (!view || files.length === 0) return;
+
+        // `posAtCoords` is exact rather than nearest, so a drop that landed
+        // beside the text — in the margin, below the last line, on the title —
+        // answers null and falls back to the caret instead of guessing at a
+        // line the pointer was never over.
+        const dropped = at ? view.posAtCoords(at) : null;
+        const aimed = dropped ?? view.state.selection.main.head;
+
+        // Snapped to whichever end of that paragraph is nearer, never left at
+        // the exact character the pointer was over: an image is a block, and
+        // inserting one four letters into "First paragraph." cuts the sentence
+        // in half around it. Aiming at the top half of a paragraph puts the
+        // image above it, the bottom half below it, and nothing gets split.
+        const line = view.state.doc.lineAt(aimed);
+        const pos =
+          aimed - line.from <= line.to - aimed ? line.from : line.to;
+
+        const doc = view.state.doc.toString();
+        const markers: string[] = [];
+        for (const file of files) {
+          markers.push(uniqueMarker(doc, markers, file.name));
+        }
+
+        // Its own block, unlike a paste: a pasted image belongs in the
+        // sentence being typed, but a dropped one is a thing being added to
+        // the note, and dropping onto a paragraph shouldn't split it mid-word.
+        const lead = pos === 0 || view.state.sliceDoc(pos - 1, pos) === "\n" ? "" : "\n\n";
+        const tail =
+          pos === doc.length || view.state.sliceDoc(pos, pos + 1) === "\n"
+            ? ""
+            : "\n\n";
+        const insert = `${lead}${markers.join("\n\n")}${tail}`;
+
+        view.dispatch({
+          changes: { from: pos, insert },
+          // Caret after the images, before whatever they were dropped in
+          // front of — the next thing you type is a caption, not a rewrite of
+          // the paragraph below.
+          selection: { anchor: pos + insert.length - tail.length },
+          scrollIntoView: true,
+        });
+
+        files.forEach((file, index) => {
+          startUpload(view, file, markers[index]!);
         });
         view.focus();
       },

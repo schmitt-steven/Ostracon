@@ -1,8 +1,10 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth/require-auth";
-
-const MAX_BYTES = 10 * 1024 * 1024; // 10MB — comfortably above any screenshot/photo paste
+import {
+  isAllowedImageType,
+  MAX_IMAGE_BYTES,
+} from "@/lib/images/upload-rules";
 
 function sanitizeFilename(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-100);
@@ -18,13 +20,20 @@ export async function POST(request: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
-  if (!file.type.startsWith("image/")) {
+  // An allowlist, not an `image/` prefix: that prefix let `image/svg+xml`
+  // through, and an SVG is a document that can carry script. See the note on
+  // IMAGE_MIME_TYPES.
+  if (!isAllowedImageType(file.type)) {
     return NextResponse.json(
-      { error: "Only images are supported" },
+      { error: "Only PNG, JPEG, WebP, GIF and AVIF images are supported" },
       { status: 400 },
     );
   }
-  if (file.size > MAX_BYTES) {
+  // Re-checked here rather than trusted from the browser: the client shrinks
+  // most images to a fraction of this before sending (see [compressImage]) and
+  // refuses the rest, but neither of those is a control — this endpoint takes
+  // whatever it is posted.
+  if (file.size > MAX_IMAGE_BYTES) {
     return NextResponse.json(
       { error: "Image too large (max 10MB)" },
       { status: 413 },

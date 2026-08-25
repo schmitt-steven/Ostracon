@@ -25,7 +25,7 @@ export type PaletteAction = {
   run: () => void;
 };
 
-export type ActionIcon = "note" | "search" | "tag" | "run";
+export type ActionIcon = "note" | "search" | "tag" | "upload" | "image" | "run";
 
 export type Row =
   | { id: string; kind: "note"; note: NoteHit }

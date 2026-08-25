@@ -2,10 +2,17 @@
 
 import { RelativeDate } from "@/components/ui/RelativeDate";
 import type { NoteHit } from "@/hooks/use-search-index";
-import { countMatches, excerpt, highlight } from "@/lib/search/highlight";
+import {
+  countMatches,
+  excerpt,
+  highlight,
+  snippet,
+} from "@/lib/search/highlight";
 import { tagMatches } from "@/lib/tags/parse";
 import { Highlighted } from "./Highlighted";
 import type { Row } from "./types";
+import Link from "next/link";
+import { tagHref } from "@/lib/tags/routes";
 
 type Props = {
   /** The highlighted row. Never absent in practice — see [CommandPalette]. */
@@ -13,6 +20,8 @@ type Props = {
   /** Every tag in use, for listing a tag's children. */
   tags: string[];
   hueOf: (name: string) => number;
+  /** That the pane has sent you somewhere, the palette closes behind it. */
+  onNavigate: () => void;
 };
 
 /**
@@ -24,7 +33,7 @@ type Props = {
  * empty, because there is no state in which no row is highlighted: the Actions
  * section always has at least one row in it.
  */
-export function PalettePreview({ row, tags, hueOf }: Props) {
+export function PalettePreview({ row, tags, hueOf, onNavigate }: Props) {
   return (
     <aside
       // Not a live region: `aria-activedescendant` on the input already
@@ -39,12 +48,23 @@ export function PalettePreview({ row, tags, hueOf }: Props) {
       // palette around it: this is a zone, and the app has exactly two radii.
       className="zone-step mb-3 mr-3 mt-3 hidden min-h-0 flex-col rounded-[var(--radius-zone)] px-5 py-4 md:flex"
     >
+      {/* "Preview" over an action would promise a look at the thing before it
+          happens, which is not what this pane does — it explains what the verb
+          is and which key runs it. Notes and tags do get shown a piece of the
+          thing itself, so those keep the word. */}
       <p className="shrink-0 pb-3 text-[11px] uppercase tracking-wider text-ink-faint">
-        Preview
+        {row?.kind === "action" ? "Info" : "Preview"}
       </p>
-      {row?.kind === "note" && <NotePreview row={row} hueOf={hueOf} />}
+      {row?.kind === "note" && (
+        <NotePreview row={row} hueOf={hueOf} onNavigate={onNavigate} />
+      )}
       {row?.kind === "tag" && (
-        <TagPreview row={row} tags={tags} hueOf={hueOf} />
+        <TagPreview
+          row={row}
+          tags={tags}
+          hueOf={hueOf}
+          onNavigate={onNavigate}
+        />
       )}
       {row?.kind === "action" && <ActionPreview row={row} />}
     </aside>
@@ -73,8 +93,17 @@ function Pane({
           title, the excerpt and the tag list. Notes contain pasted URLs and
           blob ids — text with no space in it for a hundred characters — and
           the default only breaks between words, which for those means not at
-          all. */}
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto [overflow-wrap:anywhere]">
+          all.
+
+          The inset-and-bleed is where the tag pills get their padding from.
+          It has to be here rather than on the tag row itself: this element is
+          the clipping box, so a negative margin *inside* it is overflow —
+          `overflow-y: auto` forces the used `overflow-x` to `auto` as well,
+          and six stray pixels on the right become a scrollbar under every
+          tagged note. Widening the box instead puts that space inside the
+          scroll port, where a pill can sit in it and nothing overflows. The
+          content box lands exactly where it did, so nothing else moves. */}
+      <div className="-mx-1.5 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1.5 [overflow-wrap:anywhere]">
         {children}
       </div>
       {meta && (
@@ -89,12 +118,21 @@ function Pane({
 function NotePreview({
   row,
   hueOf,
+  onNavigate,
 }: {
   row: Extract<Row, { kind: "note" }>;
   hueOf: (name: string) => number;
+  onNavigate: () => void;
 }) {
   const { note } = row;
   const words = note.text.split(/\s+/).filter(Boolean).length;
+  // The same window the row uses, opened wider. Where the row has to admit it
+  // has nothing to show, this pane has the space to show the note anyway — the
+  // Matches line below already names the term that matched, so an unhighlighted
+  // opening line here is context rather than a claim.
+  const body = snippet(note.text, note.raw, note.terms, 320);
+  const spans =
+    body.source === "none" ? excerpt(note.text, [], 320) : body.spans;
 
   return (
     <Pane
@@ -129,15 +167,20 @@ function NotePreview({
       </h2>
 
       {note.tags.length > 0 && (
-        <p className="flex flex-wrap gap-x-2.5 gap-y-1 text-[12px]">
+        // The pill's height, given back. These are flex items, so unlike the
+        // inline tags this replaced they take their padding as height — four
+        // pixels the pane didn't have. The pill grows into the gap above and
+        // below instead, and the row measures what it did as bare text. Its
+        // *width* is handled a level up, on the scroll container: a negative
+        // margin here would overflow that box rather than fit inside it.
+        <p className="-my-0.5 flex flex-wrap gap-x-1 gap-y-0.5 text-[12px]">
           {note.tags.map((name) => (
-            <span
+            <TagLink
               key={name}
-              style={{ "--h": hueOf(name) } as React.CSSProperties}
-              className="hue-text"
-            >
-              #{name}
-            </span>
+              name={name}
+              hueOf={hueOf}
+              onNavigate={onNavigate}
+            />
           ))}
         </p>
       )}
@@ -145,7 +188,7 @@ function NotePreview({
       <p className="text-[14px] leading-relaxed text-ink-muted">
         {/* A longer window than the row's, around the same match: the row
             answers "is this the one?", this answers "what does it say?". */}
-        <Highlighted spans={excerpt(note.text, note.terms, 320)} />
+        <Highlighted spans={spans} />
       </p>
     </Pane>
   );
@@ -155,10 +198,12 @@ function TagPreview({
   row,
   tags,
   hueOf,
+  onNavigate,
 }: {
   row: Extract<Row, { kind: "tag" }>;
   tags: string[];
   hueOf: (name: string) => number;
+  onNavigate: () => void;
 }) {
   const children = tags.filter(
     (name) => name !== row.name && tagMatches(name, row.name),
@@ -171,7 +216,7 @@ function TagPreview({
       meta={
         <>
           <Meta label="⏎">Open the #{row.name} index</Meta>
-          <Meta label="⇥">Search only #{row.name}</Meta>
+          <Meta label="⇥">Narrow the search to #{row.name}</Meta>
         </>
       }
     >
@@ -179,8 +224,21 @@ function TagPreview({
         style={{ "--h": hueOf(row.name) } as React.CSSProperties}
         className="flex flex-col gap-3"
       >
-        <h2 className="hue-text font-display text-[19px] leading-snug">
-          #{row.name}
+        {/* Clickable too, though ⏎ already goes here: a heading sitting dead
+            above a list of sub-tags that all follow a click is the odd one
+            out, and the mouse shouldn't have to reach back to the row. */}
+        <h2 className="font-display text-[19px] leading-snug">
+          <Link
+            href={tagHref(row.name)}
+            title={`All notes tagged #${row.name}`}
+            onClick={(event) => {
+              if (event.metaKey || event.ctrlKey || event.shiftKey) return;
+              onNavigate();
+            }}
+            className="hue-text focus-visible:outline-none!"
+          >
+            #{row.name}
+          </Link>
         </h2>
         <p className="text-[14px] text-ink-muted">
           {row.count} {row.count === 1 ? "note" : "notes"}
@@ -188,15 +246,14 @@ function TagPreview({
         </p>
 
         {children.length > 0 && (
-          <p className="flex flex-wrap gap-x-2.5 gap-y-1 text-[12px]">
+          <p className="-my-0.5 flex flex-wrap gap-x-1 gap-y-0.5 text-[12px]">
             {children.map((name) => (
-              <span
+              <TagLink
                 key={name}
-                style={{ "--h": hueOf(name) } as React.CSSProperties}
-                className="hue-text"
-              >
-                #{name}
-              </span>
+                name={name}
+                hueOf={hueOf}
+                onNavigate={onNavigate}
+              />
             ))}
           </p>
         )}
@@ -240,9 +297,15 @@ function ActionPreview({ row }: { row: Extract<Row, { kind: "action" }> }) {
 function matchSummary(note: NoteHit): string {
   const inTitle = countMatches(note.title, note.terms);
   const inBody = countMatches(note.text, note.terms);
+  // Counted off the raw markdown only when the prose has none, and named for
+  // where it actually is: a hit inside a link's URL or a fenced block is a
+  // true match that the rendered note never shows, and calling it "in body"
+  // would send someone hunting for a word that isn't there to find.
+  const inMarkup = inBody > 0 ? 0 : countMatches(note.raw, note.terms);
   const counted = [
     inTitle > 0 && `${inTitle} in title`,
     inBody > 0 && `${inBody} in body`,
+    inMarkup > 0 && `${inMarkup} in markup`,
   ].filter(Boolean) as string[];
 
   if (counted.length > 0) return counted.join(" · ");
@@ -267,5 +330,35 @@ function Meta({
       <dt className="text-ink-faint">{label}</dt>
       <dd className="min-w-0 text-ink-muted">{children}</dd>
     </div>
+  );
+}
+
+/**
+ * A tag in the preview as a link.
+ * ⌘-click opens the index in a new tab, and the palette stays where it was instead of
+ * closing behind a page that never loaded.
+ */
+function TagLink({
+  name,
+  hueOf,
+  onNavigate,
+}: {
+  name: string;
+  hueOf: (name: string) => number;
+  onNavigate: () => void;
+}) {
+  return (
+    <Link
+      href={tagHref(name)}
+      title={`All notes tagged #${name}`}
+      onClick={(event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey) return;
+        onNavigate();
+      }}
+      style={{ "--h": hueOf(name) } as React.CSSProperties}
+      className="tag-pill hue-text px-1.5 py-0.5 focus-visible:outline-none!"
+    >
+      #{name}
+    </Link>
   );
 }

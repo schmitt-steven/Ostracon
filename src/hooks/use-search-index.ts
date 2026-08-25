@@ -7,6 +7,7 @@ import {
   SEARCH_INDEX_OPTIONS,
   type NoteDoc,
 } from "@/lib/search/build-index";
+import type { PaletteScope } from "@/lib/command/scope";
 import { loadCachedIndex, saveIndexCache } from "@/lib/search/indexeddb";
 import { countImages } from "@/lib/notes/text-length";
 import { byReason, reasonFrom, type MatchReason } from "@/lib/search/results";
@@ -20,6 +21,15 @@ export type NoteHit = {
   updatedAt: string;
   /** The note's prose with its markup taken off — excerpts and preview. */
   text: string;
+  /**
+   * The same body with its markup left on, whitespace collapsed.
+   *
+   * The index searches this, `text` is what gets rendered, and the two do not
+   * agree: a term inside a link's URL or a fenced block matches here and is
+   * gone from there. It is the snippet's second place to look, so a row that
+   * matched can always show *what* matched. See [snippet].
+   */
+  raw: string;
   /** How many images it embeds. The preview says so when there are any. */
   images: number;
   /**
@@ -34,15 +44,60 @@ export type NoteHit = {
 /** Shared so an un-run search doesn't hand back a new object every render. */
 const EMPTY_SEARCH = Object.freeze({ hits: [] as NoteHit[], total: 0 });
 
-/** Whether a note falls inside a tag scope. Sub-tags always count. */
-function inScope(tags: readonly string[], scope: string | null): boolean {
-  return !scope || tags.some((name) => tagMatches(name, scope));
+/**
+ * Whether a note falls inside a scope.
+ *
+ * `subtags` is the palette's toggle, not a default worth arguing about: under
+ * `#infra` you usually mean `#infra/ci` too, right up until you mean the six
+ * notes filed at `#infra` itself and nothing else.
+ *
+ * The tag-directory scope lets every note through, and that is the whole of
+ * what it does to them: it orders the palette's list rather than narrowing it
+ * — see [PaletteScope].
+ */
+function inScope(
+  tags: readonly string[],
+  scope: PaletteScope | null,
+  subtags: boolean,
+): boolean {
+  if (!scope) return true;
+  if (scope.kind === "untagged") return tags.length === 0;
+  if (scope.kind === "tags") return true;
+  return subtags
+    ? tags.some((name) => tagMatches(name, scope.name))
+    : tags.includes(scope.name);
+}
+
+/**
+ * How much of a typo the search forgives, by term length.
+ *
+ * `fuzzy: 0.2` alone is an edit distance of one from three characters up
+ * (`Math.round(length * 0.2)`), and one edit into a four-letter word is a
+ * quarter of it: `next` reaches `text` and `net`, so a search for Next.js
+ * comes back with a to-do list. That noise does not stay politely at the
+ * bottom either — a *fuzzy title* match lands in the title band of
+ * [byReason], which sorts above every exact body match no matter how many
+ * times the word actually appears there.
+ *
+ * Six characters up, an edit distance of one is a small neighbourhood and
+ * mistyping is plausible — `vercell` still finds `#vercel`. Below that the
+ * word is quick to retype and prefix matching still covers the useful half:
+ * `next` finds `nextjs` without help from fuzzy.
+ */
+const FUZZY = (term: string) => (term.length >= 6 ? 0.2 : false);
+
+/** Markup left on, whitespace flattened — see [NoteHit.raw]. */
+function collapse(bodyMd: string): string {
+  return bodyMd.replace(/\s+/g, " ").trim();
 }
 
 // Bumped whenever SEARCH_INDEX_OPTIONS' shape changes, so a stale cached index
 // from a previous version of the schema gets rebuilt instead of tripping
-// MiniSearch.loadJSON on a mismatched shape.
-const SCHEMA_VERSION = 2;
+// MiniSearch.loadJSON on a mismatched shape. 3 added [stemTerm], which changes
+// every term in the index — a cache from 2 would be searched with a processTerm
+// its own contents were never folded by, and half the queries would silently
+// miss.
+const SCHEMA_VERSION = 3;
 
 /**
  * The full-text index behind ⌘K's "jump to note" and the index view's own
@@ -129,19 +184,20 @@ export function useSearchIndex(enabled: boolean) {
   const search = useCallback(
     (
       query: string,
-      scope: string | null = null,
+      scope: PaletteScope | null = null,
       limit = 6,
+      subtags = true,
     ): { hits: NoteHit[]; total: number } => {
       const trimmed = query.trim();
       if (!trimmed || !index) return EMPTY_SEARCH;
 
       const hits = index
-        .search(trimmed, { prefix: true, fuzzy: 0.2, boost: { title: 2 } })
+        .search(trimmed, { prefix: true, fuzzy: FUZZY, boost: { title: 2 } })
         // Scoped, the index is asked for everything and narrowed here rather
         // than asked for six: the top six overall may contain none of the
         // scope's, and a scoped search that came back empty while matches
         // existed would be the palette lying about the collection.
-        .filter((hit) => inScope((hit.tags as string[]) ?? [], scope));
+        .filter((hit) => inScope((hit.tags as string[]) ?? [], scope, subtags));
 
       const results = hits.slice(0, limit).map((hit): NoteHit => {
         const tags = (hit.tags as string[]) ?? [];
@@ -157,6 +213,7 @@ export function useSearchIndex(enabled: boolean) {
           tags,
           updatedAt: hit.updatedAt as string,
           text: plainText(bodyMd),
+          raw: collapse(bodyMd),
           images: countImages(bodyMd),
           terms: hit.terms,
           reason: reasonFrom(fields, tags, hit.terms),
@@ -180,12 +237,16 @@ export function useSearchIndex(enabled: boolean) {
    * Tuesday" is the whole of why it's here and the date column says that.
    */
   const recent = useCallback(
-    (limit: number, scope: string | null = null): NoteHit[] => {
+    (
+      limit: number,
+      scope: PaletteScope | null = null,
+      subtags = true,
+    ): NoteHit[] => {
       if (!corpus) return [];
       // Filtered before sorting: ordering the whole corpus to take six off the
       // top of a slice of it is work the scope has already ruled out.
       return corpus
-        .filter((note) => inScope(note.tags ?? [], scope))
+        .filter((note) => inScope(note.tags ?? [], scope, subtags))
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
         .slice(0, limit)
         .map((note) => ({
@@ -195,6 +256,7 @@ export function useSearchIndex(enabled: boolean) {
           tags: note.tags ?? [],
           updatedAt: note.updatedAt,
           text: plainText(note.bodyMd),
+          raw: collapse(note.bodyMd),
           images: countImages(note.bodyMd),
           terms: [],
           reason: { kind: "recent" as const },
@@ -204,23 +266,37 @@ export function useSearchIndex(enabled: boolean) {
   );
 
   /**
-   * How many notes sit under each tag, its sub-tags counted in.
+   * How many notes sit under each tag, and when it was last written in — its
+   * sub-tags counted in for both.
    *
    * Built from the ancestry of every tag in use rather than from a tag list
    * passed in, so `#infra` has a count even in a collection where nothing is
    * tagged `#infra` directly and everything is under `#infra/ci`.
+   *
+   * One pass for the pair of them because they are the same walk: the count is
+   * what the palette's tag rows report, and the date is the order they arrive
+   * in when there is no query to rank them by — the same default the tag
+   * directory sorts on, for the same reason. ISO-8601 in a fixed zone compares
+   * correctly as plain strings.
    */
-  const tagCounts = useMemo(() => {
+  const { tagCounts, tagLastUsed } = useMemo(() => {
     const counts = new Map<string, number>();
+    const lastUsed = new Map<string, string>();
     for (const note of corpus ?? []) {
       const seen = new Set<string>();
       for (const tag of note.tags ?? []) {
         for (const ancestor of tagAncestry(tag)) seen.add(ancestor);
       }
-      for (const tag of seen) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      for (const tag of seen) {
+        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+        const at = lastUsed.get(tag);
+        if (at === undefined || note.updatedAt > at) {
+          lastUsed.set(tag, note.updatedAt);
+        }
+      }
     }
-    return counts;
+    return { tagCounts: counts, tagLastUsed: lastUsed };
   }, [corpus]);
 
-  return { search, recent, tagCounts, ready: index !== null };
+  return { search, recent, tagCounts, tagLastUsed, ready: index !== null };
 }

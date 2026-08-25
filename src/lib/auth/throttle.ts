@@ -1,8 +1,8 @@
 import "server-only";
 import { eq, lt, sql } from "drizzle-orm";
-import { headers } from "next/headers";
 import { db } from "@/db/client";
 import { loginAttempts } from "@/db/schema";
+import { clientIp } from "./client-info";
 
 // Failures allowed before any cooldown kicks in, so ordinary typos don't
 // lock the owner out.
@@ -39,20 +39,10 @@ function remainingSeconds(failedCount: number, lastFailureAt: Date): number {
 
 /**
  * The bucket a login attempt is counted against. There is no username to key
- * on — the app has a single shared password — so the client IP is all we have.
- *
- * This trusts the platform to overwrite `x-forwarded-for` with the real peer
- * address (Vercel does). Behind a proxy that appends rather than replaces, a
- * client could forge the leftmost entry and mint itself a fresh bucket per
- * request; check that before deploying elsewhere. Requests with no forwarded
- * address share the "unknown" bucket, which fails closed.
+ * on — the app has a single shared password — so the client address is all we
+ * have. See lib/auth/client-info for what that address is worth.
  */
-async function clientKey(): Promise<string> {
-  const h = await headers();
-  const forwarded = h.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const ip = forwarded || h.get("x-real-ip")?.trim();
-  return ip ? ip.slice(0, 64) : "unknown";
-}
+const clientKey = clientIp;
 
 export type Throttle = { key: string; retryAfter: number };
 

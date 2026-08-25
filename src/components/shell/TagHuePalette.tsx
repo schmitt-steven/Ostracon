@@ -10,12 +10,12 @@ type Props = {
 };
 
 /**
- * The twelve slots. Shared by the rail's context menu and the index heading's
+ * The sixteen slots. Shared by the rail's context menu and the index heading's
  * dot so that "change this tag's colour" is one control that happens to be
  * reachable from two places, not two controls that have to be kept saying the
  * same thing.
  *
- * Twelve swatches, not a picker. The palette *is* twelve slots wide (see
+ * Sixteen swatches, not a picker. The palette *is* sixteen slots wide (see
  * lib/tags/hue) and an override is a move between them — a free-colour input
  * would let one tag out of the system that keeps all of them legible, and the
  * locked lightness is the only reason a hue can be trusted to stay readable in
@@ -37,7 +37,12 @@ export function TagHuePalette({ tag, hue }: Props) {
       <p className="pb-1.5 text-[13px] text-ink-faint">
         {root === tag ? "Colour" : `Colour of #${root}`}
       </p>
-      <div className="flex flex-wrap gap-1.5">
+      {/* Two rows of eight, fixed — not flex-wrap. The row count is a property
+          of the palette, not of whatever it was opened inside: the rail's menu
+          is 208px and would wrap it 8/8 on its own, while the index heading's
+          popover is `w-max` and would lay all sixteen out in one 346px line. A
+          grid makes both mounts the same block of colour. */}
+      <div className="grid w-max grid-cols-8 gap-1.5">
         {HUE_SLOTS.map((slot) => (
           <button
             key={slot}
@@ -53,7 +58,7 @@ export function TagHuePalette({ tag, hue }: Props) {
             //
             // The scale stays as a second cue on the chosen one, not as the
             // only one. It was the only one, and "bigger" is a thing you read by
-            // comparison with its neighbours: fine for spotting which of twelve,
+            // comparison with its neighbours: fine for spotting which of sixteen,
             // useless for confirming the one you just pressed took.
             className={`hue-dot hue-slot size-4 rounded-full transition-transform ${
               hue === slot ? "scale-125" : "opacity-70 hover:opacity-100"

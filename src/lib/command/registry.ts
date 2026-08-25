@@ -8,6 +8,8 @@
 // alternative is threading a callback through every layout between them, which
 // coupleseach one to a feature none of them care about.
 
+import type { ActionIcon } from "@/components/command/types";
+
 export type Command = {
   id: string;
   label: string;
@@ -22,6 +24,12 @@ export type Command = {
   detail?: string;
   /** Extra words to match against — never shown. */
   keywords?: string;
+  /**
+   * The glyph beside the row. Defaults to the palette's generic "runs
+   * something" arrow, which is the honest answer for a command that hasn't
+   * said what it is about.
+   */
+  icon?: ActionIcon;
   /** Shown right-aligned, in mono. */
   shortcut?: string;
   run: () => void;

@@ -116,7 +116,7 @@ export function RailRow({
 
         {/* The name is always present as text. Hue never carries meaning on
             its own — roughly one man in twelve can't separate two of the
-            twelve slots, and locked lightness (good for consistency) takes
+            sixteen slots, and locked lightness (good for consistency) takes
             away the brightness difference that would otherwise rescue it. */}
         <span className="min-w-0 flex-1 truncate">{label}</span>
         {count !== undefined && (

@@ -72,7 +72,7 @@ export function TagHueButton({ tag, hue }: Props) {
           role="dialog"
           aria-label={`Colour of #${tag}`}
           // Anchored to the swatch, not to the heading row: the palette's
-          // twelve line up under the colour they replace. Fonts are restated
+          // sixteen line up under the colour they replace. Fonts are restated
           // because this hangs
           // off an h1 — display face at 28px otherwise inherits straight into
           // the label.

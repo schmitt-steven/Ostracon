@@ -23,8 +23,12 @@ export type TagPreferences = {
   /** Tag name → hue in degrees. Absent means "use the derived one". */
   hues: Record<string, number>;
   /**
-   * The pinned section's order, as [notePinKey]/[tagPinKey] strings — notes
-   * and tags in one sequence, because in the rail they are one list.
+   * The pinned rows' order, as [notePinKey]/[tagPinKey] strings.
+   *
+   * One list for both of the rail's pinned sections, not because they are one
+   * list on screen — they aren't — but because the keys already say which kind
+   * each row is, so each section can read this and take the positions of the
+   * rows it contains. A row is only ever moved within its own section.
    *
    * Newest pin first: every pin writes its key to the front (see [recordPin]),
    * so the top of the section is what you last decided to keep, and moving a
@@ -52,11 +56,20 @@ export function tagPinKey(tag: string): string {
 }
 
 /**
- * Five, the same as [MAX_PINNED_NOTES] — the two lists share one section in
- * the rail now, so a cap either of them could reach alone would let that
- * section swing between five rows and thirteen depending on which half was
- * filled. Five and five is ten at the very worst, which is still a list you
- * find a row in by shape rather than by reading.
+ * Which of the two the key names. The rail draws the notes and the tags as
+ * separate sections and moves a row only within its own, so it has to ask —
+ * and asks here rather than matching the prefix itself, which would be a
+ * second place that knows how these strings are spelled.
+ */
+export function isNotePinKey(key: string): boolean {
+  return key.startsWith("n:");
+}
+
+/**
+ * Five, the same as [MAX_PINNED_NOTES] — the two are separate sections in the
+ * rail, stacked, so together they decide how far down the panel everything
+ * under them sits. Five and five is ten rows at the very worst, which is still
+ * a list you find a row in by shape rather than by reading.
  *
  * A pinned list long enough to need scanning is just the tag list again, one
  * section higher up, and the section below it already sorts by recent use —
@@ -71,6 +84,25 @@ const EMPTY: TagPreferences = Object.freeze({
   hues: Object.freeze({}) as Record<string, number>,
   order: Object.freeze([]) as unknown as string[],
 });
+
+/**
+ * The slot closest to a stored hue, going the short way round the wheel so 350°
+ * lands on 0 rather than on the last slot below it.
+ */
+function nearestSlot(hue: number): number {
+  const wrapped = ((hue % 360) + 360) % 360;
+  let best = HUE_SLOTS[0]!;
+  let bestDistance = Infinity;
+  for (const slot of HUE_SLOTS) {
+    const raw = Math.abs(wrapped - slot);
+    const distance = Math.min(raw, 360 - raw);
+    if (distance < bestDistance) {
+      best = slot;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
 
 // Validated field by field: this is parsed from storage, which an older
 // version of this code (or a user with the console open) could have written
@@ -87,10 +119,16 @@ function read(): TagPreferences {
     const cleanHues: Record<string, number> = {};
     if (hues && typeof hues === "object") {
       for (const [name, hue] of Object.entries(hues)) {
-        // Only the twelve slots are accepted back. An override is a choice
+        // Only the sixteen slots are accepted back. An override is a choice
         // between the palette's own colours, not an escape from it.
-        if (typeof hue === "number" && HUE_SLOTS.includes(hue)) {
-          cleanHues[name] = hue;
+        //
+        // Snapped rather than dropped, because the palette has been a different
+        // number of slots before: an override written against the old twelve
+        // (30° steps) is a real choice the user made, and rejecting it would
+        // silently hand the tag back its derived hue. Nearest slot keeps the
+        // colour they picked as nearly as the current palette can say it.
+        if (typeof hue === "number" && Number.isFinite(hue)) {
+          cleanHues[name] = nearestSlot(hue);
         }
       }
     }
@@ -197,20 +235,21 @@ export function forgetPin(key: string): void {
 }
 
 /**
- * Replaces the pinned section's order outright.
+ * Replaces the pinned order outright — both sections' keys, in one call.
  *
  * The caller passes the whole sequence rather than "move this one up", because
- * the rail is the only thing that knows what the section actually contains: a
+ * the rail is the only thing that knows what the sections actually contain: a
  * pinned note's *membership* is a column in the database and a pinned tag's is
  * this file, and neither half can see the other. Writing the full list also
  * drops any key for something no longer pinned, so the stored order stays the
- * size of the section rather than the size of its history.
+ * size of the sections rather than the size of their history. A caller moving
+ * a row in one section still passes the other section's keys along, or their
+ * positions would be dropped with them.
  *
- * Which makes the note order device-local, unlike the pin itself. That's the
- * cost of one list: nowhere can hold an order over both halves except the side
- * that can see both, and only the browser can. Pinning a note on a second
- * machine still shows it there — at the end of the section rather than wherever
- * it was dragged to here.
+ * Which makes the note order device-local, unlike the pin itself: the notes'
+ * membership is on the server but their arrangement is only ever decided here.
+ * Pinning a note on a second machine still shows it there — at the end of the
+ * notes section rather than wherever it was moved to here.
  */
 export function setPinnedOrder(order: string[]): void {
   commit({ ...getTagPreferences(), order });

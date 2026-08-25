@@ -1,6 +1,8 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { setPaletteOpen } from "@/lib/command/palette-state";
+import { scopeFromPath, scopePrompt } from "@/lib/command/scope";
 
 /**
  * The rail's search entry point — the one that made ⌘K findable.
@@ -11,12 +13,25 @@ import { setPaletteOpen } from "@/lib/command/palette-state";
  * behaviours for one field. Clicking it opens the palette, and the first
  * keystroke lands there.
  *
+ * Which means it has to say what the palette will actually do. It reads the
+ * route the same way the palette does, so on a tag's page this says `Search
+ * #infra…` and the field it opens says the same thing with the chip beside
+ * it. Fixed wording was the one thing here that could be wrong: it offered to
+ * jump anywhere from inside a tag the palette then opened already narrowed
+ * to, and the surprise landed after the click rather than before it.
+ *
+ * Off a scoped route it goes back to naming all three verbs. A palette that
+ * also *does* things and *goes* places has to say so somewhere, and this is
+ * the only door with room for the sentence.
+ *
  * The `⌘K` chip is the label doing double duty: a reader who has never met
  * the convention can click, and one who has never clicked can learn the
  * shortcut without being told. It's hidden on touch, where the shortcut
  * doesn't exist and the bottom bar carries this instead.
  */
 export function SearchTrigger() {
+  const scope = scopeFromPath(usePathname());
+
   return (
     <button
       type="button"
@@ -50,7 +65,12 @@ export function SearchTrigger() {
           <path d="m20 20-3.5-3.5" />
         </svg>
       </span>
-      <span className="min-w-0 flex-1 truncate">Search or jump to…</span>
+      {/* Truncates rather than shortening: a long tag has to give way at the
+          end of a 240px column, and `Search #infra/deploy…` cut is still the
+          same sentence as the one the field will show. */}
+      <span className="min-w-0 flex-1 truncate">
+        {scope ? `${scopePrompt(scope)}…` : "Search, do, or jump to…"}
+      </span>
       {/* Mono, because that is what mono is reserved for here: keyboard
           shortcuts and nothing else. */}
       <span

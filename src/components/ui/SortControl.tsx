@@ -3,32 +3,21 @@
 import { useRef, useState } from "react";
 import { ContextMenu, menuItem } from "@/components/shell/ContextMenu";
 
-export type SortMode = "edited" | "created" | "oldest" | "longest";
-
-export const SORT_MODES: readonly SortMode[] = [
-  "edited",
-  "created",
-  "oldest",
-  "longest",
-];
-
-export const SORT_LABEL: Record<SortMode, string> = {
-  edited: "Recently edited",
-  created: "Recently created",
-  oldest: "Oldest",
-  longest: "Longest",
+type Props<M extends string> = {
+  value: M;
+  /** The choices, in the order they should read. */
+  modes: readonly M[];
+  labels: Record<M, string>;
+  /** What is being sorted — "Sort notes", "Sort images". */
+  label: string;
+  onChange: (mode: M) => void;
 };
 
 /**
- * The index's sort, and "recently edited" is the default — which is also why
- * there's no separate "Recent" section anywhere: the default view of
+ * A pane header's sort. Every view that has one puts it at the right end of the
+ * header row, and the default is always the first mode listed — which is also
+ * why there's no separate "Recent" section anywhere: the default view of
  * everything, sorted this way, already *is* that section.
- *
- * The four run newest-first, then oldest, then by size: the three time-based
- * ones are variations of one question and belong next to each other, and the
- * one that ignores time follows. "Recently created" is spelled out rather than
- * left as "Created" now that "Oldest" sits under it — on its own it read as a
- * field name, and beside its opposite it has to read as a direction.
  *
  * A bare trigger with no chrome — no fill, no outline. It sits at the right end
  * of a header that has no border under it, and a drawn control there would be
@@ -43,16 +32,22 @@ export const SORT_LABEL: Record<SortMode, string> = {
  * What drops out of it is [ContextMenu] — the same panel the rail rows open on
  * right-click. It used to be a native `<select>`, which meant the one menu the
  * app opens by itself was the one menu drawn by the OS: system font, system
- * corners, an opaque white slab over glass. The list is four fixed choices, so
- * nothing was gained for the mismatch.
+ * corners, an opaque white slab over glass. The list is a handful of fixed
+ * choices, so nothing was gained for the mismatch.
+ *
+ * The modes are handed in rather than fixed here because the two lists sort by
+ * different things — notes by when they were edited and how long they are,
+ * images by when they were added and how big they are. What both views want is
+ * the same object in the same corner behaving the same way, which is all this
+ * file is.
  */
-export function SortControl({
+export function SortControl<M extends string>({
   value,
+  modes,
+  labels,
+  label,
   onChange,
-}: {
-  value: SortMode;
-  onChange: (mode: SortMode) => void;
-}) {
+}: Props<M>) {
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -71,7 +66,7 @@ export function SortControl({
       <button
         ref={triggerRef}
         type="button"
-        aria-label="Sort notes"
+        aria-label={label}
         aria-haspopup="menu"
         aria-expanded={anchor !== null}
         onClick={() => (anchor ? setAnchor(null) : open())}
@@ -103,19 +98,19 @@ export function SortControl({
         >
           <path d="m2.5 4.5 3.5 3.5 3.5-3.5" />
         </svg>
-        {SORT_LABEL[value]}
+        {labels[value]}
       </button>
 
       {anchor && (
         <ContextMenu
-          label="Sort notes"
+          label={label}
           x={anchor.x}
           y={anchor.y}
           align="end"
           ignoreRef={triggerRef}
           onClose={() => setAnchor(null)}
         >
-          {SORT_MODES.map((mode) => {
+          {modes.map((mode) => {
             const chosen = mode === value;
             return (
               <button
@@ -150,7 +145,7 @@ export function SortControl({
                     </svg>
                   )}
                 </span>
-                {SORT_LABEL[mode]}
+                {labels[mode]}
               </button>
             );
           })}

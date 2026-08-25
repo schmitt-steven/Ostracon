@@ -27,6 +27,13 @@ import {
   type AiAction,
   type ProviderInfo,
 } from "@/lib/ai/types";
+import { registerCommands } from "@/lib/command/registry";
+import { registerImageTarget } from "@/lib/images/insert-target";
+import {
+  describeSkippedImages,
+  IMAGE_ACCEPT,
+  validateImageBatch,
+} from "@/lib/images/upload-rules";
 import type { Backlink } from "@/lib/notes/queries";
 import { suggestTags } from "@/lib/notes/tag-heuristic";
 import { normalizeTagList } from "@/lib/tags/parse";
@@ -183,6 +190,9 @@ export function NoteEditor({
   const editorRef = useRef<EditorHandle>(null);
   const previewRef = useRef<PreviewHandle>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  /** Why some images didn't make it — too big, wrong format, too many. */
+  const [imageNotice, setImageNotice] = useState<string | null>(null);
 
   const [aiMenu, setAiMenu] = useState<AiAnchor | null>(null);
   const [answer, setAnswer] = useState<AiAnswer | null>(null);
@@ -526,13 +536,50 @@ export function NoteEditor({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [backHref, router]);
 
-  // Nothing is registered into ⌘K from here any more. The mode switches and
-  // "Add tags" were duplicates of controls already on screen — the toggle sits
-  // in the header and the tag bar is a click away above the body — and a
-  // palette that mirrors every visible control is a second interface to keep
-  // in step rather than a shortcut. Contextual commands are still supported
-  // (lib/command/registry); a view that has a verb with nowhere else to live
-  // can register one.
+  /**
+   * Images, however they arrive: dropped on the window, or picked from ⌘K.
+   *
+   * The checking is here rather than in the editor because this is the level
+   * that can *say* something — the editor writes text into a document and has
+   * nowhere to put a sentence about a file that was too big. What it gets is a
+   * list already known to be uploadable.
+   */
+  const addImages = useCallback(
+    (files: File[], at?: { x: number; y: number }) => {
+      const { accepted, skipped, refusal } = validateImageBatch(files);
+      setImageNotice(refusal ?? describeSkippedImages(skipped));
+      if (accepted.length > 0) editorRef.current?.insertImages(accepted, at);
+    },
+    [],
+  );
+
+  // Claims the window's image drops for this note — see lib/images/insert-target
+  // for why that has to be a registry rather than a prop.
+  useEffect(() => registerImageTarget(addImages), [addImages]);
+
+  // The one command registered into ⌘K, and the only kind that earns a place
+  // there: the mode switches and "Add tags" were removed because they mirrored
+  // controls already on screen, and a palette that duplicates every visible
+  // button is a second interface to keep in step. This one has nowhere else to
+  // live — there is no upload button in this app, by design — so without the
+  // row the only way in would be a drag gesture nobody was told about.
+  useEffect(
+    () =>
+      registerCommands([
+        {
+          id: "add-images",
+          label: "Add images",
+          group: "Editor",
+          detail: "Upload images into this note · or drop them on it",
+          keywords: "image images upload picture photo screenshot png jpg attach",
+          icon: "image",
+          // The click has to be synchronous inside the palette's own gesture,
+          // or the browser refuses to open the dialog.
+          run: () => imageInputRef.current?.click(),
+        },
+      ]),
+    [],
+  );
 
   function handleContainerBlur(e: React.FocusEvent<HTMLDivElement>) {
     // Only flush when focus leaves the editor entirely — not when it just
@@ -733,6 +780,19 @@ export function NoteEditor({
             </div>
           )}
 
+          {imageNotice && (
+            <p className="mt-[var(--space-block)] rounded-[var(--radius-control)] bg-accent-wash px-4 py-3 text-[13px] text-ink">
+              {imageNotice}
+              <button
+                type="button"
+                onClick={() => setImageNotice(null)}
+                className="ml-2 underline underline-offset-2 hover:text-accent"
+              >
+                Dismiss
+              </button>
+            </p>
+          )}
+
           {aiError && (
             <p className="mt-[var(--space-block)] rounded-[var(--radius-control)] bg-accent-wash px-4 py-3 text-[13px] text-ink">
               {aiError}
@@ -808,6 +868,21 @@ export function NoteEditor({
             />
           </div>
         </div>
+
+        {/* Hidden, never tabbed to: ⌘K's "Add images" is what opens it. */}
+        <input
+          ref={imageInputRef}
+          type="file"
+          multiple
+          accept={IMAGE_ACCEPT}
+          className="hidden"
+          onChange={(event) => {
+            const files = [...(event.target.files ?? [])];
+            // Cleared so picking the same file twice in a row still fires.
+            event.target.value = "";
+            if (files.length > 0) addImages(files);
+          }}
+        />
 
         <SaveToast status={status} onSave={() => void flush()} />
 

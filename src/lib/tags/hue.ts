@@ -5,17 +5,21 @@
  * into existence by being typed into a note body, and stopping to ask for a
  * colour at that moment would turn writing into configuring.
  *
- * Twelve fixed slots rather than `hash % 360`. With a continuous hue two tags
+ * Sixteen fixed slots rather than `hash % 360`. With a continuous hue two tags
  * can land 4° apart, which doesn't read as "two colours" — it reads as a
- * rendering bug. Snapping to 30° steps means any two tags either share a slot
+ * rendering bug. Snapping to 22.5° steps means any two tags either share a slot
  * outright or sit far enough apart to tell apart at a glance. Collisions are
  * the acceptable failure here; near-misses are not.
+ *
+ * Sixteen and not more: the step is what buys legibility, and every slot added
+ * spends some of it. 22.5° is about the floor for two locked-lightness swatches
+ * to still read as different colours side by side.
  */
 
-/** The twelve slots, evenly spaced around the wheel. */
+/** The sixteen slots, evenly spaced around the wheel. */
 export const HUE_SLOTS: readonly number[] = Array.from(
-  { length: 12 },
-  (_, i) => i * 30,
+  { length: 16 },
+  (_, i) => i * 22.5,
 );
 
 /**

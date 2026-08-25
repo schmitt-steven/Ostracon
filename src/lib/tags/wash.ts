@@ -96,7 +96,7 @@ function fillWheel(hues: number[]): number[] {
  * top-left corner of the pane, so `tags[0]` is the colour the pane leads with.
  *
  * Take them in the order they were filed. Duplicate hues are dropped rather
- * than spent twice: two tags can hash to the same one of the twelve slots, and
+ * than spent twice: two tags can hash to the same one of the sixteen slots, and
  * a light doubled is a light wasted.
  */
 export function washLights(

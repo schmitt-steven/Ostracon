@@ -16,6 +16,7 @@ import {
   toggleRailOpen,
 } from "@/lib/ui/rail-state";
 import { KnownTagsProvider } from "./KnownTags";
+import { NoteImport } from "./NoteImport";
 import { Rail, type RailData } from "./Rail";
 
 type Props = {
@@ -114,8 +115,8 @@ export function AppShell({ rail, tagNames, children }: Props) {
           a wide screen sit at thumb height here instead. */}
         <div className="glass lift-2 fixed inset-x-0 bottom-0 z-30 flex items-center justify-around gap-2 px-4 py-2 min-[1000px]:hidden">
           {/* "Notes", not "Tags": the drawer is the whole rail — All notes,
-            Untagged and Images sit above the tag tree in it — and naming it
-            after one of its sections undersold where the button goes. */}
+            All tags, Untagged and Images, plus whatever is pinned — and naming
+            it after one of its rows undersold where the button goes. */}
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
@@ -146,6 +147,12 @@ export function AppShell({ rail, tagNames, children }: Props) {
           open={paletteOpen}
           onOpenChange={setPaletteOpen}
         />
+
+        {/* Mounted beside the palette, and for the same reason: the window is
+            the drop target, so this belongs to the shell rather than to any
+            view inside it. ⌘K's "Import markdown files" opens the picker it
+            owns. */}
+        <NoteImport />
       </div>
     </KnownTagsProvider>
   );

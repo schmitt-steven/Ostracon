@@ -1,5 +1,7 @@
 "use client";
 
+import { Segmented } from "@/components/ui/Segmented";
+
 export type ViewMode = "write" | "split" | "preview";
 
 export const VIEW_MODES: { value: ViewMode; label: string }[] = [
@@ -16,12 +18,12 @@ type Props = {
 /**
  * The mode switch: one control, in two shapes.
  *
- * Wide, it is a segmented track — a single seated object with a marker that
- * slides between three labels, rather than the three loose buttons this
- * replaces. Three separate hit targets sitting in a row asked the eye to work
- * out that they belonged together; a track says it outright, and the marker
- * moving from one segment to the next shows the switch as one state changing
- * instead of two independent buttons lighting up.
+ * Wide, it is a [Segmented] track — the same object the theme setting is, and
+ * for the same reason: three fixed choices all worth showing at once, with a
+ * marker that slides between them rather than three loose buttons lighting up
+ * independently. Everything about how it is drawn lives there; what is set
+ * here is only what this one place needs of it — the height of the buttons
+ * beside it in the header, and that it isn't offered at all below 1000px.
  *
  * Below the shell's 1000px it is a single button that swaps between writing
  * and reading. Split is gone there — two columns inside a phone's width are
@@ -32,18 +34,6 @@ type Props = {
  * the button is labelled with the side you aren't on, and pressing it goes
  * there.
  *
- * Both shapes are made of parts the rest of the app is already made of. The
- * track is a `.well` — the same hole-in-a-panel the search field and the
- * filter field are cut as — and the marker is `.row-selected`, the neutral
- * "you are here" the rail paints under All notes. A segmented control drawn
- * in tones of its own would have been a fourth idea of what "recessed" and
- * "selected" look like; there are supposed to be one of each.
- *
- * The well is filled in translucent ink rather than --sunk, unlike those two
- * fields: they sit on the rail, which is a flat surface, and this sits in the
- * note header over the pane's coloured wash, where a flat grey box reads as a
- * grey box dropped on top instead of a step down into what's behind it.
- *
  * Nothing here is coloured: colour in this design means "this is a tag", and
  * spending it on a view toggle would dilute the one thing hue is for.
  */
@@ -52,55 +42,22 @@ export function ViewModeToggle({ mode, onChange }: Props) {
   // button treats it as Write — true for the frame between a resize and the
   // fold-back, and the honest reading of it in any case.
   const previewing = mode === "preview";
-  const index = Math.max(
-    VIEW_MODES.findIndex((m) => m.value === mode),
-    0,
-  );
 
   return (
     <>
-      <div
-        role="group"
-        aria-label="View mode"
+      <Segmented
+        label="View mode"
+        value={mode}
+        options={VIEW_MODES}
+        onChange={onChange}
         // h-7 is the pin and delete buttons' height — the three controls end
         // this row, and a track standing taller than the pair beside it was
         // the one thing in the header not sitting on the same line.
-        //
-        // p-0.5 is the track's inset, and the marker's `inset-y-0.5` /
-        // `left-0.5` / `-4px` below are that same 2px — the marker sits inside
-        // the track rather than on top of its edge. The shade is taken down
-        // the way the search trigger takes it down: the well's default lip is
-        // set for a field you type into, and at this height it reads as a line
-        // ruled across the top rather than as depth.
-        className="well [--well-shade:0.2] relative hidden h-7 shrink-0 rounded-[var(--radius-control)] bg-[color-mix(in_srgb,var(--ink)_5%,transparent)] p-0.5 min-[1000px]:grid min-[1000px]:grid-cols-3"
-      >
-        <span
-          aria-hidden
-          style={{ transform: `translateX(${index * 100}%)` }}
-          className="row-selected pointer-events-none absolute inset-y-0.5 left-0.5 w-[calc((100%-4px)/3)] rounded-[calc(var(--radius-control)-2px)] transition-transform duration-[var(--tint-motion)] ease-out motion-reduce:transition-none"
-        />
-        {VIEW_MODES.map(({ value, label }) => {
-          const active = mode === value;
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => onChange(value)}
-              aria-pressed={active}
-              // Equal columns with a floor, so the marker's third always
-              // matches the segment under it and the track doesn't jitter as
-              // the labels change length. No vertical padding: the grid
-              // stretches each segment to the track, so the height is set in
-              // one place instead of being added up from three.
-              className={`relative min-w-[68px] rounded-[calc(var(--radius-control)-2px)] px-3 text-[13px] transition-colors duration-[var(--tint-motion)] motion-reduce:transition-none ${
-                active ? "text-ink" : "text-ink-faint hover:text-ink-muted"
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
+        className="hidden h-7 min-[1000px]:grid"
+        // A floor under the segments, so the track keeps its width as the
+        // marker moves rather than breathing with the labels.
+        segmentClassName="min-w-[68px]"
+      />
 
       {/* Touch only. No aria-label over the top of the text: the word in the
           button is the name of the button, and a spoken label that disagreed

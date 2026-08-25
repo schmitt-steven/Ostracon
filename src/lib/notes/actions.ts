@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { refresh, revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db/client";
@@ -435,4 +435,240 @@ export async function renameTag(input: unknown): Promise<RenameTagResult> {
   for (const note of changed) revalidatePath(`/notes/${note.slug}`);
   refresh();
   return { noteIds: changed.map((note) => note.id) };
+}
+
+const TagInput = z.object({ tag: z.string().min(1).max(120) });
+
+/**
+ * Every note filed under `target` or anything beneath it, read the way the
+ * rename sweep reads them.
+ *
+ * Descendants come along because they have to, not for symmetry with rename:
+ * a tag exists only as far as something is filed under it (see [knownTagSet]),
+ * so unfiling `#infra` while `#infra/ci` survives would have `#infra` reappear
+ * immediately as that child's ancestor. Deleting the subtree is the only scope
+ * in which the tag actually goes away.
+ *
+ * `parseContentMd` rather than the `tags` column, again as rename does: a note
+ * last saved before tags moved into frontmatter has no record there, and
+ * [resolveNoteTags] is what reads those the old way — off the prose. Skipping
+ * that would let the tag survive its own deletion on exactly those notes.
+ */
+async function notesUnderTag(target: string) {
+  const rows = await db
+    .select({ id: notes.id, slug: notes.slug, contentMd: notes.contentMd })
+    .from(notes);
+
+  const under: {
+    id: string;
+    slug: string;
+    contentMd: string;
+    title: string;
+    body: string;
+    /** The note's whole tag list as it stands — the undo's restore point. */
+    tags: string[];
+  }[] = [];
+
+  for (const row of rows) {
+    const { data, body } = parseContentMd(row.contentMd);
+    const tags = resolveNoteTags(data.tags, body);
+    if (!tags.some((tag) => tagMatches(tag, target))) continue;
+    under.push({ ...row, title: data.title, body, tags });
+  }
+  return under;
+}
+
+export type TagDeletionStats = {
+  /** Notes filed under the tag or anything beneath it. */
+  noteCount: number;
+  /** How many of those are also filed under a tag from outside the subtree. */
+  alsoTagged: number;
+};
+
+/**
+ * What deleting the notes under a tag would actually take with it.
+ *
+ * Only the destructive half of the dialog asks for this, and it asks the
+ * server rather than counting what it was handed, because the count it was
+ * handed comes from the tag tree — which knows how many notes are filed under
+ * a tag and nothing about what *else* they are filed under.
+ *
+ * That second number is the one that stops the wrong press. A note tagged
+ * `#infra` and `#reading` is as much a reading note as an infra one, and "12
+ * notes" says nothing about it; "4 of them are also filed elsewhere" is the
+ * difference between clearing out a scratch tag and losing a third of your
+ * reading list to it.
+ */
+export async function tagDeletionStats(
+  input: unknown,
+): Promise<TagDeletionStats> {
+  await requireAuth();
+  const target = normalizeTag(TagInput.parse(input).tag);
+  if (!isValidTag(target)) return { noteCount: 0, alsoTagged: 0 };
+
+  const under = await notesUnderTag(target);
+  return {
+    noteCount: under.length,
+    alsoTagged: under.filter((note) =>
+      note.tags.some((tag) => !tagMatches(tag, target)),
+    ).length,
+  };
+}
+
+export type UnfileTagResult = {
+  /**
+   * The notes that were filed under the tag, each with the whole list it
+   * carried before — hand these back to [restoreNoteTags] to undo.
+   */
+  unfiled: { id: string; tags: string[] }[];
+};
+
+/**
+ * Removes a tag from every note filed under it, leaving the notes alone.
+ *
+ * Only the frontmatter record moves. A `#name` written in the prose is left
+ * exactly as it was, which is deliberate and not an omission: this app already
+ * draws a line between the two — "a `#word` in the prose is a reference to a
+ * tag, not an act of filing" (see [NoteInput]) — and a reference to a tag that
+ * no longer exists is a state it already renders on purpose, as the muted span
+ * `remarkHashtag` gives anything it can't resolve. Nothing is left broken, and
+ * no sentence is rewritten to say something its author didn't write.
+ *
+ * It is also what keeps the undo exact and free. Rewriting the prose would
+ * mean stripping `#`es that could never be put back — there is no way to tell
+ * afterwards which bare "infra"s used to be tags and which were always just
+ * the word — so the operation would stop being reversible for the sake of
+ * tidiness. As it stands the previous list *is* the whole previous state.
+ *
+ * The counterpart of rename's sweep, and unlike it this one cannot collide:
+ * removing names from a list can't produce a duplicate or overrun the cap, so
+ * the result goes to the column as it comes out of the filter.
+ */
+export async function unfileTag(input: unknown): Promise<UnfileTagResult> {
+  await requireAuth();
+  const target = normalizeTag(TagInput.parse(input).tag);
+  if (!isValidTag(target)) return { unfiled: [] };
+
+  const under = await notesUnderTag(target);
+  for (const note of under) {
+    const tags = note.tags.filter((tag) => !tagMatches(tag, target));
+    await db
+      .update(notes)
+      .set({
+        contentMd: stringifyContentMd({ title: note.title, tags }, note.body),
+        tags,
+        version: sql`${notes.version} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(notes.id, note.id));
+  }
+
+  revalidatePath("/");
+  for (const note of under) revalidatePath(`/notes/${note.slug}`);
+  refresh();
+  return { unfiled: under.map((note) => ({ id: note.id, tags: note.tags })) };
+}
+
+const RestoreTagsInput = z.object({
+  entries: z
+    .array(
+      z.object({ id: z.uuid(), tags: z.array(z.string().max(120)).max(50) }),
+    )
+    .max(2000),
+});
+
+/**
+ * Puts each note's tag list back to a list it held before — the undo half of
+ * [unfileTag], and nothing else calls it.
+ *
+ * The whole previous list rather than "add these names back", because the
+ * order of a note's tags is load-bearing: the first one is what the note is
+ * read under when it was reached from somewhere with no tag of its own, and
+ * so what the editor washes the pane in (see [normalizeTagList]). Appending
+ * the removed names would put a note tagged `#infra, #ops` back as `#ops,
+ * #infra` and quietly recolour it.
+ *
+ * Which means this overwrites rather than merges, and is only safe because of
+ * where it is offered from: a modal that has been open, over these notes,
+ * since the moment the list was taken.
+ */
+export async function restoreNoteTags(input: unknown): Promise<void> {
+  await requireAuth();
+  const { entries } = RestoreTagsInput.parse(input);
+
+  for (const entry of entries) {
+    const [row] = await db
+      .select({ slug: notes.slug, contentMd: notes.contentMd })
+      .from(notes)
+      .where(eq(notes.id, entry.id))
+      .limit(1);
+    // Deleted from elsewhere in the meantime — there is nothing to put a tag
+    // back on, and that is not an error worth failing the rest of the undo for.
+    if (!row) continue;
+
+    const { data, body } = parseContentMd(row.contentMd);
+    const tags = tagsFor(entry.tags);
+    await db
+      .update(notes)
+      .set({
+        contentMd: stringifyContentMd({ title: data.title, tags }, body),
+        tags,
+        version: sql`${notes.version} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(notes.id, entry.id));
+    revalidatePath(`/notes/${row.slug}`);
+  }
+
+  revalidatePath("/");
+  refresh();
+}
+
+/**
+ * Deletes every note filed under a tag, and so the tag with them.
+ *
+ * The other branch of the same dialog, and the one that doesn't come back:
+ * there is no trash in this app, [deleteNote] hard-deletes, and this does the
+ * same in bulk. Which is why the dialog makes you type the tag's name and why
+ * [tagDeletionStats] is on the screen before the press — see there.
+ *
+ * Two orderings matter. Backlinks are read first, because `links` rows cascade
+ * with the note (see schema) and afterwards there is no way to ask what used
+ * to point at it — the surviving notes on the other end need their backlink
+ * panes revalidated. The images go last, after the rows are gone, because
+ * [deleteNoteImages] keeps any upload another note still references: run per
+ * note beforehand and each doomed note's doomed siblings would count as
+ * holders, so a picture shared across the batch would be kept forever.
+ */
+export async function deleteTaggedNotes(
+  input: unknown,
+): Promise<{ count: number }> {
+  await requireAuth();
+  const target = normalizeTag(TagInput.parse(input).tag);
+  if (!isValidTag(target)) return { count: 0 };
+
+  const doomed = await notesUnderTag(target);
+  if (doomed.length === 0) return { count: 0 };
+
+  const affected = new Set<string>();
+  for (const note of doomed) {
+    for (const slug of await linkedSlugs(note.id)) affected.add(slug);
+  }
+
+  await db.delete(notes).where(
+    inArray(
+      notes.id,
+      doomed.map((note) => note.id),
+    ),
+  );
+  for (const note of doomed) await deleteNoteImages(note.id, note.contentMd);
+
+  revalidatePath("/");
+  for (const note of doomed) {
+    affected.delete(note.slug);
+    revalidatePath(`/notes/${note.slug}`);
+  }
+  for (const slug of affected) revalidatePath(`/notes/${slug}`);
+  refresh();
+  return { count: doomed.length };
 }

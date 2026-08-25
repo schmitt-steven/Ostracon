@@ -11,8 +11,9 @@ type Props = {
 /**
  * Log out, with a confirmation in front of it.
  *
- * The button sits at the foot of the rail directly under the theme toggle —
- * two rows apart, both one click, one of them ending the session. The
+ * The button sits at the foot of the rail directly under Settings — where the
+ * theme toggle used to be, and the reason for the same worry: two rows apart,
+ * both one click, one of them ending the session. The
  * confirmation is there because a mis-aimed click used to drop you at the
  * login screen with whatever you were doing gone from the screen.
  *

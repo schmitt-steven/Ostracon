@@ -12,18 +12,21 @@ import {
 } from "react";
 import { RelativeDate } from "@/components/ui/RelativeDate";
 import { useTagHues } from "@/hooks/use-tag-hues";
-import { setPaletteOpen } from "@/lib/command/palette-state";
 import { deleteNote } from "@/lib/notes/actions";
+import { requestNoteImport } from "@/lib/notes/import-request";
 import type { NoteOverviewLite } from "@/lib/notes/queries";
 import { ALL_NOTES_HREF, noteHref } from "@/lib/tags/routes";
 import { washLights, washVars } from "@/lib/tags/wash";
 import { PaneScroller } from "@/components/shell/PaneScroller";
+import { TagDeleteDialog } from "@/components/shell/TagDeleteDialog";
 import { TagRenameDialog } from "@/components/shell/TagRenameDialog";
 import { Asterism } from "./Asterism";
 import { DeleteRowButton } from "./DeleteRowButton";
 import { TagHueButton } from "./TagHueButton";
 import { TagPinButton } from "./TagPinButton";
-import { SORT_LABEL, SortControl, type SortMode } from "./SortControl";
+import { HeaderSearchButton } from "@/components/ui/HeaderSearchButton";
+import { SortControl } from "@/components/ui/SortControl";
+import { SORT_LABEL, SORT_MODES, type SortMode } from "./note-sort";
 
 type Props = {
   notes: NoteOverviewLite[];
@@ -74,6 +77,7 @@ export function IndexView({ notes, tag, heading }: Props) {
   // first row on arrival would look like something had already been clicked.
   const [cursor, setCursor] = useState(-1);
   const [renaming, setRenaming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
 
   // Rows are hidden the moment deletion is confirmed rather than when the
@@ -205,6 +209,9 @@ export function IndexView({ notes, tag, heading }: Props) {
               </nav>
               <SortControl
                 value={sort}
+                modes={SORT_MODES}
+                labels={SORT_LABEL}
+                label="Sort notes"
                 onChange={(next) => {
                   setSort(next);
                   // Row 3 of "recently edited" and row 3 of "longest" are
@@ -282,17 +289,48 @@ export function IndexView({ notes, tag, heading }: Props) {
             {/* Search and pin, in that order: the one you reach for constantly
               and the one you press once. Both are the 28px circle the note
               header's controls are, so a header control is the same object
-              wherever it appears. Only on a tag — there is no scope to search
-              inside and nothing to pin on All notes or Untagged. */}
+              wherever it appears.
+
+              The search is on every one of these lists, not just a tag's. It
+              was tag-only on the argument that All notes and Untagged have no
+              scope to search inside, which mistook the button for a filter —
+              it opens the palette, and the palette is as useful standing in
+              front of everything as it is inside one tag. What differs is only
+              what it says: a tag names its scope, the other two don't, because
+              there the palette searches the collection. The pin and the delete
+              stay tag-only; there is nothing to pin or delete here. */}
+            {/* The words the palette will open wearing: it reads the route and
+              seeds its own chip from it, so a button that promised anything
+              else would be describing a different search. See [scopeFromPath].
+              `heading` is only ever Untagged today, and lower-cased it is
+              exactly what that scope is called in a sentence. */}
+            <HeaderSearchButton
+              label={
+                tag
+                  ? `Search ${title}`
+                  : heading
+                    ? `Search ${heading.toLowerCase()} notes`
+                    : "Search notes"
+              }
+              hint={tag ? `Search inside ${title}` : "Search your notes"}
+            />
+
             {tag && (
               <>
+                <TagPinButton tag={tag} />
+                {/* Last of the three, and the only one that goes red on
+                    reach: the order is how often you press them, and this is
+                    the one you press once ever. It sits here rather than in a
+                    ⋯ menu because this header has never had one — the rename
+                    is the title itself — and a menu holding a single item is
+                    a lid on one button. */}
                 <button
                   type="button"
-                  onClick={() => setPaletteOpen(true)}
-                  aria-label={`Search ${title}`}
-                  aria-keyshortcuts="Meta+K Control+K"
-                  title={`Search inside ${title}`}
-                  className="row-tint flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:text-ink"
+                  onClick={() => setDeleting(true)}
+                  aria-label={`Delete ${title}`}
+                  aria-haspopup="dialog"
+                  title={`Delete ${title}`}
+                  className="row-tint flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-danger-wash hover:text-danger"
                 >
                   <svg
                     aria-hidden
@@ -301,13 +339,15 @@ export function IndexView({ notes, tag, heading }: Props) {
                     stroke="currentColor"
                     strokeWidth="1.75"
                     strokeLinecap="round"
+                    strokeLinejoin="round"
                     className="size-4"
                   >
-                    <circle cx="11" cy="11" r="7" />
-                    <path d="m20 20-3.5-3.5" />
+                    <path d="M4 7h16" />
+                    <path d="M10 4h4a1 1 0 0 1 1 1v2H9V5a1 1 0 0 1 1-1z" />
+                    <path d="M6 7v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7" />
+                    <path d="M10 11.5v5.5M14 11.5v5.5" />
                   </svg>
                 </button>
-                <TagPinButton tag={tag} />
               </>
             )}
           </div>
@@ -323,14 +363,52 @@ export function IndexView({ notes, tag, heading }: Props) {
             />
           )}
 
+          {tag && deleting && (
+            <TagDeleteDialog
+              tag={tag}
+              // The live count for the same reason as above: rows deleted a
+              // moment ago are already gone from this list and shouldn't be
+              // counted in a sentence about what is about to go.
+              noteCount={liveNotes.length}
+              onClose={() => setDeleting(false)}
+            />
+          )}
+
           {notes.length === 0 ? (
-            <p className="pt-[var(--space-block)] text-base text-ink-muted">
-              Nothing here yet. Tags come from the notes themselves — type{" "}
-              <span className="font-mono text-[13px]">
-                #{tag ?? "something"}
-              </span>{" "}
-              in a note and it will show up.
-            </p>
+            // Two different emptinesses. An index with nothing in it is a
+            // question about tags; the *root* index with nothing in it is a
+            // collection that doesn't exist yet, and the only useful thing to
+            // say there is how to start one — including the way in that has no
+            // button anywhere on this screen.
+            tag === null && !heading ? (
+              <p className="pt-[var(--space-block)] text-base text-ink-muted">
+                Nothing here yet.{" "}
+                <Link
+                  href="/notes/new"
+                  className="text-action underline-offset-2 hover:underline"
+                >
+                  Create your first note
+                </Link>
+                <span aria-hidden className="px-1.5 text-ink-faint">
+                  ·
+                </span>
+                <button
+                  type="button"
+                  onClick={requestNoteImport}
+                  className="text-action underline-offset-2 hover:underline"
+                >
+                  or import .md and .txt files from your computer
+                </button>
+              </p>
+            ) : (
+              <p className="pt-[var(--space-block)] text-base text-ink-muted">
+                Nothing here yet. Tags come from the notes themselves — type{" "}
+                <span className="font-mono text-[13px]">
+                  #{tag ?? "something"}
+                </span>{" "}
+                in a note and it will show up.
+              </p>
+            )
           ) : (
             <>
               {sorted.length === 0 ? (

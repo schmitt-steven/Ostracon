@@ -11,11 +11,16 @@ type Props = {
   /** Current hue, override applied — what the swatch row shows as chosen. */
   hue: number;
   /** False at the top of the pinned section, which greys "Move up" out. */
-  canMoveUp: boolean;
-  canMoveDown: boolean;
-  /** The move itself belongs to the rail — see [Rail.moveProps]. */
-  onMove: (direction: -1 | 1) => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  /**
+   * The move itself belongs to the rail — see [Rail.moveProps]. Omitted by the
+   * tag directory, which can't see the pinned section's order and so offers no
+   * move items at all rather than two that are permanently greyed out.
+   */
+  onMove?: (direction: -1 | 1) => void;
   onRename: () => void;
+  onDelete: () => void;
   onClose: () => void;
   /** Viewport coordinates of the row this was opened from. */
   x: number;
@@ -40,6 +45,7 @@ export function TagMenu({
   canMoveDown,
   onMove,
   onRename,
+  onDelete,
   onClose,
   x,
   y,
@@ -65,7 +71,7 @@ export function TagMenu({
             : "Pin to top"}
       </button>
 
-      {pinned && (
+      {pinned && onMove && (
         <>
           <button
             type="button"
@@ -98,6 +104,22 @@ export function TagMenu({
         }}
       >
         Rename everywhere…
+      </button>
+
+      {/* Below rename, because it is the same kind of thing done to the whole
+          tag at once, and in --danger so the pair doesn't read as two spellings
+          of the same press. The ellipsis is doing real work: what it opens
+          asks which of the two deletions you meant before anything happens. */}
+      <button
+        type="button"
+        role="menuitem"
+        className={`${menuItem} text-danger! hover:text-danger-hover!`}
+        onClick={() => {
+          onDelete();
+          onClose();
+        }}
+      >
+        Delete tag…
       </button>
 
       {/* Shared with the index heading's dot — same swatches, same reset, one

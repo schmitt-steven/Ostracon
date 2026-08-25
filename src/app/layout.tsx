@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import { AppShell } from "@/components/shell/AppShell";
 import { InlineScript } from "@/components/ui/InlineScript";
+import { ThemeSync } from "@/components/ui/ThemeSync";
 import { isAuthenticated } from "@/lib/auth/require-auth";
 import {
   listNotesOverview,
@@ -96,6 +97,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       {/* The shell sizes itself to the viewport and scrolls its panes
           internally, so the document itself never scrolls. */}
       <body className="h-full overflow-hidden">
+        {/* Draws nothing. It holds the attribute the script above set — see
+            [ThemeSync] for the two ways it can go stale — and it sits out here
+            rather than inside the shell because /login is drawn without one. */}
+        <ThemeSync />
         {shell ? (
           <AppShell rail={shell.rail} tagNames={shell.tagNames}>
             {children}

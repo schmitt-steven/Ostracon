@@ -1,11 +1,12 @@
 /**
- * The one ordering the rail's pinned section has.
+ * The ordering the rail's pinned rows have — applied once per section, since
+ * the pinned notes and the pinned tags are drawn as two lists.
  *
  * Kept apart from the rail because it is the whole of what "the user moved
- * this row" means, and because the two halves it puts in sequence come from
- * different places — a pinned note is a column in the database, a pinned tag
- * is a key in localStorage. Neither store can order the other, so the order is
- * a list of names (see notePinKey/tagPinKey) that is matched against both.
+ * this row" means, and because the two kinds it sequences come from different
+ * places — a pinned note is a column in the database, a pinned tag is a key in
+ * localStorage. Neither store can order the other, so the order is a list of
+ * names (see notePinKey/tagPinKey) that is matched against both.
  *
  * `order` is advisory in both directions: names for things that are no longer
  * pinned are ignored, and anything pinned that it doesn't name keeps the

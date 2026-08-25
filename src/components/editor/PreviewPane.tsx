@@ -7,6 +7,7 @@ import {
   useState,
   type Ref,
 } from "react";
+import { ImageLightbox } from "@/components/render/ImageLightbox";
 import { WikilinkNav } from "@/components/render/WikilinkNav";
 import { renderPreview } from "@/lib/markdown/actions";
 
@@ -53,6 +54,15 @@ export function PreviewPane({
   // against exactly those — starting it blank would burn a render on open.
   const [renderedTags, setRenderedTags] = useState(() => tags.join(","));
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  /**
+   * The image being looked at full size, or null. Held here rather than in
+   * the lightbox because the rendered HTML is inert markup — the click that
+   * opens it is caught by delegation below, which is the same arrangement
+   * wikilinks use.
+   */
+  const [zoomed, setZoomed] = useState<{ src: string; alt: string } | null>(
+    null,
+  );
   // Bumped per request so a slow render that resolves after a newer one
   // can't overwrite it.
   const requestSeq = useRef(0);
@@ -108,6 +118,13 @@ export function PreviewPane({
     // Wikilinks navigate (WikilinkNav) — don't also yank the editor around.
     const el = event.target as HTMLElement;
     if (el.closest("a")) return;
+    // An image opens instead of syncing the editor's scroll: it is the one
+    // block in a note that is too small to read at the column's width, and
+    // the sentence beside it is still there to click for the sync.
+    if (el instanceof HTMLImageElement && el.currentSrc) {
+      setZoomed({ src: el.currentSrc, alt: el.alt });
+      return;
+    }
     const block = el.closest<HTMLElement>("[data-line]");
     if (block) onLineClick?.(Number(block.dataset.line));
   }
@@ -128,6 +145,14 @@ export function PreviewPane({
           <p className="text-base text-ink-faint">Nothing to preview yet.</p>
         )}
       </div>
+
+      {zoomed && (
+        <ImageLightbox
+          src={zoomed.src}
+          alt={zoomed.alt}
+          onClose={() => setZoomed(null)}
+        />
+      )}
     </div>
   );
 }

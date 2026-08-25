@@ -1,9 +1,9 @@
 import "server-only";
 import { createHmac } from "node:crypto";
 import { lt } from "drizzle-orm";
-import { headers } from "next/headers";
 import { db } from "@/db/client";
 import { loginFailures } from "@/db/schema";
+import { clientUserAgent } from "./client-info";
 
 /**
  * What a failed guess is worth recording, and what it isn't.
@@ -94,7 +94,7 @@ export async function logFailure(ip: string, guess: string): Promise<void> {
 
   await db.insert(loginFailures).values({
     ip,
-    userAgent: (await headers()).get("user-agent")?.slice(0, 300) ?? null,
+    userAgent: await clientUserAgent(),
     passwordLength: guess.length,
     fingerprint: fingerprint(guess),
     distance,

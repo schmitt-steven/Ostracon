@@ -2,32 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useMemo, useState, type MouseEvent } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import { setPaletteOpen } from "@/lib/command/palette-state";
+import { scopeFromPath, scopePrompt } from "@/lib/command/scope";
 import type { PinnedNote } from "@/lib/notes/queries";
 import { flattenTree, type TagNode } from "@/lib/tags/tree";
-import { tagAncestry } from "@/lib/tags/parse";
 import { sortByPinOrder } from "@/lib/tags/pin-order";
 import {
   ALL_NOTES_HREF,
   noteHref,
   tagFromSegments,
   tagHref,
+  TAGS_HREF,
   UNTAGGED_HREF,
 } from "@/lib/tags/routes";
 import {
+  isNotePinKey,
   MAX_PINNED_TAGS,
   notePinKey,
   setPinnedOrder,
   tagPinKey,
 } from "@/lib/tags/preferences";
 import { useTagHues } from "@/hooks/use-tag-hues";
-import { ThemeToggle } from "@/components/nav/ThemeToggle";
 import { LogOutButton } from "./LogOutButton";
 import { NoteMenu } from "./NoteMenu";
 import { RailRow } from "./RailRow";
 import { SearchTrigger } from "./SearchTrigger";
 import { TagMenu } from "./TagMenu";
+import { TagDeleteDialog } from "./TagDeleteDialog";
 import { TagRenameDialog } from "./TagRenameDialog";
 
 export type RailData = {
@@ -61,10 +63,11 @@ function menuRowKey(state: MenuState) {
     : notePinKey(state.note.slug);
 }
 
-/** One row of the pinned section, whichever of the two kinds it is. */
-type PinnedItem =
-  | { key: string; kind: "note"; note: PinnedNote }
-  | { key: string; kind: "tag"; node: TagNode };
+// One row of each pinned section. Both carry the pin key [sortByPinOrder]
+// sorts on; what they carry besides it is what their own row needs and nothing
+// the other one does.
+type NotePin = { key: string; note: PinnedNote };
+type TagPin = { key: string; node: TagNode };
 
 type Props = {
   data: RailData;
@@ -77,8 +80,20 @@ type Props = {
 };
 
 /**
- * The rail: search, the three places that aren't a tag, the notes and tags
- * pinned by hand, and the tag tree.
+ * The rail: search, the four places that aren't a tag, then the notes pinned
+ * by hand and the tags pinned by hand. Fixed height at the top, two short
+ * lists under it, and that is the whole panel.
+ *
+ * **The tag tree used to be here and isn't.** Every tag in the collection,
+ * nested, sorted by recent use, growing a row per tag forever — which works
+ * until about a dozen tags and then quietly stops. Past that the list runs off
+ * the bottom of a 240px column, so finding a name means scrolling the rail
+ * while the thing you were reading sits still beside it, and the tags you use
+ * least are the ones you have to hunt for hardest. The rows are now one row,
+ * "All tags", pointing at /tags — see [TagDirectory], which shows the same
+ * tree in the reading pane where there is width for two columns of it. What
+ * stays in the rail is what a rail is good at: a fixed set of places, plus the
+ * handful of tags you said out loud you wanted here.
  *
  * It had a "Filter tags" field at the top until ⌘K took over searching. Two
  * field-shaped controls stacked, one narrowing this list and one searching
@@ -87,15 +102,14 @@ type Props = {
  * search inside. The field itself is kept in ./TagFilterField, unmounted.
  *
  * Sections are separated by --space-group and nothing else — no rules, no
- * headings in caps, no boxes. The eye reads four groups here purely from the
+ * headings in caps, no boxes. The eye reads the groups here purely from the
  * fact that the gaps between them are three and a half times the gaps inside
  * them.
  *
- * Folded, it is the same column with the tag list taken out: search and New
- * note at the top, theme and log out at the foot, each on the left edge it
- * already had. The fold reads as the panel narrowing around its controls
- * rather than as a different bar appearing — and nothing that was reachable
- * in one click becomes reachable only by unfolding first.
+ * Folded, it is the same column with the lists taken out: search and New note
+ * at the top, settings and log out at the foot, each on the left edge it
+ * already had. The fold reads as the panel narrowing around its controls rather than
+ * as a different bar appearing.
  */
 export function Rail({
   data,
@@ -104,39 +118,25 @@ export function Rail({
   onToggleCollapsed,
 }: Props) {
   const pathname = usePathname();
-  // Explicit open/closed decisions only. Whether a row is actually open is
-  // derived below — a row on the path to the active tag starts open without
-  // anything being stored, and this map is what lets you then close it.
-  const [overrides, setOverrides] = useState<Map<string, boolean>>(new Map());
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const { preferences, hueOf } = useTagHues();
 
   // Which tag (if any) the current route is showing. Read from the pathname
   // rather than threaded down from the page, so the rail doesn't need every
-  // route to remember to tell it.
+  // route to remember to tell it. Still needed with the tree gone: a pinned
+  // tag's row is the one that lights up when you are inside it.
   const activeTag = pathname.startsWith("/t/")
     ? tagFromSegments(pathname.slice(3).split("/"))
     : null;
 
-  // The active tag's ancestors are open for you — arriving at `#infra/ci` from
-  // a link, only to find the rail showing a collapsed `#infra` with no
-  // indication of where you are, is the one case where "collapsed by default"
-  // is actively unhelpful.
-  //
-  // Derived rather than pushed into state on navigation: as state it would
-  // need an effect to keep up with the route, and an effect that sets state is
-  // a render that happens for the second time to say the same thing.
-  const onPath = useMemo(
-    () => new Set(activeTag ? tagAncestry(activeTag) : []),
-    [activeTag],
-  );
+  // The same route, read as the palette reads it — for the strip's search
+  // button, which is [SearchTrigger] with nothing left but its label.
+  const railScope = scopeFromPath(pathname);
 
-  const isOpen = useCallback(
-    (name: string) => overrides.get(name) ?? onPath.has(name),
-    [overrides, onPath],
-  );
-
+  // The tree isn't drawn here any more, but it is still what the pinned tags
+  // are looked up in — a pin stores a name, and the row needs the node's count.
   const flat = useMemo(() => flattenTree(data.tree), [data.tree]);
 
   const byName = useMemo(
@@ -149,63 +149,67 @@ export function Rail({
     .map((name) => byName.get(name))
     .filter((node) => node !== undefined);
 
-  // The section is one list, so it has one order — see [sortByPinOrder], and
-  // [setPinnedOrder] for why the stored one lives where it does. Notes before
-  // tags is only the fallback arrival order, and it decides nothing while
-  // pinning names each row as it arrives: both halves are already newest
-  // first, so the two interleave by when they were pinned rather than by kind.
-  const pinnedItems = sortByPinOrder<PinnedItem>(
-    [
-      ...data.pinnedNotes.map((note): PinnedItem => ({
-        key: notePinKey(note.slug),
-        kind: "note",
-        note,
-      })),
-      ...pinnedTags.map((node): PinnedItem => ({
-        key: tagPinKey(node.name),
-        kind: "tag",
-        node,
-      })),
-    ],
+  // Two sections, two sequences — but one stored order, which names rows of
+  // both kinds (see [sortByPinOrder]) and is simply read twice. Keys for the
+  // other kind are names this half doesn't contain, and an order is allowed to
+  // name things that aren't there, so each section sorts by the positions its
+  // own rows were given and ignores the rest.
+  const pinnedNoteItems = sortByPinOrder<NotePin>(
+    data.pinnedNotes.map((note) => ({ key: notePinKey(note.slug), note })),
+    preferences.order,
+  );
+
+  const pinnedTagItems = sortByPinOrder<TagPin>(
+    pinnedTags.map((node) => ({ key: tagPinKey(node.name), node })),
     preferences.order,
   );
 
   /**
+   * The section a row lives in — the only one its move items can reach. Only
+   * the keys are wanted here, which is the one thing the two kinds share.
+   */
+  function sectionOf(key: string): { key: string }[] {
+    return isNotePinKey(key) ? pinnedNoteItems : pinnedTagItems;
+  }
+
+  /**
    * What either menu needs to draw its two move items: whether there is
-   * anywhere to go, and how to go there. Whether a row is at an end of the
+   * anywhere to go, and how to go there. Whether a row is at an end of its
    * section is something only this component knows, so the menus are told
-   * rather than left to press a control that does nothing — which is what the
-   * section did when the two halves were ordered separately.
+   * rather than left to press a control that does nothing.
+   *
+   * The ends are the ends of that row's own section: a note can't be moved
+   * past the last note into the tags below, because the two are separate lists
+   * and the rail draws them in a fixed order.
    */
   function moveProps(key: string) {
-    const index = pinnedItems.findIndex((item) => item.key === key);
+    const section = sectionOf(key);
+    const index = section.findIndex((item) => item.key === key);
     return {
       canMoveUp: index > 0,
-      canMoveDown: index !== -1 && index < pinnedItems.length - 1,
+      canMoveDown: index !== -1 && index < section.length - 1,
       onMove: (direction: -1 | 1) => movePinnedItem(key, direction),
     };
   }
 
   /**
-   * One step, and the whole sequence is written back — the rail is the only
-   * place that can see both halves of the section at once.
+   * One step inside one section, and *both* sequences are written back —
+   * [setPinnedOrder] replaces the stored order outright, so passing only the
+   * half that moved would drop the other half's positions.
    */
   function movePinnedItem(key: string, direction: -1 | 1) {
-    const keys = pinnedItems.map((item) => item.key);
+    const keys = sectionOf(key).map((item) => item.key);
     const index = keys.indexOf(key);
     const next = index + direction;
     if (index === -1 || next < 0 || next >= keys.length) return;
     [keys[index], keys[next]] = [keys[next]!, keys[index]!];
-    setPinnedOrder(keys);
-  }
 
-  const toggleExpanded = useCallback((name: string, open: boolean) => {
-    setOverrides((current) => {
-      const next = new Map(current);
-      next.set(name, !open);
-      return next;
-    });
-  }, []);
+    const moved = isNotePinKey(key);
+    const others = (moved ? pinnedTagItems : pinnedNoteItems).map(
+      (item) => item.key,
+    );
+    setPinnedOrder(moved ? [...keys, ...others] : [...others, ...keys]);
+  }
 
   /**
    * Both ways into a row's menu — the right-click and the row's own ⋯ button —
@@ -234,68 +238,14 @@ export function Rail({
     return { x: event.clientX, y: event.clientY };
   }
 
-  function renderNode(node: TagNode, depth: number): React.ReactNode {
-    const open = isOpen(node.name);
-    const hasChildren = node.children.length > 0;
-
-    return (
-      <li key={node.name}>
-        <RailRow
-          href={tagHref(node.name)}
-          label={node.leaf}
-          count={node.count}
-          hue={hueOf(node.name)}
-          child={depth > 0}
-          selected={activeTag === node.name}
-          depth={depth}
-          onContextMenu={(event) => openTagMenu(node.name, pointerPoint(event))}
-          onOpenMenu={(at) => openTagMenu(node.name, at)}
-          menuOpen={menu?.kind === "tag" && menu.tag === node.name}
-          toggle={
-            hasChildren ? (
-              <button
-                type="button"
-                aria-expanded={open}
-                aria-label={`${open ? "Collapse" : "Expand"} ${node.name}`}
-                onClick={() => toggleExpanded(node.name, open)}
-                // row-toggle is what the row's own hover tint watches for, so
-                // that the pointer resting here lights the chevron alone —
-                // see .row-tint-host in globals.
-                className="row-tint row-toggle absolute -left-3.5 flex size-5 items-center justify-center rounded-[var(--radius-control)] text-ink-faint hover:text-ink-muted"
-                style={{ left: depth * 14 - 14 }}
-              >
-                <svg
-                  aria-hidden
-                  viewBox="0 0 12 12"
-                  className={`size-2.5 transition-transform duration-200 motion-reduce:transition-none ${
-                    open ? "rotate-90" : ""
-                  }`}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="m4 2 4 4-4 4" />
-                </svg>
-              </button>
-            ) : undefined
-          }
-        />
-        {hasChildren && open && (
-          <ul className="mt-[var(--space-item)] flex flex-col gap-[var(--space-item)]">
-            {node.children.map((child) => renderNode(child, depth + 1))}
-          </ul>
-        )}
-      </li>
-    );
-  }
-
   // Folded: the same px-3 py-4 column, so the fold control doesn't travel.
-  // Everything the expanded rail keeps outside the tag list comes with it —
-  // search and New note at the top, theme and log out held at the foot by the
-  // same mt-auto. Only the tags themselves are gone, which is the one thing
-  // the strip has no way to show and the whole reason for folding it.
+  // The two things you press without reading come with it — search and New
+  // note at the top, settings and log out held at the foot by the same
+  // mt-auto.
+  // What the strip drops is everything that is a *name*: the views, the pins.
+  // A 52px column has no room for a word, and an icon per place would be four
+  // glyphs nobody can tell apart standing in for four rows that were already
+  // legible — which is what unfolding is one click away for.
   if (collapsed && onToggleCollapsed) {
     return (
       <div className="flex h-full flex-col items-start gap-[var(--space-item)] px-3 py-4">
@@ -303,7 +253,12 @@ export function Rail({
         <button
           type="button"
           onClick={() => setPaletteOpen(true)}
-          aria-label="Search or jump to…"
+          // The strip's version of [SearchTrigger], and it says the same thing
+          // — the words are all that is left of that control here, so they are
+          // the last place the scope could still be stated before the click.
+          aria-label={
+            railScope ? `${scopePrompt(railScope)}…` : "Search, do, or jump to…"
+          }
           aria-keyshortcuts="Meta+K Control+K"
           className="row-tint flex size-7 items-center justify-center rounded-[var(--radius-control)] text-ink-muted hover:text-ink"
         >
@@ -318,7 +273,17 @@ export function Rail({
         </Link>
 
         <div className="mt-auto flex flex-col items-start gap-[var(--space-item)]">
-          <ThemeToggle compact />
+          <Link
+            href="/settings"
+            aria-label="Settings"
+            title="Settings"
+            aria-current={pathname === "/settings" ? "page" : undefined}
+            className={`row-tint flex size-7 items-center justify-center rounded-[var(--radius-control)] hover:text-ink ${
+              pathname === "/settings" ? "text-ink" : "text-ink-muted"
+            }`}
+          >
+            <GearIcon />
+          </Link>
           <LogOutButton compact />
         </div>
       </div>
@@ -352,7 +317,7 @@ export function Rail({
           the eye is reading; a box is allowed to sit on it. */}
       <SearchTrigger />
 
-      {/* 2 — New note and the three places that aren't a tag: four fixed rows,
+      {/* 2 — New note and the four places that aren't a tag: five fixed rows,
           one section directly under search.
 
           They were two groups a --space-group apart, which spent the rail's
@@ -389,6 +354,21 @@ export function Rail({
           selected={pathname === ALL_NOTES_HREF}
           icon={<NotesIcon />}
         />
+        {/* Where the tag tree went. Directly under All notes because the two
+            are the same kind of thing — the two ways into the whole
+            collection, one by note and one by tag — and above Untagged, which
+            is a corner of it rather than a view of all of it.
+
+            The count is every tag at every depth, the same number the tree's
+            heading printed, so the row says how much is behind it before you
+            press it. */}
+        <RailRow
+          href={TAGS_HREF}
+          label="All tags"
+          count={data.tagCount}
+          selected={pathname === TAGS_HREF}
+          icon={<TagIcon />}
+        />
         <RailRow
           href={UNTAGGED_HREF}
           label="Untagged"
@@ -411,93 +391,100 @@ export function Rail({
         />
       </nav>
 
-      {/* 3 — everything held out of the tree by hand, notes and tags in one
-          section.
+      {/* 3 and 4 — everything held out of the tree by hand: the notes, then
+          the tags, each its own section under its own heading.
 
-          They were two sections with two headings, which spent a heading and a
-          --space-group gap to draw a line the rows themselves already draw:
-          the dot. A pinned note takes the neutral bullet (a coloured dot would
-          be claiming the row is a tag) and a pinned tag keeps its own hue.
+          They shared one section for a while, on the theory that "the four
+          things I am working on" is the real grouping and the dot already says
+          which kind each row is. In practice the two kinds don't behave alike
+          — a note row opens one document and a tag row opens a list, and only
+          one of them carries a count — so a mixed list made you read every row
+          to find the one you meant, and pinning a note could push a tag you
+          use daily three rows down. Two headings cost one line each and buy
+          back a fixed place for both kinds: the notes are always the first
+          block, the tags always the second.
 
-          One list all the way down, not two stacked: the two kinds interleave
-          in whatever order they were put in, because "the four things I am
-          working on" is a real grouping and "all my notes, then all my tags"
-          isn't one anybody asked for. Each half is capped at five (see
-          [MAX_PINNED_NOTES] and [MAX_PINNED_TAGS]), so the section is ten rows
-          at the very worst and nothing below it ever moves far.
+          Notes above tags because a pinned note is the more specific thing —
+          one destination rather than a filter over many — and because the tags
+          sit closest to the fixed views' own tag rows above them.
 
-          Absent entirely while nothing is pinned rather than standing there
-          empty — an empty heading would cost the same vertical space as two
-          real rows and say less than the tag tree already does. */}
-      {pinnedItems.length > 0 && (
-        <nav
-          className="mt-[var(--space-group)]"
-          aria-label="Pinned notes and tags"
-        >
+          Each is capped at five (see [MAX_PINNED_NOTES] and [MAX_PINNED_TAGS])
+          so neither block ever grows far, and either is absent entirely while
+          its half is empty rather than standing there as a heading over
+          nothing. */}
+      {pinnedNoteItems.length > 0 && (
+        <nav className="mt-[var(--space-group)]" aria-label="Pinned notes">
           <p className="px-2.5 pb-[var(--space-item)] text-[13px] text-ink-faint">
-            Pinned notes &amp; tags
+            Pinned notes
           </p>
           <ul className="flex flex-col gap-[var(--space-item)]">
-            {pinnedItems.map((item) =>
-              item.kind === "note" ? (
-                <li key={item.key}>
-                  {/* No count: a note is one thing. No `from` either — the
-                      pinned list is held out of the tree on purpose and isn't
-                      an index into any one tag, so the note opens under its
-                      own first tag. */}
-                  <RailRow
-                    href={noteHref(item.note.slug)}
-                    label={item.note.title || "Untitled"}
-                    selected={pathname === noteHref(item.note.slug)}
-                    onContextMenu={(event) =>
-                      openNoteMenu(item.note, pointerPoint(event))
-                    }
-                    onOpenMenu={(at) => openNoteMenu(item.note, at)}
-                    menuOpen={
-                      menu?.kind === "note" && menu.note.slug === item.note.slug
-                    }
-                  />
-                </li>
-              ) : (
-                <li key={item.key}>
-                  <RailRow
-                    href={tagHref(item.node.name)}
-                    label={item.node.name}
-                    count={item.node.count}
-                    hue={hueOf(item.node.name)}
-                    child={item.node.name.includes("/")}
-                    selected={activeTag === item.node.name}
-                    onContextMenu={(event) =>
-                      openTagMenu(item.node.name, pointerPoint(event))
-                    }
-                    onOpenMenu={(at) => openTagMenu(item.node.name, at)}
-                    menuOpen={
-                      menu?.kind === "tag" && menu.tag === item.node.name
-                    }
-                  />
-                </li>
-              ),
-            )}
+            {pinnedNoteItems.map((item) => (
+              <li key={item.key}>
+                {/* No count: a note is one thing. No `from` either — the
+                    pinned list is held out of the tree on purpose and isn't an
+                    index into any one tag, so the note opens under its own
+                    first tag. */}
+                <RailRow
+                  href={noteHref(item.note.slug)}
+                  label={item.note.title || "Untitled"}
+                  selected={pathname === noteHref(item.note.slug)}
+                  onContextMenu={(event) =>
+                    openNoteMenu(item.note, pointerPoint(event))
+                  }
+                  onOpenMenu={(at) => openNoteMenu(item.note, at)}
+                  menuOpen={
+                    menu?.kind === "note" && menu.note.slug === item.note.slug
+                  }
+                />
+              </li>
+            ))}
           </ul>
         </nav>
       )}
 
-      {/* 4 — the tree, sorted by recent use */}
-      {data.tree.length > 0 && (
-        <nav className="mt-[var(--space-group)]" aria-label="All tags">
+      {pinnedTagItems.length > 0 && (
+        <nav className="mt-[var(--space-group)]" aria-label="Pinned tags">
           <p className="px-2.5 pb-[var(--space-item)] text-[13px] text-ink-faint">
-            All tags · {data.tagCount}
+            Pinned tags
           </p>
-          <ul className="flex flex-col gap-[var(--space-item)] pl-3.5">
-            {data.tree.map((node) => renderNode(node, 0))}
+          <ul className="flex flex-col gap-[var(--space-item)]">
+            {pinnedTagItems.map((item) => (
+              <li key={item.key}>
+                <RailRow
+                  href={tagHref(item.node.name)}
+                  label={item.node.name}
+                  count={item.node.count}
+                  hue={hueOf(item.node.name)}
+                  child={item.node.name.includes("/")}
+                  selected={activeTag === item.node.name}
+                  onContextMenu={(event) =>
+                    openTagMenu(item.node.name, pointerPoint(event))
+                  }
+                  onOpenMenu={(at) => openTagMenu(item.node.name, at)}
+                  menuOpen={menu?.kind === "tag" && menu.tag === item.node.name}
+                />
+              </li>
+            ))}
           </ul>
         </nav>
       )}
 
-      {/* mt-auto pins this to the bottom of the rail however short the tag
-          list is; the gap above it is the same --space-group as everywhere. */}
+      {/* mt-auto pins this to the bottom of the rail however short the pinned
+          list is; the gap above it is the same --space-group as everywhere.
+
+          Settings stands where the theme toggle used to. A rail row per
+          preference doesn't scale — the theme was the first of them and would
+          not have been the last — so the foot of the rail holds one row that
+          goes to *all* of them, and the theme switch itself lands in that
+          page's Appearance section. It is a [RailRow] like the views above
+          rather than a button, because it is a place now. */}
       <div className="mt-auto flex flex-col gap-[var(--space-item)] pt-[var(--space-group)]">
-        <ThemeToggle />
+        <RailRow
+          href="/settings"
+          label="Settings"
+          selected={pathname === "/settings"}
+          icon={<GearIcon />}
+        />
         <LogOutButton />
       </div>
 
@@ -511,6 +498,7 @@ export function Rail({
           hue={hueOf(menu.tag)}
           {...moveProps(tagPinKey(menu.tag))}
           onRename={() => setRenaming(menu.tag)}
+          onDelete={() => setDeleting(menu.tag)}
           onClose={() => setMenu(null)}
         />
       )}
@@ -531,6 +519,15 @@ export function Rail({
           // beneath it" — the same set the rename rewrites.
           noteCount={byName.get(renaming)?.count ?? 0}
           onClose={() => setRenaming(null)}
+        />
+      )}
+      {deleting && (
+        <TagDeleteDialog
+          tag={deleting}
+          // The same subtree count the rename dialog takes, and the same set:
+          // deleting a tag reaches everything beneath it.
+          noteCount={byName.get(deleting)?.count ?? 0}
+          onClose={() => setDeleting(null)}
         />
       )}
     </div>
@@ -627,6 +624,29 @@ function NotesIcon() {
   );
 }
 
+/**
+ * The same tag [UntaggedIcon] strikes through, unstruck — the two rows sit two
+ * apart in the rail and are exact opposites, so they are one drawing with and
+ * without its negation rather than two unrelated pictures.
+ */
+function TagIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 16 16"
+      className="size-3.5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 2.6h3.4a1 1 0 0 1 1 1V7a1 1 0 0 1-.3.7l-5 5a1 1 0 0 1-1.4 0L3 9a1 1 0 0 1 0-1.4l5-5a1 1 0 0 1 .7-.3z" />
+      <path d="M10.9 5.1h.01" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
 function UntaggedIcon() {
   return (
     <svg
@@ -664,6 +684,34 @@ function ImagesIcon() {
       <rect x="2.4" y="3.2" width="11.2" height="9.6" rx="1.6" />
       <circle cx="6" cy="6.4" r="1.05" />
       <path d="m2.6 11.5 2.9-2.8a1.2 1.2 0 0 1 1.7 0l3.4 3.3" />
+    </svg>
+  );
+}
+
+/**
+ * Settings — a cog, six-toothed rather than the usual eight.
+ *
+ * Eight teeth is what a gear looks like and six is what one *reads* as at
+ * 14px: the notches between them are under two pixels either way, and at eight
+ * the rim comes out as a fuzzy ring with a hub in it — which is the sun this
+ * rail's theme toggle used to draw, standing one row away. Six leaves each
+ * notch wide enough to see, on the same 16 box and the same 1.3 stroke as
+ * every other glyph here.
+ */
+function GearIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 16 16"
+      className="size-3.5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M6.1 4L6.5 1.9L9.5 1.9L9.9 4L10.5 4.4L12.5 3.6L14.1 6.3L12.4 7.6L12.4 8.4L14.1 9.7L12.5 12.4L10.5 11.6L9.9 12L9.5 14.1L6.5 14.1L6.1 12L5.5 11.6L3.5 12.4L1.9 9.7L3.6 8.4L3.6 7.6L1.9 6.3L3.5 3.6L5.5 4.4Z" />
+      <circle cx="8" cy="8" r="2" />
     </svg>
   );
 }

@@ -148,20 +148,6 @@ body {
   }
 }
 
-/* The two faces of ThemeToggle, swapped in CSS since the inline script
-   settles the theme before hydration — a state-driven label would flash. */
-.theme-when-dark {
-  display: none;
-}
-
-[data-theme="dark"] .theme-when-light {
-  display: none;
-}
-
-[data-theme="dark"] .theme-when-dark {
-  display: inline-flex;
-}
-
 ::selection {
   background: color-mix(in srgb, var(--accent) 25%, transparent);
   color: var(--ink);
@@ -455,10 +441,77 @@ body {
   width: 100%;
   height: auto;
   border-radius: var(--radius-control);
+  /* Every image in a rendered note opens full size (see [ImageLightbox]), so
+     it says so twice: the cursor names the verb, and the picture lifts off the
+     page under the pointer the way everything reachable in this app tints.
+     Lift rather than a ring or a scale — a ring would be the only border in
+     the pane, and scaling a column-width image would push it past the measure
+     the text is set to. */
+  cursor: zoom-in;
+  transition: box-shadow var(--tint-motion) ease;
+}
+
+.markdown-body img:hover {
+  box-shadow: var(--lift-2);
 }
 
 .markdown-body p:has(> img:only-child) {
   margin-bottom: 0.5em;
+  /* Anchors the badge below. */
+  position: relative;
+}
+
+/* The badge that says an image opens.
+ *
+ * Drawn on the paragraph rather than on the picture, because an <img> can't
+ * carry a pseudo-element and the rendered HTML has no wrapper to give one.
+ * That limits it to an image alone in its paragraph — which is how every
+ * image this app inserts is written, dropped, pasted or picked. An image
+ * mid-sentence keeps the cursor and the lift and goes without the badge,
+ * which is the right way round: there the paragraph's box is the text's, and
+ * a corner of it isn't a corner of the image.
+ *
+ * Its own dark chip with a white glyph, rather than the app's ink tokens. It
+ * sits on top of a photograph, and the only contrast it can count on is the
+ * one it brings with it — the same reason every camera app's controls are
+ * white on a scrim, and the reason this one square of the interface doesn't
+ * follow the theme.
+ *
+ * `pointer-events: none` is load-bearing: the badge is a sign, not a target.
+ * The whole image is already the button (see [PreviewPane]'s click handler,
+ * which opens on the <img> itself), so a badge that swallowed the click would
+ * be the one spot on the image where pressing the thing labelled "enlarge"
+ * did nothing.
+ */
+.markdown-body p:has(> img:only-child)::after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background-color: rgb(0 0 0 / 0.55);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 3H3v6'/%3E%3Cpath d='M15 3h6v6'/%3E%3Cpath d='M15 21h6v-6'/%3E%3Cpath d='M9 21H3v-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 15px 15px;
+  backdrop-filter: blur(3px);
+  opacity: 0;
+  transition: opacity var(--tint-motion) ease;
+  pointer-events: none;
+}
+
+.markdown-body p:has(> img:only-child):hover::after {
+  opacity: 1;
+}
+
+/* Nothing hovers on a touch screen, so the badge simply stands there — it is
+   the only thing on that surface saying the picture opens at all. */
+@media (hover: none) {
+  .markdown-body p:has(> img:only-child)::after {
+    opacity: 1;
+  }
 }
 
 /* An emphasised line right after an image block is its caption. */
@@ -773,7 +826,7 @@ body {
 }
 
 /* Every tag has a hue (lib/tags/hue.ts); chroma and lightness are locked here
-   so twelve tags read as one palette. OKLCH rather than HSL because HSL's
+   so sixteen tags read as one palette. OKLCH rather than HSL because HSL's
    lightness isn't perceptual — a hue-rotated HSL palette shouts in yellow and
    vanishes in blue at the same nominal lightness.
 
@@ -852,14 +905,14 @@ body {
     var(--lift-1);
 }
 
-/* ── The twelve slots ──────────────────────────────────────────────────────
+/* ── The sixteen slots ─────────────────────────────────────────────────────
    The colour palette's swatches, wherever it is opened from — the rail's menu
    or the index heading. They have to answer two questions at once: which one
    is under the pointer, and which one is already this tag's.
 
    So the two marks differ in kind, not in strength. A rim that is merely
    darker than another rim is one you can only read by comparing it with the
-   eleven beside it, which is precisely the work a selected state exists to
+   fifteen beside it, which is precisely the work a selected state exists to
    save.
 
      hover      a hairline on the inside of the edge. The colour, drawn round.
@@ -868,12 +921,12 @@ body {
 
    Both rings are a pixel each. The pale one was two, which is a quarter of a
    16px disc's radius spent on the mark — enough that the chosen swatch showed
-   less of its own colour than the eleven it was chosen over, and the colour is
+   less of its own colour than the fifteen it was chosen over, and the colour is
    the thing being picked. A hairline is all a second ring needs to be to read
    as a separate ring, and the 1.25× scale on the selected slot carries it.
 
-   Both are inset, so neither changes the swatch's footprint and the row of
-   twelve never reflows under the pointer. `--sheen-ink` for the pale band
+   Both are inset, so neither changes the swatch's footprint and the grid of
+   sixteen never reflows under the pointer. `--sheen-ink` for the pale band
    rather than a fixed white: it is the same "which way light falls" token the
    materials use, so the band stays the light side of the colour in both
    themes.
