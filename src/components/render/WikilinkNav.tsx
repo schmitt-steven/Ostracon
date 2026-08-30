@@ -4,12 +4,9 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
 /**
- * PreviewPane renders sanitized/highlighted HTML via dangerouslySetInnerHTML,
- * so its wikilinks are plain <a> tags that would otherwise trigger a full
- * browser navigation. This delegated click handler intercepts clicks on them
- * and routes through next/navigation instead, keeping wikilink clicks
- * client-side without needing to turn the whole render pipeline into React
- * elements.
+ * PreviewPane's HTML is injected, so its wikilinks are plain <a> tags. This
+ * delegated handler routes clicks on them through next/navigation instead of a
+ * full page load.
  */
 export function WikilinkNav({ children }: { children: ReactNode }) {
   const router = useRouter();

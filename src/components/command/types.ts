@@ -1,12 +1,9 @@
 import type { NoteHit } from "@/hooks/use-search-index";
 
 /**
- * A verb the palette offers, already resolved for the state it was built in —
- * "New note" carries the title it would be given, not a function of the query.
- *
- * `detail` is not optional. Every row in this palette states why it is there
- * and what it will do, and an action with a blank second line is the one row
- * that would sit in a list of explained things looking like a bug.
+ * A verb the palette offers, resolved for the state it was built in — "New
+ * note" carries the title it would get. `detail` is required: every row says
+ * why it's there.
  */
 export type PaletteAction = {
   id: string;
@@ -16,11 +13,8 @@ export type PaletteAction = {
   icon: ActionIcon;
   /** Shown right-aligned, in mono, when the verb also has a key. */
   shortcut?: string;
-  /**
-   * Whether picking this leaves the palette open. True for the verbs that
-   * change what the palette is searching rather than navigating away from it —
-   * closing on those would throw away the search you were setting up.
-   */
+  /** Whether picking this leaves the palette open — true for verbs that
+   * re-aim the search rather than navigate away. */
   keepOpen?: boolean;
   run: () => void;
 };
@@ -40,10 +34,7 @@ export type Row =
   | { id: string; kind: "action"; action: PaletteAction };
 
 /**
- * A titled run of rows. Headings are fixed by [sectionsFor]; nothing sorts.
- *
- * `empty` is the line shown under the heading when `rows` is empty — a section
- * that stands on its own even with nothing in it (Recent, before any note has
- * been opened) needs to say so rather than leaving a heading over a gap.
+ * A titled run of rows; nothing sorts. `empty` is the line shown under the
+ * heading when `rows` is empty (Recent, before any note has been opened).
  */
 export type Section = { heading: string; rows: Row[]; empty?: string };

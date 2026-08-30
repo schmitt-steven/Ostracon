@@ -1,22 +1,11 @@
 /**
- * What an image actually is, read from its first bytes.
- *
- * [isAllowedImageType] answers the same question from a *label* — the `type`
- * on a `File`, which the browser sniffed for a file the user picked and which
- * anything else may simply assert. That label is fine for the file dialog and
- * for explaining a refusal, and it is not evidence.
- *
- * Two things made this necessary rather than tidy. A zip entry carries no MIME
- * type at all, so an archive import has nothing to check but the bytes — and
- * `/api/uploads` is a POST endpoint anyone signed in can reach with a
- * hand-built FormData that says `image/png` over whatever it likes.
- *
- * The magic numbers are the same allowlist [IMAGE_MIME_TYPES] carries, in the
- * same order and for the same reasons: SVG has no magic number worth the name
- * because it is a text document, which is exactly why it isn't here.
- *
- * Isomorphic — the browser refuses a bad entry before spending an upload on
- * it, and the route refuses it again because the browser is not the control.
+ * What an image actually is, read from its first bytes — as opposed to
+ * [isAllowedImageType], which trusts a caller-supplied MIME label. Needed
+ * where there's no trustworthy label: zip entries in an archive import, and
+ * hand-built FormData POSTed to `/api/uploads`. Same allowlist as
+ * [IMAGE_MIME_TYPES]; SVG is absent because a text document has no magic
+ * number. Runs on both the client (cheap pre-check) and the route (the
+ * control).
  */
 
 import type { IMAGE_MIME_TYPES } from "./upload-rules";
@@ -39,12 +28,8 @@ function ascii(bytes: Uint8Array, offset: number, length = 4): string {
   return text;
 }
 
-/**
- * AVIF is an ISO-BMFF container, so the signature is a `ftyp` box whose major
- * brand says which flavour. `avis` is the sequence (animated) brand and is
- * accepted alongside `avif` for the reason GIF is: an animation refused for
- * being an animation would be a surprise.
- */
+// AVIF is ISO-BMFF: a `ftyp` box whose major brand names the flavour. `avis`
+// is the animated brand, accepted alongside `avif`.
 const AVIF_BRANDS = new Set(["avif", "avis"]);
 
 /**

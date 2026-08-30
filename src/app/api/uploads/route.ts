@@ -11,8 +11,7 @@ function sanitizeFilename(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-100);
 }
 
-// Binary upload, not a Server Action: Server Actions default to a 1MB body
-// cap and aren't the right shape for file bytes.
+// A Route Handler, not a Server Action — Server Actions cap the body at 1MB.
 export async function POST(request: Request) {
   await requireAuth();
 
@@ -21,8 +20,7 @@ export async function POST(request: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
-  // An allowlist, not an `image/` prefix: that prefix let `image/svg+xml`
-  // through, and an SVG is a document that can carry script. See the note on
+  // An exact allowlist, not an `image/` prefix (which would admit SVG). See
   // IMAGE_MIME_TYPES.
   if (!isAllowedImageType(file.type)) {
     return NextResponse.json(
@@ -30,14 +28,8 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  // And then the bytes, because the line above only checked a *label*. On a
-  // file the user picked, the browser sniffed that label and it is honest; on a
-  // hand-built FormData it says whatever the sender wants, and this is a POST
-  // endpoint anyone signed in can reach. The label still gets checked first so
-  // an ordinary mistake is refused by name rather than as "not an image".
-  //
-  // Only the head is read — see SNIFF_BYTES — so a ten-megabyte upload is not
-  // pulled into memory to look at eight of them.
+  // Then the bytes — the label above is forgeable on a hand-built FormData.
+  // Only the head is read (SNIFF_BYTES).
   const head = new Uint8Array(await file.slice(0, SNIFF_BYTES).arrayBuffer());
   const sniffed = sniffImageType(head);
   if (!sniffed) {
@@ -46,10 +38,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  // Re-checked here rather than trusted from the browser: the client shrinks
-  // most images to a fraction of this before sending (see [compressImage]) and
-  // refuses the rest, but neither of those is a control — this endpoint takes
-  // whatever it is posted.
+  // Re-checked — the client's compress/refuse (see [compressImage]) isn't a control.
   if (file.size > MAX_IMAGE_BYTES) {
     return NextResponse.json(
       { error: "Image too large (max 10MB)" },
@@ -60,17 +49,12 @@ export async function POST(request: Request) {
   const pathname = `notes/${Date.now()}-${sanitizeFilename(file.name || "image")}`;
   const blob = await put(pathname, file, {
     access: "public",
-    // What the bytes are, not what the request said they were. This is the
-    // Content-Type every reader will be served the image under, so it is the
-    // one place where guessing from a label would actually have consequences.
+    // The sniffed type — this is the Content-Type every reader is served under.
     contentType: sniffed,
-    // Explicit, so this always resolves the same way regardless of the
-    // linked Vercel project's OIDC configuration: @vercel/blob tries OIDC
-    // first when a VERCEL_OIDC_TOKEN is present (Next.js injects one
-    // automatically for locally-linked projects), and that path fails
-    // unless OIDC is specifically enabled for the "development" environment
-    // in the Vercel dashboard. Passing the token directly skips that
-    // resolution entirely and always uses the static token.
+    // Explicit token, so this doesn't depend on the project's OIDC config —
+    // @vercel/blob tries OIDC first when VERCEL_OIDC_TOKEN is present (Next.js
+    // injects one for locally-linked projects) and that path fails unless OIDC
+    // is enabled for "development" in the dashboard.
     token: process.env.BLOB_READ_WRITE_TOKEN,
   });
 

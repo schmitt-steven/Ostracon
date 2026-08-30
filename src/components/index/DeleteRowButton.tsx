@@ -5,12 +5,8 @@ import { flushSync } from "react-dom";
 import { TrashIcon } from "@/icons";
 
 /**
- * Delete control for one row of the index — a sibling of the row's `<Link>`,
- * not nested in it, so this can sit right in the corner the relative date
- * vacates on hover without an anchor ending up inside an anchor.
- *
- * Confirming only reports the intent; the list owns the actual deletion,
- * since it's the list that has to drop the row from what it's showing.
+ * Delete control for one index row — a sibling of the row's `<Link>`, not
+ * nested in it. Confirming reports intent; the list owns the deletion.
  */
 export function DeleteRowButton({
   title,
@@ -27,10 +23,7 @@ export function DeleteRowButton({
   useEffect(() => {
     if (!confirming) return;
 
-    // A click anywhere else dismisses — including on another row's link,
-    // which would otherwise navigate away with this popover still open.
-    // `pointerdown` rather than `click` so the dismissal lands before that
-    // navigation.
+    // `pointerdown`, so dismissal lands before a click elsewhere navigates.
     function onPointerDown(event: PointerEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
         setConfirming(false);
@@ -49,9 +42,7 @@ export function DeleteRowButton({
   }, [confirming]);
 
   function confirm() {
-    // Closed synchronously: the row is about to disappear from the list, and
-    // an open popover would otherwise be left hanging over whatever slides
-    // up to take its place.
+    // Closed synchronously — the row is about to vanish under the popover.
     flushSync(() => setConfirming(false));
     onConfirm();
   }
@@ -60,18 +51,14 @@ export function DeleteRowButton({
     <div ref={rootRef} className="relative">
       <button
         type="button"
-        // The row gives no other spoken clue which note this belongs to.
+        // The row names no note out loud.
         aria-label={`Delete ${name}`}
         aria-expanded={confirming}
-        // A hook for the row itself: hovering this previews the deletion —
-        // row tinted red, title struck through — the same way a tag pill
-        // previews its own removal.
+        // Hovering this previews the deletion on the row (see [data-row-delete-trigger]).
         data-row-delete-trigger
         onClick={() => setConfirming((open) => !open)}
         className={`flex h-7 w-7 items-center justify-center rounded-full text-ink-faint transition-all hover:bg-danger-wash hover:text-danger focus-visible:opacity-100 ${
-          // Hidden until the row is hovered, but never hidden while it's
-          // asking for confirmation — or while a keyboard user is tabbing
-          // through it.
+          // Hidden until row hover, but not while confirming or focused.
           confirming
             ? "bg-danger-wash text-danger opacity-100"
             : "opacity-0 group-hover/row:opacity-100"

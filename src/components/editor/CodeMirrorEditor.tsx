@@ -31,17 +31,9 @@ import { uploadImage } from "@/lib/images/upload-client";
 import { isAllowedImageType } from "@/lib/images/upload-rules";
 
 /**
- * `basicSetup` from the `codemirror` package, minus every gutter — line
- * numbers, the fold arrows beside them, the active-line gutter highlight — and
- * minus the active-line background, which on a pane with no border reads as a
- * stripe painted across the page rather than as a cursor cue.
- * Notes are prose, not code — numbered lines are noise here, and dropping the
- * gutter entirely lets the text sit flush against the editor's left edge
- * rather than leaving an empty column behind.
- *
- * Inlined because that extension is a plain array that "does not allow
- * customization"; its own docs say to copy the source and adjust it, which is
- * all this is. Everything else is verbatim, in the original order.
+ * `basicSetup` from the `codemirror` package, minus every gutter and the
+ * active-line background — notes are prose. Inlined and adjusted per that
+ * extension's own docs; everything else is verbatim, in the original order.
  */
 const editorSetup = [
   highlightSpecialChars(),
@@ -74,15 +66,11 @@ const appTheme = EditorView.theme({
   "&": {
     color: "var(--ink)",
     backgroundColor: "transparent",
-    // Content-driven, never a fixed box. The editor grows with what's in it
-    // and the pane around it scrolls — a note is as tall as it is, and the
-    // 900px-tall bordered card this used to sit in was the single loudest
-    // thing on the screen no matter how little was written.
+    // Content-driven — the editor grows with its text, the pane scrolls.
     height: "auto",
   },
-  // Sans, at the same 16px/1.75 the rendered side uses. The two modes are
-  // then the same text in the same rhythm, one with its markup showing, which
-  // is what makes Split read as one document rather than two panes.
+  // Sans at 16px/1.75, matching the rendered side, so Split reads as one
+  // document.
   ".cm-content": {
     fontFamily: "var(--font-plex-sans), system-ui, sans-serif",
     fontSize: "16px",
@@ -90,16 +78,13 @@ const appTheme = EditorView.theme({
     caretColor: "var(--accent)",
     padding: "0",
   },
-  // The scroller has to stop scrolling for the height above to mean anything:
-  // with its own overflow it would clip to whatever box it was given instead
-  // of letting the content set the height.
+  // Must not scroll itself, or the content-driven height means nothing.
   ".cm-scroller": {
     overflow: "visible",
     fontFamily: "inherit",
     lineHeight: "inherit",
   },
-  // CodeMirror's base theme pads every line by 6px on the left and 2px on the
-  // right, which would inset the text from the pane's own column.
+  // Undo the base theme's per-line padding so text sits in the pane's column.
   ".cm-line": {
     padding: "0",
   },
@@ -107,52 +92,33 @@ const appTheme = EditorView.theme({
     borderLeftColor: "var(--accent)",
     borderLeftWidth: "2px",
   },
-  // The body has no box of its own, so nothing should draw one around it on
-  // focus. Two rules would: CodeMirror's base theme rings a focused editor in
-  // `1px dotted #212121`, and the app's global :focus-visible gives the
-  // contenteditable an accent ring on top of that — a border appearing the
-  // instant you click into the text, around a pane that has no border. The
-  // caret is the cue, exactly as in the title field above.
+  // No box on this pane, so no focus ring — the caret is the cue, as in the
+  // title field.
   "&.cm-focused": {
     outline: "none",
   },
   ".cm-content:focus-visible": {
     outline: "none",
   },
-  // Shown only while the note is empty. CodeMirror's own colour for it is a
-  // fixed #888 picked for a white page; this is the token every other empty
-  // field in the app uses, so it follows whichever theme is active and sits at
-  // the same weight as the "Nothing to preview yet." line opposite it.
+  // The app's empty-field token, so it follows the theme.
   ".cm-placeholder": {
     color: "var(--ink-faint)",
   },
-  // Unfocused, plus the native selection in nested inputs (the search panel),
-  // which CodeMirror leaves to the browser.
+  // Unfocused, plus nested inputs (the search panel).
   ".cm-selectionBackground, ::selection": {
     backgroundColor: SELECTION_BG,
   },
-  // The focused case, spelled out in full rather than as
-  // `&.cm-focused .cm-selectionBackground`. drawSelection's base theme claims
-  // it as `&light.cm-focused > .cm-scroller > .cm-selectionLayer
-  // .cm-selectionBackground` — five classes, so the shorter selector lost to
-  // it on specificity and the selection came out in CodeMirror's stock
-  // lavender, its *light* default, on the dark ground. Matching the path ties
-  // the specificity, and a theme outranks a base theme on ties.
-  //
-  // `&light` is what applies because this theme never declares itself dark:
-  // that flag is fixed when the extension is built, and the app switches
-  // palettes at runtime. Overriding both defaults outright is what keeps the
-  // token colours right in either theme.
+  // The focused case — the full selector path, to tie drawSelection's
+  // five-class base rule on specificity (a theme wins ties). Its `&light`
+  // branch applies since this theme never declares itself dark; the app
+  // switches palettes at runtime.
   "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground": {
     backgroundColor: SELECTION_BG,
   },
   ".cm-selectionMatch": {
     backgroundColor: "color-mix(in srgb, var(--ink) 12%, transparent)",
   },
-  // editorSetup brings the search panel, which otherwise falls back to
-  // CodeMirror's built-in light baseTheme and stays cream-on-cream once the
-  // app is in its dark palette. Same tokens as the rest, so it follows
-  // whichever theme is active — and no stroke on it, since it isn't a card.
+  // The search panel, on the app's tokens so it follows the theme; no stroke.
   ".cm-panels": {
     backgroundColor: "var(--surface)",
     color: "var(--ink)",
@@ -166,19 +132,10 @@ const appTheme = EditorView.theme({
 });
 
 /**
- * Syntax colours for the source pane, drawn from the app's tokens.
- *
- * editorSetup ships `defaultHighlightStyle`, whose palette is a set of fixed
- * hex colours picked for a white page — link URLs come out near-navy, which is
- * unreadable once the app is in its dark theme. These are the same tokens
- * every other surface uses, so the source pane follows whichever theme is
- * active for free. Registered without `fallback`, so it takes precedence over
- * the default that editorSetup registers *with* it.
- *
- * Markdown's own tags come first and the ones for embedded fenced code after:
- * code text carries `monospace` from the markdown parser as well as its own
- * tag from the nested language, and both land on the same element, so the
- * later rule is the one that wins.
+ * Syntax colours for the source pane, on the app's tokens so it follows the
+ * theme (unlike editorSetup's fixed-hex `defaultHighlightStyle`). Registered
+ * without `fallback` so it takes precedence. Markdown tags first, embedded
+ * fenced-code tags after — both hit the same element and the later rule wins.
  */
 const appHighlight = HighlightStyle.define([
   { tag: t.heading, color: "var(--ink)", fontWeight: "600" },
@@ -186,14 +143,9 @@ const appHighlight = HighlightStyle.define([
   { tag: t.emphasis, fontStyle: "italic" },
   { tag: t.strikethrough, textDecoration: "line-through" },
   { tag: t.quote, color: "var(--ink-muted)", fontStyle: "italic" },
-  // No rule for t.list on purpose. The markdown parser tags lists as
-  // "BulletList/..." — the /... spreading that tag over every descendant — so
-  // colouring it paints the whole item, prose included, and lands on the same
-  // elements as the inline rules above. Being later in this array, it won a
-  // straight cascade tie against them: bold inside a list came out accent
-  // rather than ink. The bullet itself is a ListMark, which the parser tags as
-  // processingInstruction, so it's still held back with the rest of the markup
-  // by the rule further down.
+  // No rule for t.list — the parser spreads it over every descendant, so it
+  // would paint list prose too and win the cascade tie against the inline
+  // rules above. The bullet itself is a processingInstruction, held back below.
   { tag: t.link, color: "var(--action)" },
   { tag: t.url, color: "var(--action)", textDecoration: "underline" },
   { tag: t.labelName, color: "var(--ink-muted)" },
@@ -227,10 +179,8 @@ const appHighlight = HighlightStyle.define([
   { tag: t.invalid, color: "var(--danger)" },
 ]);
 
-// Replaces the placeholder by searching the CURRENT document for its exact
-// text rather than relying on the offsets captured at paste time: the user
-// may have kept typing elsewhere while the upload was in flight, which
-// would make stale offsets point at the wrong place.
+// Finds its target by searching the current document, not by paste-time
+// offsets, which typing elsewhere during the upload would invalidate.
 function replacePlaceholder(
   view: EditorView,
   marker: string,
@@ -244,14 +194,8 @@ function replacePlaceholder(
   });
 }
 
-/**
- * A placeholder no other pending upload is using.
- *
- * The replacement above finds its target by searching for this text, so two
- * images dropped together under the same name — `Screenshot.png` twice, from
- * two folders — would otherwise share a marker, and whichever upload landed
- * first would take both.
- */
+/** A placeholder no other pending upload is using — two `Screenshot.png`s
+ * dropped together would otherwise share a marker. */
 function uniqueMarker(doc: string, taken: string[], name: string): string {
   const label = name || "image";
   let marker = `![Uploading ${label}…]()`;
@@ -278,8 +222,7 @@ function imagePasteHandler() {
   return EditorView.domEventHandlers({
     paste(event, view) {
       const files = event.clipboardData?.files;
-      // The same allowlist the drop path and the upload route use — a pasted
-      // SVG is refused here rather than at the far end of an upload.
+      // The same allowlist as the drop path and the upload route.
       const imageFile = files
         ? [...files].find((f) => isAllowedImageType(f.type))
         : undefined;
@@ -299,12 +242,10 @@ function imagePasteHandler() {
   });
 }
 
-// Whole clipboard must be one bare URL — pasting prose that happens to
-// contain a link is still a plain paste.
+// The whole clipboard must be one bare URL.
 const URL_RE = /^(?:https?:\/\/|mailto:)\S+$/i;
 
-// Fallback link text when nothing was selected to wrap: the bare host reads
-// better in the source than the full URL repeated twice.
+// Fallback link text — the bare host, when nothing was selected to wrap.
 function labelFor(url: string): string {
   try {
     const parsed = new URL(url);
@@ -323,8 +264,7 @@ function urlPasteHandler() {
       if (!url || !URL_RE.test(url)) return false;
 
       const { from, to } = view.state.selection.main;
-      // Pasting into the (…) of a link already being written — leave it alone,
-      // wrapping there would nest one link inside another.
+      // Leave a paste into a link's `](…)` alone — no nested links.
       if (view.state.sliceDoc(Math.max(0, from - 2), from) === "](")
         return false;
 
@@ -335,8 +275,8 @@ function urlPasteHandler() {
       event.preventDefault();
       view.dispatch({
         changes: { from, to, insert },
-        // Caret past the link when the user supplied the label by selecting
-        // it; otherwise select the host we guessed so typing replaces it.
+        // Caret past the link if the user selected the label; else select the
+        // guessed host so typing replaces it.
         selection: selected
           ? { anchor: from + insert.length }
           : { anchor: from + 1, head: from + 1 + label.length },
@@ -347,13 +287,8 @@ function urlPasteHandler() {
   });
 }
 
-// Anchors a popup below the selection's head — the caret when nothing is
-// selected, and the moving end of a range otherwise, which is where the
-// pointer (or the arrow keys) just left off. The caret has no width, so
-// `coordsAtPos` is the only way to place anything against it. It returns null
-// when the position isn't currently rendered (scrolled far out of view), in
-// which case the editor's own top-left is a sane place to put the menu rather
-// than the viewport corner.
+// Anchors a popup below the selection's head. `coordsAtPos` returns null when
+// that position is scrolled out of view — then the editor's top-left.
 function anchorAtCursor(view: EditorView): { x: number; y: number } {
   const coords = view.coordsAtPos(view.state.selection.main.head);
   if (coords) return { x: coords.left, y: coords.bottom };
@@ -362,9 +297,8 @@ function anchorAtCursor(view: EditorView): { x: number; y: number } {
 }
 
 /**
- * Where an AI prompt was opened from. Two ways in: selecting text, or the ask
- * shortcut at the bare cursor — hence `text` may be empty, which is what
- * distinguishes "ask about this" from "ask about the note".
+ * Where an AI prompt was opened from — a selection, or the ask shortcut at the
+ * bare cursor (empty `text` = "ask about the note").
  */
 export type AiAnchor = {
   /** Viewport coordinates to position the menu at. */
@@ -389,19 +323,11 @@ export type EditorHandle = {
   focus: () => void;
   /** Appends text at the end, on its own line. Used by "Suggest tags". */
   append: (text: string) => void;
-  /**
-   * Uploads images and writes them into the note as their own block.
-   *
-   * `at` is where the pointer let go, in viewport coordinates: a drop lands
-   * where you aimed it rather than wherever the caret happened to be. Coming
-   * from the file dialog there is nothing to aim, and the caret is the answer.
-   */
+  /** Uploads images and writes them in as their own block. `at` (viewport
+   * coords) is where a drop landed; absent from the file dialog. */
   insertImages: (files: File[], at?: { x: number; y: number }) => void;
-  /**
-   * Claims `from`..`to` as the range an in-flight answer belongs to. The range
-   * is mapped through every edit until it's used, so a note that keeps being
-   * typed in while the answer streams still takes it in the right place.
-   */
+  /** Claims `from`..`to` as an in-flight answer's range, mapped through every
+   * edit until it's used. */
   beginAnswer: (from: number, to: number) => void;
   /** Writes a reviewed answer into the claimed range, then releases it. */
   applyAnswer: (text: string, placement: AnswerPlacement) => void;
@@ -414,22 +340,13 @@ type Props = {
   onChange: (value: string) => void;
   /** Fires with the 1-based line the user clicked on. */
   onLineClick?: (line: number) => void;
-  /**
-   * Drives the selection-triggered AI menu: an anchor once a non-empty
-   * selection settles, null when the menu should go away (any click, any
-   * keystroke). Never suppresses the native context menu.
-   */
+  /** Drives the selection AI menu — an anchor when a non-empty selection
+   * settles, null on any click/keystroke. Never blocks the native menu. */
   onSelectionMenu?: (anchor: AiAnchor | null) => void;
   /** Fires on the ask shortcut (⌘J / Ctrl-J), selection or not. */
   onAskShortcut?: (anchor: AiAnchor) => void;
   placeholder?: string;
-  /**
-   * Puts the caret in the body as soon as the view exists, at the first
-   * character — read only at mount, since that is the only moment it means
-   * anything. Position 0 rather than the end of the note: it needs no reading
-   * of where the user left off, it never scrolls the note away from its title
-   * on arrival, and the only thing being said is "the editor is live, type".
-   */
+  /** Focus the body at position 0 on mount — just "the editor is live". */
   autoFocus?: boolean;
   className?: string;
   ref?: Ref<EditorHandle>;
@@ -464,15 +381,12 @@ export function CodeMirrorEditor({
   useEffect(() => {
     onAskShortcutRef.current = onAskShortcut;
   }, [onAskShortcut]);
-  // True between mousedown and mouseup inside the editor. A drag fires a
-  // selection update on every mousemove, and anchoring the menu to each one
-  // would have it chase the pointer across the screen — so pointer selections
-  // are reported once, on release, and these interim updates are skipped.
+  // True between mousedown and mouseup in the editor — pointer selections are
+  // reported once on release, not per mousemove.
   const draggingRef = useRef(false);
 
-  // The range an answer under review belongs to, or null when none is in
-  // flight. Mapped through every document change below, so a note edited while
-  // the answer streams doesn't take it at a stale offset.
+  // The range an answer under review belongs to (or null), mapped through
+  // every doc change so a stale offset can't be used.
   const answerRangeRef = useRef<{ from: number; to: number } | null>(null);
 
   useImperativeHandle(
@@ -502,8 +416,7 @@ export function CodeMirrorEditor({
         const view = viewRef.current;
         if (!view) return;
         const end = view.state.doc.length;
-        // One blank line before it, unless the note is empty or already ends in
-        // one — appending tags shouldn't glue them onto the last sentence.
+        // A blank line before it, unless the note is empty or already ends in one.
         const tail = view.state.sliceDoc(Math.max(0, end - 2), end);
         const lead =
           end === 0
@@ -524,18 +437,13 @@ export function CodeMirrorEditor({
         const view = viewRef.current;
         if (!view || files.length === 0) return;
 
-        // `posAtCoords` is exact rather than nearest, so a drop that landed
-        // beside the text — in the margin, below the last line, on the title —
-        // answers null and falls back to the caret instead of guessing at a
-        // line the pointer was never over.
+        // Exact, not nearest — a drop beside the text answers null and falls
+        // back to the caret.
         const dropped = at ? view.posAtCoords(at) : null;
         const aimed = dropped ?? view.state.selection.main.head;
 
-        // Snapped to whichever end of that paragraph is nearer, never left at
-        // the exact character the pointer was over: an image is a block, and
-        // inserting one four letters into "First paragraph." cuts the sentence
-        // in half around it. Aiming at the top half of a paragraph puts the
-        // image above it, the bottom half below it, and nothing gets split.
+        // Snapped to the nearer end of the paragraph — an image is a block and
+        // shouldn't split a sentence.
         const line = view.state.doc.lineAt(aimed);
         const pos =
           aimed - line.from <= line.to - aimed ? line.from : line.to;
@@ -546,9 +454,7 @@ export function CodeMirrorEditor({
           markers.push(uniqueMarker(doc, markers, file.name));
         }
 
-        // Its own block, unlike a paste: a pasted image belongs in the
-        // sentence being typed, but a dropped one is a thing being added to
-        // the note, and dropping onto a paragraph shouldn't split it mid-word.
+        // Its own block, unlike a paste.
         const lead = pos === 0 || view.state.sliceDoc(pos - 1, pos) === "\n" ? "" : "\n\n";
         const tail =
           pos === doc.length || view.state.sliceDoc(pos, pos + 1) === "\n"
@@ -558,9 +464,7 @@ export function CodeMirrorEditor({
 
         view.dispatch({
           changes: { from: pos, insert },
-          // Caret after the images, before whatever they were dropped in
-          // front of — the next thing you type is a caption, not a rewrite of
-          // the paragraph below.
+          // Caret after the images — the next thing typed is a caption.
           selection: { anchor: pos + insert.length - tail.length },
           scrollIntoView: true,
         });
@@ -579,10 +483,8 @@ export function CodeMirrorEditor({
         answerRangeRef.current = null;
         if (!view || !range) return;
 
-        // "below" lands after the whole source line rather than at the exact
-        // selection end: selecting half a sentence and inserting there would
-        // split the paragraph around the answer, where what's wanted is a new
-        // block following the paragraph the selection was taken from.
+        // "below" lands after the whole source line, so a half-sentence
+        // selection doesn't split the paragraph.
         const replacing = placement === "replace";
         const from = replacing
           ? range.from
@@ -592,9 +494,7 @@ export function CodeMirrorEditor({
 
         view.dispatch({
           changes: { from, to, insert },
-          // Caret at the end of what was written, deliberately not a selection
-          // over it: selecting the answer would read as a fresh highlight and
-          // pop the AI menu straight back open on top of it.
+          // Caret at the end, not a selection — that would re-open the AI menu.
           selection: { anchor: from + insert.length },
           scrollIntoView: true,
         });
@@ -610,9 +510,8 @@ export function CodeMirrorEditor({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Offers the current selection to the menu. Empty selections say nothing:
-    // closing is the dismiss handlers' job, and staying quiet here keeps a
-    // caret move from re-closing a menu the ask shortcut just opened.
+    // Offers a non-empty selection to the menu; closing is the dismiss
+    // handlers' job.
     function reportSelection(view: EditorView) {
       const { from, to } = view.state.selection.main;
       if (from === to) return;
@@ -629,19 +528,12 @@ export function CodeMirrorEditor({
       parent: containerRef.current,
       extensions: [
         editorSetup,
-        // Any click or keystroke dismisses the menu. Prec.highest, and ahead
-        // of the keymaps below, so the close is queued before whatever the key
-        // actually does — a shift-arrow that grows the selection then reopens
-        // the menu from the update listener, in that order, while a plain
-        // keystroke that types over the selection leaves it closed.
+        // Any click or keystroke dismisses the menu. Prec.highest and ahead of
+        // the keymaps, so the close is queued before the key's own action.
         Prec.highest(
           EditorView.domEventHandlers({
-            // Fires for every button, so right-click is covered too: the menu
-            // gets out of the way and the browser's own menu takes over,
-            // unimpeded — there is no contextmenu handler any more. Only the
-            // primary button arms the drag, though: right-clicking *inside* a
-            // selection leaves that selection standing, and its mouseup would
-            // otherwise re-open the AI menu over the native one.
+            // Every button (so right-click gets out of the way for the native
+            // menu). Only the primary button arms the drag.
             mousedown(event) {
               if (event.button === 0) draggingRef.current = true;
               onSelectionMenuRef.current?.(null);
@@ -653,8 +545,7 @@ export function CodeMirrorEditor({
             },
           }),
         ),
-        // Prec.highest so this wins over editorSetup's keymaps regardless of
-        // extension order. Mod-j is ⌘J on macOS, Ctrl-J elsewhere.
+        // Prec.highest to beat editorSetup's keymaps. Mod-j = ⌘J / Ctrl-J.
         Prec.highest(
           keymap.of([
             {
@@ -689,13 +580,12 @@ export function CodeMirrorEditor({
             if (pos !== null) {
               onLineClickRef.current?.(view.state.doc.lineAt(pos).number);
             }
-            // Never handled — the click still has to place the caret.
+            // Never handled — the click still places the caret.
             return false;
           },
         }),
         EditorView.updateListener.of((update) => {
-          // Keyboard selections (shift-arrow, ⌘A) land here directly; pointer
-          // ones are skipped mid-drag and reported by the mouseup listener.
+          // Keyboard selections land here; pointer ones via the mouseup listener.
           if (update.selectionSet && !draggingRef.current) {
             reportSelection(update.view);
           }
@@ -703,10 +593,8 @@ export function CodeMirrorEditor({
           if (update.docChanged) {
             const range = answerRangeRef.current;
             if (range) {
-              // Assoc pushes each end outward — -1 holds `from` before text
-              // inserted at it, 1 holds `to` after — so an edit landing inside
-              // the range widens it rather than clipping the text the answer
-              // was asked about.
+              // Assoc -1/1 pushes each end outward, so an edit inside the range
+              // widens it rather than clipping the answer's text.
               answerRangeRef.current = {
                 from: update.changes.mapPos(range.from, -1),
                 to: update.changes.mapPos(range.to, 1),
@@ -720,18 +608,12 @@ export function CodeMirrorEditor({
     viewRef.current = view;
 
     if (autoFocus) {
-      // The caret is already at 0 on a fresh state; this only claims the
-      // focus. No scrollIntoView — the top of the document is where the pane
-      // already is, and asking for it would fight the note's own scroll
-      // position on arrival.
+      // Caret is already at 0; just claim focus, no scrollIntoView.
       view.focus();
     }
 
-    // On the window rather than the editor: a drag that starts in the text and
-    // ends past its edge — the common way to grab a trailing line — releases
-    // outside, and CodeMirror's own handlers would never see it. Gated on the
-    // drag flag so a click that lands in the menu itself isn't mistaken for
-    // the end of a selection.
+    // On the window — a drag that releases past the editor's edge wouldn't
+    // reach CodeMirror's own handlers. Gated on the drag flag.
     function onMouseUp(event: MouseEvent) {
       if (event.button !== 0 || !draggingRef.current) return;
       draggingRef.current = false;

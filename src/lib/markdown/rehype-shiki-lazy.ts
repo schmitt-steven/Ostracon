@@ -3,15 +3,9 @@ import type { Element, ElementContent, Root } from "hast";
 import { bundledLanguages, getSingletonHighlighter } from "shiki";
 import { visit } from "unist-util-visit";
 
-// Dual output, one render. Notes are highlighted on the server (and cached by
-// whatever rendered them), so the HTML can't know which theme the reader is
-// in — instead every token carries both colours and the CSS in globals.css
-// picks one. `defaultColor: "light"` writes the light colour inline as a plain
-// `color:`, so light-theme output is exactly what a single-theme render gives;
-// dark rides along in `--shiki-dark`.
-//
-// Both are Rose Pine: dawn's muted blue/gold tokens sit in the same family as
-// the app's ink and accent, and moon is that same palette on a deep ground.
+// Dual output: server-rendered HTML can't know the reader's theme, so every
+// token carries both colours (light inline, dark in `--shiki-dark`) and the
+// CSS picks one. Both themes are Rose Pine — dawn and moon.
 const THEMES = { light: "rose-pine-dawn", dark: "rose-pine-moon" } as const;
 
 function languageFromClassName(className: unknown): string | null {
@@ -35,17 +29,14 @@ type Target = {
   index: number;
   code: string;
   lang: string;
-  // Shiki builds a fresh <pre> with no position of its own; carrying the
-  // original's over keeps rehypeSourceLines able to stamp code blocks.
+  // Carried onto Shiki's fresh <pre> so rehypeSourceLines can still stamp it.
   position: Element["position"];
 };
 
 /**
- * Highlights fenced code blocks via Shiki, requesting only the languages
- * actually present in this note (module-level singleton highlighter caches
- * previously-loaded languages across requests/notes within the same warm
- * server instance). Must run AFTER sanitize, not before — see MarkdownView
- * for why.
+ * Highlights fenced code blocks via Shiki, loading only the languages present
+ * in this note (the singleton highlighter caches them across notes on a warm
+ * instance). Must run AFTER sanitize — see MarkdownView.
  */
 export function rehypeShikiLazy() {
   return async function transformer(tree: Root) {

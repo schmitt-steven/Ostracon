@@ -6,15 +6,8 @@ import { deleteNote } from "@/lib/notes/actions";
 import { TrashIcon } from "@/icons";
 
 /**
- * Delete, in the header of the note you're reading.
- *
- * It used to live one press deeper, behind a `⋯` — but a menu holding a
- * single item is a menu that only ever asks you to open it. The trash sits
- * out in the open instead; the confirmation step it already had is what
- * keeps the press from being dangerous.
- *
- * The index rows have their own hover control for deleting from the list
- * without opening anything.
+ * Delete, in the note's header — out in the open, not behind a `⋯`; the
+ * confirmation step keeps it safe. Index rows have their own hover control.
  */
 export function NoteDeleteButton({
   noteId,
@@ -39,8 +32,7 @@ export function NoteDeleteButton({
     }
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
-      // Stops the note view's own Escape handler from navigating away at the
-      // same time as this closes.
+      // Stop the note view's Escape handler from also navigating away.
       event.stopPropagation();
       setConfirming(false);
     }
@@ -63,7 +55,7 @@ export function NoteDeleteButton({
     <div ref={rootRef} className="relative shrink-0">
       <button
         type="button"
-        // The header gives no other spoken clue which note this belongs to.
+        // The header names no note out loud.
         aria-label={`Delete ${name}`}
         aria-expanded={confirming}
         onClick={() => setConfirming((open) => !open)}

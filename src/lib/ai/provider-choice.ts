@@ -1,17 +1,10 @@
-// The AI provider the user picked, kept outside React so it survives moving
-// between notes — each note mounts a fresh NoteEditor, and a choice that reset
-// on every navigation would have to be re-made constantly.
-//
-// Same external-store shape as [tag preferences], and for the same two reasons:
-// sessionStorage doesn't exist during the server render, and restoring in an
-// effect is what `useSyncExternalStore` exists to replace. sessionStorage
-// rather than local: which model you're asking is a property of what you're
-// doing right now, not a durable preference.
+// The AI provider the user picked, in a `useSyncExternalStore` store (like
+// [tag preferences]) so it survives navigation between notes. sessionStorage,
+// not local — it's a property of the current session, not a durable preference.
 
 const STORAGE_KEY = "skb:ai-provider";
 
-// A primitive, so `getSnapshot` is referentially stable for free — no frozen
-// object needed here, unlike the list state.
+// A primitive, so `getSnapshot` is referentially stable for free.
 let snapshot: string | null = null;
 let loaded = false;
 const listeners = new Set<() => void>();
@@ -20,15 +13,13 @@ function read(): string | null {
   try {
     return sessionStorage.getItem(STORAGE_KEY);
   } catch {
-    // Storage blocked (Safari private mode) — the choice just won't outlive
-    // this page load.
+    // Storage blocked (Safari private mode).
     return null;
   }
 }
 
 export function getProviderChoice(): string | null {
-  // A `loaded` flag rather than `snapshot ??=`: "nothing stored" is a real
-  // answer, and null would otherwise re-hit storage on every render.
+  // A `loaded` flag, not `snapshot ??=` — "nothing stored" is a real answer.
   if (!loaded) {
     loaded = true;
     snapshot = read();

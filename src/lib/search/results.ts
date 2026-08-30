@@ -1,12 +1,6 @@
 /**
- * Why a note is in the list.
- *
- * Every row in the palette has to be able to say what put it there, because
- * the alternative — a title that plainly doesn't contain the word you typed,
- * with no explanation under it — reads as the search being broken. A tagged
- * union rather than a formatted string: the reason decides the row's order as
- * well as its wording, and sorting on prose is how you end up sorting
- * alphabetically by accident.
+ * Why a note is in the list — every palette row has to say what put it there.
+ * A tagged union, not a string: the reason drives ordering as well as wording.
  */
 export type MatchReason =
   | { kind: "title" }
@@ -16,14 +10,8 @@ export type MatchReason =
   /** No query at all: the row is here because it was touched recently. */
   | { kind: "recent" };
 
-/**
- * Title above body above tag-only.
- *
- * A tag match is the weakest kind of hit — every note under `#vercel` matches
- * "vercel" equally well, so a hundred of them would bury the one note actually
- * about it. Sorting by reason first and letting relevance order each band is
- * what keeps those at the bottom without dropping them.
- */
+// Title above body above tag-only — a tag match is the weakest hit (every note
+// under `#vercel` matches "vercel" equally).
 const RANK: Record<MatchReason["kind"], number> = {
   title: 0,
   body: 1,
@@ -35,12 +23,7 @@ function reasonRank(reason: MatchReason): number {
   return RANK[reason.kind];
 }
 
-/**
- * Which fields a hit matched, into a reason.
- *
- * Title wins over body when both matched: it's the stronger statement about
- * what the note is, and it's the line the row leads with anyway.
- */
+/** Which fields a hit matched, into a reason. Title wins over body. */
 export function reasonFrom(
   fields: ReadonlySet<string>,
   tags: readonly string[],
@@ -49,38 +32,27 @@ export function reasonFrom(
   if (fields.has("title")) return { kind: "title" };
   if (fields.has("bodyMd")) return { kind: "body" };
 
-  // A tag reason has to be able to name its tag. The search is fuzzy, so a
-  // note can match on the tags field through a term that no tag literally
-  // contains — and "matched tag #" with nothing after it is worse than not
-  // claiming a tag match at all.
+  // A tag reason must name a tag; fall back to "body" if the fuzzy match
+  // doesn't correspond to a literal tag.
   const tag = matchedTag(tags, terms);
   return tag ? { kind: "tag", tag } : { kind: "body" };
 }
 
-/**
- * The tag that earned a tag-only match its row.
- *
- * Named rather than implied: under `#vercel`, a row explaining itself with
- * `matched tag #vercel/test` is telling you something you could not otherwise
- * see, since the scope chip says `#vercel` and the note's own tag doesn't.
- */
+/** The tag that earned a tag-only match its row. */
 function matchedTag(
   tags: readonly string[],
   terms: readonly string[],
 ): string | undefined {
   const wanted = terms.map((term) => term.toLowerCase());
-  // Deepest first: `#vercel/test` is the more specific true answer whenever
-  // both it and its parent match, and the parent is what the chip already says.
+  // Deepest first — the more specific match, and the one the chip doesn't show.
   return [...tags]
     .sort((a, b) => b.length - a.length)
     .find((tag) => wanted.some((term) => tag.toLowerCase().includes(term)));
 }
 
 /**
- * Stable sort by reason band, leaving relevance to order each band.
- *
- * `Array.prototype.sort` is specified as stable, so the incoming order — which
- * is MiniSearch's score, title-boosted — survives inside each band.
+ * Stable sort by reason band — the incoming MiniSearch score order survives
+ * inside each band.
  */
 export function byReason<T extends { reason: MatchReason }>(results: T[]): T[] {
   return [...results].sort(

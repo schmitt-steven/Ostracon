@@ -5,10 +5,7 @@ import { tagFromSegments } from "@/lib/tags/routes";
 
 /**
  * One tag's notes. A catch-all segment because tags nest — `/t/infra/ci` is
- * one tag with a slash in it, not two segments of a hierarchy of routes.
- *
- * A parent shows its children's notes too, which is what makes the rail's
- * nested counts mean what they appear to mean.
+ * one tag with a slash in it. A parent shows its children's notes too.
  */
 export default async function TagPage(props: PageProps<"/t/[...tag]">) {
   await requireAuth();

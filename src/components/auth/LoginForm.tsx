@@ -6,21 +6,24 @@ import { formatCountdown, useCountdown } from "@/lib/ui/cooldown";
 
 export function LoginForm() {
   const [state, formAction, pending] = useActionState(loginAction, undefined);
-  // Keyed on the entire answer; two refusals in a row can owe the same seconds, and clock has to restart anyway
+  // Keyed on the whole answer — two refusals can owe the same seconds.
   const cooldown = useCountdown(state?.retryAfter ?? 0, state);
   const locked = cooldown > 0;
 
   return (
     <form action={formAction} className="flex w-full flex-col gap-4">
-      <label className="flex flex-col gap-2 text-sm font-medium uppercase tracking-[0.14em] text-ink-muted">
-        Password
+      <label className="flex w-full flex-col gap-1.5">
+        <span className="text-[13px] text-ink-muted">Password</span>
+        {/* `.well` is the field's edge — same as the password-change fields. */}
         <input
           type="password"
           name="password"
+          autoComplete="current-password"
           autoFocus
           required
           disabled={locked}
-          className="well rounded-[var(--radius-control)] bg-sunk px-4 py-3 text-base font-normal normal-case tracking-normal text-ink outline-none transition-colors focus:bg-action-wash disabled:opacity-50"
+          spellCheck={false}
+          className="well w-full rounded-[var(--radius-control)] bg-sunk px-3 py-2 text-base text-ink outline-none focus-visible:outline-none! disabled:opacity-50"
         />
       </label>
       {state?.error && (

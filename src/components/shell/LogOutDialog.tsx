@@ -4,17 +4,9 @@ import { useEffect } from "react";
 import { logoutAction } from "@/lib/auth/actions";
 
 /**
- * The "Log out?" confirmation.
- *
- * Shared by the rail's [LogOutButton] and the command palette's "Log out" row
- * (which reaches it through [requestLogout] and [LogOutPrompt]): both are one
- * aimed click or one typed word away from ending the session, which is the
- * worry that put a confirmation here to begin with. A mis-aimed click used to
- * drop you at the login screen with whatever you were doing gone from view.
- *
- * Clicks are stopped from bubbling: on touch the whole rail sits inside an
- * onClick that closes the drawer, and closing the drawer unmounts the rail —
- * so the copy the rail hosts would go with it before you could answer.
+ * The "Log out?" confirmation, shared by the rail's [LogOutButton] and the
+ * palette's row (via [requestLogout] / [LogOutPrompt]). Clicks don't bubble —
+ * on touch the rail's onClick would unmount this.
  */
 export function LogOutDialog({ onClose }: { onClose: () => void }) {
   useEffect(() => {
@@ -44,8 +36,7 @@ export function LogOutDialog({ onClose }: { onClose: () => void }) {
         <p className="mt-1 text-[13px] text-ink-muted">
           You&apos;ll need to sign in again to get back to your notes.
         </p>
-        {/* Still a form posting to the action, so logging out works the same
-            way it did before this dialog was put in front of it. */}
+        {/* A form posting to the action. */}
         <form action={logoutAction} className="mt-5 flex justify-end gap-1.5">
           <button
             type="button"
@@ -54,8 +45,7 @@ export function LogOutDialog({ onClose }: { onClose: () => void }) {
           >
             Stay
           </button>
-          {/* Pre-selected, so Enter confirms straight away — the same order
-              and wording as the note delete confirmation. */}
+          {/* Pre-selected, so Enter confirms. */}
           <button
             type="submit"
             autoFocus

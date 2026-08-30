@@ -13,34 +13,11 @@ import {
 import { SectionNote } from "./SectionNote";
 
 /**
- * Deployment — the one section of settings with nothing to set.
- *
- * Everything above it answers "what do you want"; this answers "what is this".
- * Which build am I looking at, when did it go out, where is it running, where
- * is my writing actually kept, and how much of it is there — the questions you
- * ask when something looks wrong, or when you come back after a month and want
- * to know whether the thing you deployed is the thing you're using.
- *
- * **It is read-only on purpose.** None of it could be a control: the commit is
- * decided by a push, the region by the platform, the size by the notes. A page
- * of facts sitting under four pages of switches needs no explaining as long as
- * it looks like facts — hence rows of label-and-value throughout, and nothing
- * anywhere in it that could be mistaken for something to press. The one link
- * is the commit itself, inside the row that names it, because a commit hash is
- * only useful if you can go and read it.
- *
- * **Two speeds, one layout.** The release facts are read out of environment
- * variables and cost nothing, so they go out with the first byte. The storage
- * figures are two network round trips — one of which walks the entire blob
- * store — and nothing else on this page should wait behind them, so they
- * stream in under a placeholder built from the same rows. The skeleton is not
- * decoration: it holds the exact height the answers will need, so Danger zone
- * and the end of the page don't shift under the reader a beat after they land.
- *
- * A server component, passed into [SettingsView] as a slot rather than as
- * data. The connection string and the blob token are read to describe them,
- * and the surest way for neither to end up in a client bundle is for the code
- * that touches them never to be in one.
+ * Deployment — read-only facts about the running build: commit, region,
+ * runtime, and where the data is kept. A server component slotted into
+ * [SettingsView] so the connection string and blob token never reach a client
+ * bundle. Release facts render immediately; storage figures (two round trips,
+ * one walking the whole blob store) stream in behind a same-height skeleton.
  */
 export function DeploymentSection() {
   const release = describeRelease();
@@ -48,9 +25,7 @@ export function DeploymentSection() {
   return (
     <div className="flex flex-col gap-4">
       {release.target === "local" ? (
-        // Said once, at the top, rather than left for the reader to infer from
-        // a column of dashes. Off the platform most of these variables simply
-        // do not exist — that is the answer, not a failure to look them up.
+        // Said once — off-platform most of these variables don't exist.
         <SectionNote>
           Not on Vercel, so this build has no release of its own.
         </SectionNote>
@@ -59,17 +34,8 @@ export function DeploymentSection() {
       <Group label="Release">
         <Fact label="Environment">{TARGET_LABEL[release.target]}</Fact>
 
-        {/* Named for what it is rather than for what it stands in for: the
-            value is a short SHA, the link goes to the commit, the tooltip is
-            its subject line, and "Runtime" three rows down holds the only
-            actual version numbers on the page.
-
-            The branch goes under the hash, but only where a branch can be a
-            surprise. On a preview it is the one human-readable thing telling
-            two deploys apart — the URL is a hash and so is the commit. On
-            production it is the production branch by definition, and a hint
-            that always reads the same trains the eye to skip hints, which is
-            attention the deployment id under Region needs. */}
+        {/* Branch shown as the hint only off production, where it's the one
+            readable thing telling two preview deploys apart. */}
         <Fact
           label="Commit"
           hint={
@@ -84,9 +50,6 @@ export function DeploymentSection() {
                 href={release.commit.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                // The message as the tooltip rather than as a line of its own:
-                // a subject line is as long as its author felt like making it,
-                // and this column has a right edge.
                 title={release.commit.message ?? undefined}
                 className="font-mono text-action underline-offset-2 hover:underline"
               >
@@ -118,12 +81,7 @@ export function DeploymentSection() {
           )}
         </Fact>
 
-        {/* "Function region" rather than "Region", for the reason "Database
-            size" isn't "Size": this page names two regions, and once the
-            functions sit next to the database both read `fra1 · Frankfurt`,
-            so the label is the only thing telling them apart. "Function" is
-            also the word the Vercel project settings use for the one you can
-            actually change. */}
+        {/* "Function region", not "Region" — the page names two regions. */}
         <Fact label="Function region" hint={release.deploymentId ?? undefined}>
           {release.region ? (
             <RegionText region={release.region} />
@@ -144,19 +102,10 @@ export function DeploymentSection() {
   );
 }
 
-/**
- * Where the notes and the images actually are, and how much of each.
- *
- * Async, and behind the Suspense boundary above: the identity half is free but
- * it is shown beside the figures it belongs to, and splitting the group in two
- * so half of it could arrive early would buy a few milliseconds at the cost of
- * a group that reflows while you read it.
- */
+/** Where the notes and images are kept, and how much of each. Behind Suspense. */
 async function Storage() {
   const database = describeDatabase();
   const store = describeBlobStore();
-  // Together rather than in sequence: one is Neon, the other is the blob API,
-  // and neither has anything to say to the other.
   const [stats, blobs] = await Promise.all([databaseStats(), blobStats()]);
 
   return (
@@ -177,13 +126,7 @@ async function Storage() {
         )}
       </Fact>
 
-      {/* Which compute inside that region is actually being talked to —
-          `ep-cool-name-a1b2c3`, Neon's own id for it. A row of its own rather
-          than a second line under Database, because it is the same kind of
-          thing as the blob store id four rows down: an identifier you copy
-          into a dashboard or a support thread, and the one string that tells
-          two Neon projects apart when both say `eu-central-1 · Frankfurt`.
-          Monospaced for that reason, as every identifier on this page is. */}
+      {/* Neon's endpoint id — an identifier you paste into a dashboard. */}
       <Fact label="Endpoint">
         {database.endpoint ? (
           <span className="font-mono">{database.endpoint}</span>
@@ -192,10 +135,7 @@ async function Storage() {
         )}
       </Fact>
 
-      {/* Named in full and standing directly under the database it measures.
-          On its own, one row below a version number and one row above a blob
-          store that has a size of its own, "Size" was a figure with no subject
-          — and this group holds two things that have sizes. */}
+      {/* "Database size", not "Size" — the group holds two things with sizes. */}
       <Fact label="Database size">
         {stats.ok ? formatBytes(stats.value.sizeBytes) : <Unavailable />}
       </Fact>
@@ -219,13 +159,7 @@ async function Storage() {
   );
 }
 
-/**
- * The same six rows with nothing in them yet.
- *
- * Written out rather than generated from a shared list, because the point of
- * it is to be exactly as tall as what replaces it — and a shared list is a
- * thing you can edit one half of.
- */
+/** The same six rows, empty — kept exactly as tall as [Storage] replaces it. */
 function StorageSkeleton() {
   return (
     <Group label="Storage">
@@ -245,18 +179,7 @@ function StorageSkeleton() {
   );
 }
 
-/**
- * A region, said both ways at once: `fra1 · Frankfurt`.
- *
- * The code is what the platform calls the place and the city is what it is,
- * and dropping either would cost something real — the code alone means nothing
- * until you already know it, and the city alone is not what you type into a
- * dashboard or paste into a support thread. So both, with the code set in the
- * monospaced face the commit hash and the store id use, which is this page's
- * way of saying "this string is an identifier, copy it exactly".
- *
- * A code with no city on file prints on its own rather than inventing one.
- */
+/** A region said both ways: `fra1 · Frankfurt` (city omitted when not on file). */
 function RegionText({ region }: { region: Region }) {
   return (
     <>
@@ -270,9 +193,6 @@ function RegionText({ region }: { region: Region }) {
 function Group({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      {/* The palette preview's caption, at the same size and weight: both are
-          a small word naming the block under it, and there is supposed to be
-          one of those, not two. */}
       <p className="text-[11px] uppercase tracking-wider text-ink-faint">
         {label}
       </p>
@@ -283,14 +203,7 @@ function Group({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/**
- * One fact: its name on the left, its value against the right edge.
- *
- * Baseline-aligned rather than centred, so a value that happens to be a link
- * or a monospaced id still sits on the same line as its label instead of a
- * pixel above it. `justify-between` with no rule between the two is enough to
- * read as a table — the eye supplies the leader.
- */
+/** One fact: name on the left, value against the right edge, baseline-aligned. */
 function Fact({
   label,
   hint,
@@ -304,9 +217,6 @@ function Fact({
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-6">
       <dt className="text-[13px] text-ink-muted">{label}</dt>
-      {/* Right-aligned in both states: below about 340px of column the value
-          wraps onto its own line, and keeping it against the right edge there
-          keeps the column of answers a column. */}
       <dd className="min-w-0 text-right text-[13px] text-ink">
         <span className="block truncate">{children}</span>
         {hint ? (
@@ -319,13 +229,7 @@ function Fact({
   );
 }
 
-/**
- * There is no such fact here — a local build has no commit, no region.
- *
- * The dash is for the eye only. An em dash read out is "em dash", which in a
- * list of answers is worse than silence, so the reason is spelled out beside
- * it for anything that isn't looking at the page.
- */
+/** No such fact here — a dash for the eye, "Not available" for screen readers. */
 function Unknown() {
   return (
     <span className="text-ink-faint">

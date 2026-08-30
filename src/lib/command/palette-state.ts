@@ -1,16 +1,12 @@
 "use client";
 
-// Whether the command palette is open, held outside React.
-//
-// The palette is mounted in the shell, but the things that open it are
-// scattered — ⌘K from anywhere, the hint in each view's header, the bottom bar
-// on touch. A store means none of them need a path down to it.
+// Whether the command palette is open, held outside React so the scattered
+// things that open it (⌘K, header hints, the touch bottom bar) need no path
+// down to it.
 
 let open = false;
-// Latched the first time the palette is opened, and never cleared. The search
-// corpus is fetched lazily, and this is what says "it's worth having now" —
-// without it, closing the palette would abandon a fetch already in flight and
-// start it again on the next ⌘K.
+// Latched on first open, never cleared — tells the lazy search-corpus fetch
+// it's worth keeping across a close/reopen.
 let everOpened = false;
 const listeners = new Set<() => void>();
 

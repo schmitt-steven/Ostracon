@@ -5,19 +5,9 @@ import { describeDevice, deviceKind } from "@/lib/auth/user-agent";
 import { SessionsTable, type SessionRow } from "./SessionsTable";
 
 /**
- * Access's second row: the devices that are signed in.
- *
- * Named at the same size as Password above it, because it is the same rank of
- * thing — a heading over a block rather than a caption under one. The column
- * headings inside the table are the small uppercase captions, so this line has
- * to be the larger of the two or the table would appear to be filed under its
- * own first column.
- *
- * Suspended, and the reason is worth stating: the query is a round trip to Neon
- * for a section that sits *above* Deployment, which is already streaming two
- * more. Without a boundary here the password row — which is free — would wait
- * behind a list of devices to be painted. The skeleton holds the height of one
- * device, which is the shortest the answer can be and the length it usually is.
+ * Access's second row: the signed-in devices. Suspended — a Neon round trip
+ * that the free password row above shouldn't wait behind. The skeleton holds
+ * one device's height.
  */
 export function SessionsSetting() {
   return (
@@ -33,17 +23,9 @@ export function SessionsSetting() {
 }
 
 /**
- * The rows, read and flattened for the browser.
- *
- * Two reads, deliberately not one: the list, and the session doing the asking.
- * The second is [getSession], which the page has already called through
- * `requireAuth` and which is wrapped in React's `cache` — so it costs nothing
- * here and is guaranteed to name the same session the page was let in on.
- *
- * The flattening is where the label is chosen. A device the owner has named
- * beats one described from its user agent, because a user agent is a claim the
- * client makes and a name is something a person decided. Nothing sets `label`
- * yet; the column is there and this is the code that will honour it.
+ * The rows, flattened for the browser. [getSession] is free here (cached from
+ * `requireAuth`) and names the current session. A device's own `label` beats
+ * its user-agent description.
  */
 async function Sessions() {
   const [records, current] = await Promise.all([listSessions(), getSession()]);
@@ -51,10 +33,8 @@ async function Sessions() {
   const rows: SessionRow[] = records.map((record) => ({
     id: record.id,
     device: record.label ?? describeDevice(record.createdUserAgent),
-    // From the user agent even when the owner has renamed the device: the
-    // name is theirs to choose and the shape isn't, and a session called
-    // "work laptop" should still be drawn as whatever actually holds the
-    // cookie.
+    // From the user agent even for a renamed device — the shape isn't theirs
+    // to choose.
     kind: deviceKind(record.createdUserAgent),
     location: record.lastSeenLocation ?? record.createdLocation,
     ip: record.lastSeenIp ?? record.createdIp,
@@ -67,12 +47,8 @@ async function Sessions() {
 }
 
 /**
- * The table's own headings over one empty row.
- *
- * Headings rather than a grey box, because they are known before the query
- * runs and they are what tells the reader what is arriving. The row of dashes
- * under them is one line tall — the height the first device will take — so the
- * Deployment heading below doesn't step down the page a beat after it lands.
+ * The table's real headings over one dashed row, so nothing below it shifts
+ * when the answer lands.
  */
 function SessionsSkeleton() {
   return (
@@ -87,10 +63,8 @@ function SessionsSkeleton() {
               {label}
             </th>
           ))}
-          {/* The action column, empty. Present so the four that carry words
-              are apportioned the same width they will have once the answer
-              arrives — a skeleton one column narrower would resettle
-              sideways at the swap, which is the flicker it exists to avoid. */}
+          {/* The action column, empty — present so column widths don't shift
+              at the swap. */}
           <th />
         </tr>
       </thead>
@@ -101,8 +75,7 @@ function SessionsSkeleton() {
               —
             </td>
           ))}
-          {/* No dash under the buttons: a dash is a fact that isn't there
-              yet, and the fifth column never holds one. */}
+          {/* No dash under the buttons — that column never holds a fact. */}
           <td className="py-1.5" />
         </tr>
       </tbody>

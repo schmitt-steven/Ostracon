@@ -9,14 +9,10 @@ type Props = {
 };
 
 /**
- * Renders a date/time in the viewer's own locale and timezone without a
- * hydration mismatch. toLocaleString() with no explicit locale/timezone is
- * environment-dependent — the server (Node) and the browser can format the
- * same instant differently — so naively rendering it during SSR produces a
- * client/server text mismatch on first load. Follows the pattern documented
- * at node_modules/next/dist/docs/01-app/02-guides/preventing-flash-before-hydration.md:
- * an inline script corrects the DOM before hydration on hard navigations,
- * and toLocaleString() runs normally in the browser on soft navigations.
+ * A date/time in the viewer's locale and timezone, without a hydration
+ * mismatch — server and browser can format the same instant differently. An
+ * inline script corrects the DOM before hydration (the anti-FOUC pattern in
+ * node_modules/next/dist/docs/01-app/02-guides/preventing-flash-before-hydration.md).
  */
 export function LocalDate({ date, options }: Props) {
   const id = useId();

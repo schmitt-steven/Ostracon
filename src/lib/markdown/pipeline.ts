@@ -25,18 +25,10 @@ function rehypeLazyImages() {
 }
 
 /**
- * Paints each inline hashtag in its tag's hue.
- *
- * Runs after sanitising, for the same reason rehypeLazyImages does: the hue is
- * carried as an inline `style`, and rehype-sanitize strips `style` outright
- * rather than trying to parse it. Widening the schema to admit style
- * attributes on the user's own markdown would be a real hole; setting the
- * attribute downstream of the sanitiser is not, because nothing here is
- * derived from the document's text — only from the tag name the link already
- * resolved to.
- *
- * `--h` alone, rather than a finished colour: the two themes light tags at
- * different lightness (see --tag-l), so the CSS has to keep the last word.
+ * Paints each inline hashtag in its tag's hue. Runs after sanitise — the hue
+ * is an inline `style`, which rehype-sanitize strips; setting it downstream is
+ * safe since it's derived only from the resolved tag name. `--h` alone, not a
+ * finished colour, so the theme's --tag-l keeps the last word.
  */
 function rehypeHashtagHue() {
   return (tree: Root) => {
@@ -53,9 +45,7 @@ function rehypeHashtagHue() {
   };
 }
 
-// Blocks that are worth scrolling to. Inline elements are left alone: the
-// split view syncs at block granularity, and marking every <em> would just
-// bloat the HTML.
+// Blocks worth scrolling to — the split view syncs at block granularity.
 const SOURCE_LINE_TAGS = new Set([
   "p",
   "h1",
@@ -76,11 +66,9 @@ const SOURCE_LINE_TAGS = new Set([
 ]);
 
 /**
- * Stamps each block with the markdown line it came from, which is what the
- * split view's click-to-sync scrolling looks up in both directions.
- * hast-util-sanitize preserves `position`, so like rehypeLazyImages this runs
- * after sanitize instead of widening the schema — and after Shiki, so
- * highlighted code blocks (whose <pre> is swapped wholesale) keep theirs.
+ * Stamps each block with its source markdown line, for the split view's
+ * click-to-sync scroll. Runs after sanitize (which keeps `position`) and after
+ * Shiki (whose <pre> is swapped wholesale).
  */
 function rehypeSourceLines() {
   return (tree: Root) => {
@@ -93,12 +81,9 @@ function rehypeSourceLines() {
   };
 }
 
-// hast-util-sanitize only honors the FIRST matching definition it finds for
-// a given property name on a tag (see findDefinition in its source) — it
-// does not merge multiple `['className', ...]` entries for the same tag.
-// The default schema already has one for `a` (allowing only
-// 'data-footnote-backref'), so appending a second entry is silently
-// unreachable. Replace it with one combined entry instead.
+// hast-util-sanitize honours only the FIRST className definition it finds per
+// tag — the default schema already has one for `a`, so a second is unreachable.
+// This strips it so callers can replace it with one combined entry.
 function withoutClassName(defs: NonNullable<Options["attributes"]>[string]) {
   return defs.filter((def) => !(Array.isArray(def) && def[0] === "className"));
 }
@@ -126,12 +111,9 @@ const sanitizeSchema: Options = {
 };
 
 /**
- * Sanitize runs BEFORE Shiki highlighting, not after: Shiki emits
- * style/class output that rehype-sanitize's default schema would strip,
- * silently flattening every code block back to plain text. Sanitizing the
- * user's raw markdown-derived HTML first (untrusted input), then
- * highlighting the already-sanitized tree (Shiki's own output is trusted
- * and never passes back through sanitize), keeps both intact.
+ * Sanitize runs BEFORE Shiki — sanitize the untrusted markdown-derived HTML,
+ * then highlight the already-clean tree (Shiki's output is trusted and never
+ * re-sanitized). The other order would strip Shiki's style/class output.
  */
 export type RenderOptions = {
   /** A wikilink's title → the slug it points at, or undefined if unresolved. */
@@ -148,8 +130,7 @@ export async function renderMarkdown(
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkWikilink, { resolve: resolveWikilink })
-    // After wikilinks: `[[Notes about #rust]]` is one wikilink, and a hashtag
-    // rule running first would have cut a link node out of the middle of it.
+    // After wikilinks — a hashtag inside `[[Notes about #rust]]` must not split it.
     .use(remarkHashtag, { known: isKnownTag })
     .use(remarkAutolinkBareHost)
     .use(remarkRehype)

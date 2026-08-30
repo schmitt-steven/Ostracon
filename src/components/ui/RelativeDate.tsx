@@ -13,14 +13,10 @@ type Props = {
 };
 
 /**
- * A relative timestamp in the reader's own clock and timezone.
- *
- * The server renders it against its own clock, which can disagree — a note
- * edited late in the evening is "Yesterday" in one timezone and "12 Aug" in
- * another. `suppressHydrationWarning` covers exactly that frame; the shared
- * clock (see lib/ui/now) then re-renders every label on the page at once with
- * the reader's time, and keeps them ticking after that so "14 min" doesn't sit
- * there being wrong while a note is open.
+ * A relative timestamp in the reader's clock and timezone.
+ * `suppressHydrationWarning` covers the server/client disagreement; the shared
+ * clock (lib/ui/now) then re-renders every label with the reader's time and
+ * keeps them ticking.
  */
 export function RelativeDate({ date, long = false, className }: Props) {
   const now = useSyncExternalStore(subscribeNow, getNow, getServerNow);

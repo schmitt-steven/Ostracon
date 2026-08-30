@@ -1,10 +1,6 @@
 /**
- * Zero-cost, zero-latency tag suggestion: a closed keyword -> tag map,
- * matched against a note's title + body. Deliberately kept as a pure,
- * synchronous (text: string) => string[] function — no network, no I/O —
- * so a future LLM-backed tagger can be swapped in at the same call site
- * (e.g. an async function returning Promise<string[]>) without touching
- * any caller. Edit KEYWORD_MAP directly to tune the vocabulary.
+ * Zero-cost tag suggestion: a closed keyword -> tag map matched against a
+ * note's title + body. Pure and synchronous. Edit KEYWORD_MAP to tune it.
  */
 
 const KEYWORD_MAP: Record<string, string[]> = {
@@ -64,10 +60,8 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Keywords made only of letters/digits/spaces/hyphens get \b...\b boundaries
-// so e.g. "java" doesn't match inside "javascript". Keywords containing
-// symbols (c++, c#, .net) skip boundaries — \b doesn't work reliably around
-// non-word characters — and fall back to a plain substring match instead.
+// Plain-word keywords get \b boundaries so "java" doesn't match "javascript".
+// Keywords with symbols (c++, c#, .net) skip them (\b is unreliable there).
 function isWordSafe(keyword: string): boolean {
   return /^[a-z0-9][a-z0-9 -]*$/i.test(keyword);
 }

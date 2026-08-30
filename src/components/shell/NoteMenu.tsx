@@ -21,19 +21,9 @@ type Props = {
 };
 
 /**
- * A pinned note row's context menu — unpin, and move within the section.
- *
- * It exists because pinning was reachable only from the note's own header, so
- * taking a note out of the rail meant opening the note you were trying to stop
- * looking at. Right-clicking the row is where anyone would try first — and now
- * that pinned notes and pinned tags are one section, a right-click that worked
- * on half the rows and not the other half read as the menu being broken rather
- * than as the rows being different.
- *
- * The two move items are the same two the tag rows have, moving the row
- * through the same single list, so a note and a tag can be put either side of
- * each other. Unpinning is the one thing here that reaches the server: which
- * notes are pinned is a column, while where they sit is not.
+ * A pinned note row's context menu — unpin, and move within the section (the
+ * same single list the tag rows move through). Unpinning is the one thing here
+ * that reaches the server.
  */
 export function NoteMenu({
   id,
@@ -55,14 +45,10 @@ export function NoteMenu({
         className={menuItem}
         disabled={saving}
         onClick={() => {
-          // No local pressed state to keep honest, unlike the header's pin
-          // button: this row is drawn from the server's list, so the
-          // revalidation the action triggers is what makes it disappear.
+          // No local pressed state — the action's revalidation removes the row.
           startTransition(async () => {
             const result = await setNotePinned({ id, pinned: false });
-            // The column is only half of it: the row's place in the section is
-            // a key in the browser, and leaving it behind would put the note
-            // back where it was if it is ever pinned again.
+            // Also drop the browser-held order key.
             if (result.slug !== null) forgetPin(notePinKey(result.slug));
             onClose();
           });

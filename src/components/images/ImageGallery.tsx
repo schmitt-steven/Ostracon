@@ -4,9 +4,8 @@ import { LocalDate } from "@/components/ui/LocalDate";
 import type { StoredImage } from "@/lib/images/queries";
 import { noteHref } from "@/lib/tags/routes";
 
-// Two columns on a phone, three once there's room. The pane's text column is
-// capped at 680px, so past that breakpoint a tile never exceeds ~215px — hence
-// the fixed second half of `sizes` instead of a viewport fraction.
+// Two columns on a phone, three otherwise. The 680px pane caps a tile at
+// ~215px, hence the fixed 220px rather than a viewport fraction.
 const SIZES = "(max-width: 640px) 50vw, 220px";
 
 function formatSize(bytes: number): string {
@@ -15,33 +14,24 @@ function formatSize(bytes: number): string {
     : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-// The first row at the widest this page gets (the pane caps the grid at three
-// columns). Those are the only tiles that can be above the fold, and one of
-// them is the LCP element — so they load eagerly instead of waiting for the
-// lazy-load observer. Kept to one row: eager-loading tiles that turn out to be
-// below the fold just spends bandwidth on images nobody scrolled to.
+// The first row (three columns at widest) — the only above-the-fold tiles,
+// one of them the LCP. Loaded eagerly; one row only.
 const EAGER_TILES = 3;
 
 function Thumbnail({ image, eager }: { image: StoredImage; eager: boolean }) {
   return (
     <>
-      {/* Tone and radius, no stroke and no shadow — a bordered, elevated tile
-          is a card, and the design has none. The sunk paper is enough to seat
-          a transparent PNG. */}
+      {/* Tone and radius, no stroke or shadow — the design has no cards. */}
       <div className="relative aspect-4/3 overflow-hidden rounded-[var(--radius-control)] bg-sunk">
         <Image
           src={image.url}
-          // The filename is the only description that exists — nothing records
-          // alt text for pasted uploads.
+          // The filename is the only description — no alt text for pasted uploads.
           alt={image.filename}
           fill
           sizes={SIZES}
-          // Not `priority`: deprecated in Next 16 in favour of `preload`,
-          // which the docs then steer away from for exactly this case.
+          // Not `priority` — deprecated in Next 16.
           loading={eager ? "eager" : "lazy"}
-          // contain, not cover: these are mostly screenshots and diagrams, and
-          // cropping one to a tidy 4:3 tends to cut off the very text that
-          // tells you which screenshot it is.
+          // contain, not cover — cropping a screenshot cuts off the text.
           className="object-contain transition-transform duration-200 ease-out motion-reduce:transition-none group-hover:scale-[1.03]"
         />
       </div>
@@ -65,8 +55,7 @@ export function ImageGallery({ images }: { images: StoredImage[] }) {
         <li key={image.url}>
           <Link
             href={noteHref(image.note.slug)}
-            // The filename is otherwise nowhere in the UI — the caption line
-            // is spent on the note, which is the more useful label.
+            // The filename is otherwise nowhere in the UI.
             title={image.filename}
             className="group block focus-visible:outline-none"
           >

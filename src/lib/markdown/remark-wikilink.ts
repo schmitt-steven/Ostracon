@@ -23,8 +23,7 @@ export function remarkWikilink(options: { resolve: WikilinkResolver }) {
 
           const link: Link = {
             type: "link",
-            // No `from`: following a link out of one note's prose leaves
-            // whatever index you were in behind.
+            // No `from` — a link out of prose leaves the index behind.
             url: slug
               ? noteHref(slug)
               : `/notes/new?title=${encodeURIComponent(title)}`,

@@ -45,45 +45,29 @@ const COMPARATORS: Record<
   edited: (a, b) => b.updatedAt.localeCompare(a.updatedAt),
   created: (a, b) => b.createdAt.localeCompare(a.createdAt),
   oldest: (a, b) => a.createdAt.localeCompare(b.createdAt),
-  // Measured server-side with markup discounted — see notes/text-length. Ties
-  // fall back to the title so that a shelf of same-length notes keeps a stable
-  // order instead of reshuffling on every render.
+  // Measured server-side, markup discounted (notes/text-length); ties by title.
   longest: (a, b) =>
     b.textLength - a.textLength || a.title.localeCompare(b.title),
 };
 
 /**
- * View A — one tag's notes.
- *
- * Searching happens in ⌘K, not here. This view used to carry its own field,
- * scoped to the notes it was already showing, which made three search boxes
- * on one screen — the rail's tag filter, this, and the palette — each
- * answering a slightly different question that nothing on screen explained.
- * The palette absorbed this one: it opens already narrowed to whatever tag
- * this view is showing, so the scoped search is still one keystroke away.
- *
- * Everything separating one row from the next here is space: --space-row
- * between rows, --space-hair between a title and its own snippet. That ratio
- * (26 to 4) is what makes the pairs read as pairs. It's also why every row is
- * exactly the same height and the snippet is clipped to one line — in a list
- * with no rules, rows of differing heights read as disorder rather than as
- * content of differing length.
+ * A note-list view (one tag, all notes, or untagged). Searching is in ⌘K,
+ * which opens narrowed to this view's tag. Rows are separated by space alone
+ * (--space-row / --space-hair) and are all the same height — in a rule-less
+ * list, uneven heights read as disorder.
  */
 export function IndexView({ notes, tag, heading }: Props) {
   const router = useRouter();
   const { hueOf } = useTagHues();
   const [sort, setSort] = useState<SortMode>("edited");
-  // -1 is "nothing selected", which is where the list starts: a highlighted
-  // first row on arrival would look like something had already been clicked.
+  // -1 = nothing selected, where the list starts.
   const [cursor, setCursor] = useState(-1);
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
 
-  // Rows are hidden the moment deletion is confirmed rather than when the
-  // server answers, so the row disappears on the click, not on the round
-  // trip. A failed delete puts the id back rather than leaving a note that
-  // looks gone until a reload.
+  // Rows hidden on confirm, not on the server's answer; a failed delete
+  // restores the id.
   const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
   const [, startTransition] = useTransition();
 
@@ -115,11 +99,8 @@ export function IndexView({ notes, tag, heading }: Props) {
     [liveNotes, sort],
   );
 
-  // j/k/Enter. Ignored while typing anywhere, so `j` in a note title never
-  // moves the list underneath it — and ignored inside a menu or on the control
-  // that opens one, where the same arrows are already walking that list. (The
-  // sort was a native `<select>`, which the browser fenced off for us; now that
-  // it is a menu of our own, the fence has to be spelled out.)
+  // j/k/Enter — ignored while typing, and inside a menu or the control that
+  // opens one (the sort menu is our own now, so the fence is explicit).
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
@@ -150,8 +131,7 @@ export function IndexView({ notes, tag, heading }: Props) {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [sorted, cursor, router, tag]);
 
-  // Walking past the fold scrolls the pane rather than leaving the selection
-  // somewhere off screen.
+  // Keep the selected row in view when the arrows walk past the fold.
   useEffect(() => {
     if (cursor < 0) return;
     listRef.current
@@ -161,26 +141,19 @@ export function IndexView({ notes, tag, heading }: Props) {
 
   const hue = tag ? hueOf(tag) : undefined;
   const title = tag ? `#${tag}` : (heading ?? "All notes");
-  // The root view, as against a tag's notes or Untagged's. The three share this
-  // component and only this one wants a line saying how the collection breaks
-  // down: inside a tag every note is tagged, and on Untagged the whole list is
-  // the number.
+  // The root view — the only one that wants a "how the collection breaks down"
+  // line.
   const allNotes = !tag && !heading;
 
-  // Live, for the same reason the rename and delete dialogs count this way — a
-  // row deleted a moment ago has already left the list and shouldn't still be
-  // in the sentence printed under it.
+  // Live count — a just-deleted row shouldn't still be in the sentence.
   const untaggedCount = useMemo(
     () =>
       allNotes ? liveNotes.filter((note) => note.tags.length === 0).length : 0,
     [allNotes, liveNotes],
   );
 
-  // The same wash the editor pane gets, from the same file — lit by this
-  // view's one tag, or by the neutral palette on All notes and Untagged. The
-  // index used to be a flat --surface fill (or, on a tag, one flat tint of its
-  // hue) while the note you opened from it had four lights and an etch, so
-  // clicking a row changed the material the app was made of. It doesn't now.
+  // The editor pane's wash, from the same file — this view's one tag, or
+  // neutral on All notes / Untagged.
   const paneStyle = useMemo(() => {
     const vars: Record<string, string> = washVars(
       washLights(tag ? [tag] : [], hueOf),
@@ -190,21 +163,13 @@ export function IndexView({ notes, tag, heading }: Props) {
   }, [tag, hue, hueOf]);
 
   return (
-    // pane-etched, the same as the note. The index and the note are the two
-    // surfaces you actually read, and until now only one of them had the grain
-    // — so opening a row changed the material under the text even though the
-    // wash carried over. See `.pane-etched`.
+    // pane-etched, matching the note — the two surfaces you read. See `.pane-etched`.
     <div className="pane pane-etched h-full" style={paneStyle}>
       <PaneScroller
         head={
           <header className="pane-head">
-            {/* --head-h, because [PaneScroller] stands its content off by
-                exactly that much — the header floats over the scroller now, so
-                the two numbers are one number. */}
             <div className="mx-auto flex min-h-[var(--head-h)] max-w-[680px] items-center gap-4 px-6 py-4">
-              {/* -ml-1.5 cancels the first pill's own px-1.5: the text column
-                starts at the heading below, and the pill's padding hangs
-                outside it the way the row tints in the rail do. */}
+              {/* -ml-1.5 cancels the pill's padding so it lines up with the heading. */}
               <nav
                 aria-label="Breadcrumb"
                 className="-ml-1.5 min-w-0 flex-1 text-[13px]"
@@ -231,9 +196,7 @@ export function IndexView({ notes, tag, heading }: Props) {
                 label="Sort notes"
                 onChange={(next) => {
                   setSort(next);
-                  // Row 3 of "recently edited" and row 3 of "longest" are
-                  // different notes, so keeping the index would silently move
-                  // the selection to something nobody picked.
+                  // Re-sorting moves rows under the cursor.
                   setCursor(-1);
                 }}
               />
@@ -242,36 +205,15 @@ export function IndexView({ notes, tag, heading }: Props) {
         }
       >
         <div className="mx-auto max-w-[680px] px-6 pb-24">
-          {/* The heading row on a tag view is four controls and no chrome: the
-            colour, the name, search, pin. Three of them are the whole of what
-            you can do *to* a tag, and every one of them used to be somewhere
-            else — colour in a right-click menu, rename in the same menu,
-            pinning too, and search in the heading itself. A tag's own page is
-            where you are when those thoughts occur, so they are all here.
-
-            Each is its own target rather than one pill around several. The
-            heading carried a shared pill when its two halves were "colour" and
-            "search"; with four verbs on the row, one object that tints as a
-            whole says nothing about which of them the pointer is on. */}
+          {/* On a tag view: swatch, name (the rename control), search, pin —
+              each its own target. */}
           <div className="flex items-center gap-2 pt-2">
-            {/* gap-1 rather than the gap-3 the old pill had inside it: the
-              pill's own px-2.5 now sits between the swatch and the first
-              glyph, so the two numbers add up to the same 14px of air — and
-              the pill's box starts a few pixels clear of the swatch, which is
-              what makes them read as two targets rather than one. The negative
-              margin is gone with it: the swatch holds the left margin now, so
-              the name has no edge to line up with. */}
             <h1 className="flex min-w-0 flex-1 items-center gap-1 font-display text-[28px] font-medium leading-tight text-ink">
               {tag ? (
                 <>
                   <TagHueButton tag={tag} hue={hueOf(tag)} />
-                  {/* The name is the rename control. It is the one piece of a
-                    tag that is *made of* the thing it edits, so clicking the
-                    word to change the word needs no glyph to explain it — the
-                    pencil is there for the first time only, and the pill's
-                    tint is the standing cue that the word is live. Same
-                    dialog the rail's menu opens; there is one rename in this
-                    app, reachable from two places. */}
+                  {/* The name is the rename control — clicking the word to
+                    change the word needs no glyph. Same dialog as the rail. */}
                   <button
                     type="button"
                     onClick={() => setRenaming(true)}
@@ -280,9 +222,7 @@ export function IndexView({ notes, tag, heading }: Props) {
                     className="tag-pill group flex min-w-0 items-center gap-3 rounded-full px-2.5 py-0.5 text-left"
                   >
                     <span className="min-w-0 truncate">{title}</span>
-                    {/* Held in layout at all times, revealed on reach:
-                      appearing from nothing would resize the pill under the
-                      pointer. */}
+                    {/* Held in layout, revealed on reach. */}
                     <EditIcon
                       aria-hidden
                       className="size-4 shrink-0 text-ink-faint opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none"
@@ -294,24 +234,9 @@ export function IndexView({ notes, tag, heading }: Props) {
               )}
             </h1>
 
-            {/* Search and pin, in that order: the one you reach for constantly
-              and the one you press once. Both are the 28px circle the note
-              header's controls are, so a header control is the same object
-              wherever it appears.
-
-              The search is on every one of these lists, not just a tag's. It
-              was tag-only on the argument that All notes and Untagged have no
-              scope to search inside, which mistook the button for a filter —
-              it opens the palette, and the palette is as useful standing in
-              front of everything as it is inside one tag. What differs is only
-              what it says: a tag names its scope, the other two don't, because
-              there the palette searches the collection. The pin and the delete
-              stay tag-only; there is nothing to pin or delete here. */}
-            {/* The words the palette will open wearing: it reads the route and
-              seeds its own chip from it, so a button that promised anything
-              else would be describing a different search. See [scopeFromPath].
-              `heading` is only ever Untagged today, and lower-cased it is
-              exactly what that scope is called in a sentence. */}
+            {/* Search on every list (not just a tag's — it opens the palette);
+              pin and delete are tag-only. The label matches what the palette
+              opens wearing (see [scopeFromPath]). */}
             <HeaderSearchButton
               label={
                 tag
@@ -326,12 +251,7 @@ export function IndexView({ notes, tag, heading }: Props) {
             {tag && (
               <>
                 <TagPinButton tag={tag} />
-                {/* Last of the three, and the only one that goes red on
-                    reach: the order is how often you press them, and this is
-                    the one you press once ever. It sits here rather than in a
-                    ⋯ menu because this header has never had one — the rename
-                    is the title itself — and a menu holding a single item is
-                    a lid on one button. */}
+                {/* Delete — last, the only one that goes red; no ⋯ menu. */}
                 <button
                   type="button"
                   onClick={() => setDeleting(true)}
@@ -346,20 +266,8 @@ export function IndexView({ notes, tag, heading }: Props) {
             )}
           </div>
 
-          {/* How the collection breaks down, in the place the tag directory
-              says the same thing — same line, same separator, same one link.
-              This is where the rail's Untagged row went: a row that never
-              moved and stood at `0` for as long as you were caught up, in the
-              part of the rail that is always there, for a list that is a
-              corner of the collection rather than a view of it. Here the
-              number appears only while there is something behind it, and it
-              appears under the heading of the very list it is a corner of.
-
-              One link, not two. There is no `/tagged`: it would be All notes
-              with a corner taken out, linked from All notes, and it would owe
-              a route, a [PaletteScope] and a chip to a list nobody goes
-              looking for. The asymmetry is the honest part — untagged is a
-              pile you work down, tagged is not a place. */}
+          {/* How the collection breaks down — the count appears only while
+              there's something behind it. One link (untagged); no `/tagged`. */}
           {allNotes && (
             <p className="mt-[var(--space-hair)] text-[13px] text-ink-muted">
               {liveNotes.length} {liveNotes.length === 1 ? "note" : "notes"}
@@ -382,9 +290,7 @@ export function IndexView({ notes, tag, heading }: Props) {
           {tag && renaming && (
             <TagRenameDialog
               tag={tag}
-              // The live count, not the server's: rows deleted a moment ago are
-              // already gone from this list and shouldn't be counted in a
-              // sentence about what is about to be rewritten.
+              // The live count — a just-deleted row isn't in what's rewritten.
               noteCount={liveNotes.length}
               onClose={() => setRenaming(false)}
             />
@@ -393,20 +299,15 @@ export function IndexView({ notes, tag, heading }: Props) {
           {tag && deleting && (
             <TagDeleteDialog
               tag={tag}
-              // The live count for the same reason as above: rows deleted a
-              // moment ago are already gone from this list and shouldn't be
-              // counted in a sentence about what is about to go.
+              // The live count, as above.
               noteCount={liveNotes.length}
               onClose={() => setDeleting(false)}
             />
           )}
 
           {notes.length === 0 ? (
-            // Two different emptinesses. A tag or Untagged index with nothing
-            // in it just needs to say so; the *root* index with nothing in it
-            // is a collection that doesn't exist yet, and the only useful thing
-            // to say there is how to start one — including the way in that has
-            // no button anywhere on this screen.
+            // An empty root index is a collection that doesn't exist yet — say
+            // how to start one. An empty tag/Untagged index just says so.
             tag === null && !heading ? (
               <p className="pt-[var(--space-block)] text-base text-ink-muted">
                 Nothing here yet.{" "}
@@ -437,43 +338,29 @@ export function IndexView({ notes, tag, heading }: Props) {
           ) : (
             <>
               {sorted.length === 0 ? (
-                // Every remaining note here was just deleted; `notes` itself
-                // (the server's copy) hasn't caught up yet.
+                // Everything here was just deleted; the server's `notes` hasn't
+                // caught up.
                 <p className="pt-[var(--space-block)] text-base text-ink-muted">
                   Nothing left here.
                 </p>
               ) : (
                 <>
-                  {/* --space-block below the title block, as everywhere: the
-                    heading and the list are two things, not one. */}
                   <ul ref={listRef} className="pt-[var(--space-block)]">
                     {sorted.map((note, index) => {
-                      // Inside a tag, every row is that tag's hue: it's the one
-                      // the pane is already washed in, and the one the note will
-                      // still be wearing after the click — a row lit in its own
-                      // first tag would change colour on the way in. On the
-                      // all-notes view there is no pane hue to inherit, so a row
-                      // carries its own first tag's instead. A note with no tags
-                      // has no hue to be lit in either way and falls back to the
-                      // neutral ink tint — inventing one would be the interface
-                      // claiming a note is filed when it isn't.
+                      // Inside a tag: that tag's hue (the pane's, and what the
+                      // note keeps after the click). On all-notes: the note's
+                      // own first tag, or the neutral tint when it has none.
                       const rowTag = tag ?? note.tags[0];
                       return (
                         <li
                           key={note.id}
                           data-row={index}
-                          // Every row is its own stacking context (position:
-                          // relative), so with no z-index a later row simply
-                          // paints over an earlier row's open popover — z-20 on
-                          // the popover itself only wins fights inside this
-                          // row. has() lifts the whole row above its siblings
-                          // for exactly as long as its dialog is open.
+                          // has() lifts the row above its siblings while its
+                          // dialog is open.
                           className="group/row relative mb-[var(--space-row)] last:mb-0 has-[[role=dialog]]:z-10"
                         >
                           <Link
-                            // Carries the tag this list *is*, so the note opens
-                            // showing the index it was opened from rather than
-                            // guessing at one from its own tags.
+                            // Carries this list's tag, so the note opens under it.
                             href={noteHref(note.slug, tag)}
                             data-active={index === cursor ? "true" : undefined}
                             onFocus={() => setCursor(index)}
@@ -492,22 +379,16 @@ export function IndexView({ notes, tag, heading }: Props) {
                               <span className="block truncate font-display text-base font-medium text-ink group-has-[[data-row-delete-trigger]:hover]/row:text-danger group-has-[[data-row-delete-trigger]:hover]/row:line-through">
                                 {note.title || "Untitled"}
                               </span>
-                              {/* Always rendered, even when empty: every row has to be
-                          the same height, and a missing second line would make
-                          this one shorter than its neighbours. */}
+                              {/* Always rendered, even when empty, so rows stay
+                          the same height. */}
                               <span className="mt-[var(--space-hair)] flex min-w-0 items-baseline gap-1.5 text-[13px] text-ink-muted">
-                                {/* Not flex-1: the snippet takes only the width it
-                            needs and gives up the rest, so the tags sit right
-                            after the sentence rather than being pushed to the
-                            far edge of the column. It still truncates first,
-                            because the tags are the part worth keeping. */}
+                                {/* Not flex-1 — the snippet truncates first,
+                            keeping the tags visible. */}
                                 <span className="min-w-0 truncate">
                                   {note.snippet}
                                 </span>
                                 {note.tags
-                                  // Not the tag whose index this is: printing #images
-                                  // on every row of the #images list says nothing, and
-                                  // it crowds out the tags that would.
+                                  // Not this list's own tag.
                                   .filter((name) => name !== tag)
                                   .slice(0, 3)
                                   .map((name) => (
@@ -527,15 +408,11 @@ export function IndexView({ notes, tag, heading }: Props) {
                             </span>
                             <RelativeDate
                               date={note.updatedAt}
-                              // Yields the corner to the delete control on
-                              // hover rather than sitting under it — the two
-                              // would otherwise overlap right where the pointer is.
+                              // Yields the corner to the delete control on hover.
                               className="shrink-0 whitespace-nowrap pt-0.5 text-[13px] text-ink-muted transition-opacity group-hover/row:opacity-0"
                             />
                           </Link>
-                          {/* A sibling of the Link, not nested in it — an
-                            anchor can't contain a button. Sits in the same
-                            corner the date just vacated. */}
+                          {/* A sibling of the Link (no button inside an anchor). */}
                           <div className="absolute right-0 top-1/2 -translate-y-1/2">
                             <DeleteRowButton
                               title={note.title}
@@ -553,8 +430,7 @@ export function IndexView({ notes, tag, heading }: Props) {
           )}
         </div>
 
-        {/* Announced, not drawn: the sort is a select with no visible label,
-            so reordering the whole list is otherwise a silent change. */}
+        {/* Announced — the sort has no visible label. */}
         <p className="sr-only" role="status">
           Sorted by {SORT_LABEL[sort]}
         </p>

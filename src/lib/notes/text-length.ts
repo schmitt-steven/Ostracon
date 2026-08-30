@@ -1,25 +1,18 @@
-// Character count of what a reader would actually *read* in a note body, used
-// to rank notes by how much is written in them.
-//
-// The point of stripping is that markup shouldn't buy a note a higher rank.
-// Images are the clearest case — pasting a screenshot inserts a blob URL that
-// is longer than most paragraphs — but link targets, fences and emphasis marks
-// inflate a raw `length` the same way.
+// Character count of the readable prose in a note body, used to rank notes by
+// how much is written in them. Markup (image URLs, link targets, fences,
+// emphasis marks) is stripped so it can't inflate the count.
 
-// Images first, before links: `![alt](url)` also matches the link pattern, and
-// running links first would leave a stray `!` plus the alt text behind.
+// Images before links: `![alt](url)` also matches the link pattern.
 const IMAGE_INLINE = /!\[[^\]]*\]\([^)]*\)/g;
 const IMAGE_REFERENCE = /!\[[^\]]*\]\[[^\]]*\]/g;
 const IMAGE_HTML = /<img\b[^>]*>/gi;
 
-// Links keep their label and lose their target: the label is read, the URL is
-// plumbing.
+// Links keep their label, lose their target.
 const LINK_INLINE = /\[([^\]]*)\]\([^)]*\)/g;
 // `[[Target|shown]]` renders as "shown"; `[[Target]]` renders as "Target".
 const WIKILINK = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
 
-// Fence delimiters and their language tag are markup — the code between them
-// is text the user wrote, so it stays.
+// Fence delimiters are markup; the code between them is text the user wrote.
 const FENCE_DELIMITER = /^\s*(```|~~~).*$/gm;
 // Leading line markup: heading hashes, quote arrows, list bullets, table pipes.
 const LINE_PREFIX = /^\s*(#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+)/gm;
@@ -27,11 +20,8 @@ const LINE_PREFIX = /^\s*(#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+)/gm;
 const INLINE_MARKS = /[*_~`|]/g;
 
 /**
- * How many images a body embeds.
- *
- * All three forms are counted off the same patterns the length discount uses,
- * so "this note has images" and "images don't inflate its rank" can never
- * disagree about what an image is.
+ * How many images a body embeds. Counted off the same patterns the length
+ * discount uses, so the two can't disagree about what an image is.
  */
 export function countImages(bodyMd: string): number {
   return (

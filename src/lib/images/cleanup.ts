@@ -6,29 +6,22 @@ import { notes } from "@/db/schema";
 import { isUploadedBlobUrl, referencedUrls } from "./references";
 
 /**
- * Deletes the uploads a note's body points at, now that the note is gone.
- *
- * Call with the note's last known `contentMd`, after the row has been deleted
- * — the `ne` below keeps the result the same either way, so ordering is only a
- * matter of what the caller still has in hand.
- *
- * Best-effort by design: a blob the delete pass misses becomes a stray, which
- * the gallery already ignores (see `listStoredImages`), whereas throwing here
- * would report a failure for a note that really was deleted.
+ * Deletes the uploads a deleted note pointed at. Best-effort — a missed blob
+ * becomes a stray the gallery ignores; throwing here would flag a delete that
+ * actually succeeded.
  */
 export async function deleteNoteImages(
   noteId: string,
   contentMd: string,
 ): Promise<void> {
-  // External images pasted into the note are referenced, not owned — only our
-  // own uploads are ours to delete.
+  // Only our own uploads — external images are referenced, not owned.
   const candidates = [
     ...new Set(referencedUrls(contentMd).filter(isUploadedBlobUrl)),
   ];
   if (candidates.length === 0) return;
 
-  // An upload is only garbage once nothing points at it: markdown gets copied
-  // between notes, and the copy keeps the original's URL.
+  // An upload is garbage only once nothing else points at it (markdown gets
+  // copied between notes).
   const others = await db
     .select({ contentMd: notes.contentMd })
     .from(notes)
@@ -42,8 +35,7 @@ export async function deleteNoteImages(
 
   try {
     await del(orphaned, {
-      // Explicit for the same reason as the upload route — see the comment
-      // there about OIDC resolution.
+      // Explicit token — see the upload route's note on OIDC resolution.
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
   } catch (error) {

@@ -25,8 +25,7 @@ export function useAiCompletion({ onToken, onDone }: Args) {
   const [streaming, setStreaming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Kept in refs so `run` stays referentially stable across renders — it's
-  // called from a menu that unmounts as soon as generation starts.
+  // In refs so `run` stays stable — the menu that calls it unmounts at once.
   const onTokenRef = useRef(onToken);
   onTokenRef.current = onToken;
   const onDoneRef = useRef(onDone);
@@ -52,9 +51,7 @@ export function useAiCompletion({ onToken, onDone }: Args) {
       });
 
       if (!res.ok || !res.body) {
-        // Errors are JSON, successes are a text stream — only parse on the
-        // error path, and don't let a non-JSON body (an auth redirect to the
-        // login page, say) throw over the real problem.
+        // Errors are JSON; tolerate a non-JSON body (an auth redirect).
         const body = (await res.json().catch(() => null)) as {
           error?: string;
         } | null;
@@ -70,8 +67,7 @@ export function useAiCompletion({ onToken, onDone }: Args) {
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
-        // stream: true so a multi-byte character split across two network
-        // chunks is held until it's complete rather than emitted as U+FFFD.
+        // stream: true holds a multi-byte char split across chunks.
         const text = decoder.decode(value, { stream: true });
         if (text) onTokenRef.current(text);
       }

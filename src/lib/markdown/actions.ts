@@ -11,9 +11,8 @@ const PreviewInput = z.object({
 });
 
 /**
- * Re-renders the body being edited for the live preview. Rendering stays on
- * the server rather than shipping unified + Shiki to the browser, and reuses
- * the exact pipeline saved notes go through.
+ * Re-renders the body being edited for the live preview — the same pipeline
+ * saved notes go through, kept on the server (no unified + Shiki in the browser).
  */
 export async function renderPreview(input: unknown): Promise<string> {
   await requireAuth();

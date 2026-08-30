@@ -8,17 +8,12 @@ import {
 import { renderMarkdown } from "./pipeline";
 
 /**
- * Body markdown → display HTML, with both kinds of reference resolved against
- * what actually exists: wikilinks against the notes table, `#name` hashtags
- * against the tags in use. Shared by the page's first paint and by the
- * live-preview action so the preview can never drift from what a saved note
- * renders as.
+ * Body markdown → display HTML, with wikilinks resolved against the notes
+ * table and `#name` hashtags against the tags in use. Shared by first paint
+ * and the live-preview action so they can't drift.
  *
- * `draftTags` are the tags of the note being edited, which the tag bar may have
- * grown since the last save. Without them, adding `#idea` in the bar would
- * leave every `#idea` in the prose reading as unresolved until a save landed
- * and something re-rendered — the reference would look broken at exactly the
- * moment it was made.
+ * `draftTags` are the editing note's current tag bar, so a `#idea` just added
+ * there resolves immediately rather than reading as broken until a save.
  */
 export async function renderNoteHtml(
   bodyMd: string,

@@ -1,10 +1,7 @@
 /**
- * Relative dates, in the two lengths the design asks for: a short form for the
- * right edge of an index row, and a sentence form for the note's metadata line.
- *
- * Pure, and takes `now` explicitly, so the caller decides whose clock is being
- * read — see [RelativeDate], where that's the reader's rather than the
- * server's.
+ * Relative dates in two lengths: a short form for an index row, a sentence
+ * form for a note's metadata line. Pure; takes `now` explicitly so the caller
+ * picks whose clock is read (see [RelativeDate]).
  */
 
 const MINUTE = 60_000;
@@ -21,13 +18,7 @@ function daysApart(date: Date, now: Date): number {
   return Math.round((startOfDay(now) - startOfDay(date)) / (24 * HOUR));
 }
 
-/**
- * The index row's date: `14 min`, `Yesterday`, `12 Aug`.
- *
- * Short because the row's other half is a serif title and a snippet, and a
- * full timestamp there would compete with them for the eye. `nowrap` at the
- * call site keeps it on one line whatever the column width does.
- */
+/** The index row's date: `14 min`, `Yesterday`, `12 Aug`. */
 export function shortRelative(date: Date, now: Date = new Date()): string {
   const elapsed = now.getTime() - date.getTime();
 

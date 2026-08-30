@@ -16,36 +16,21 @@ type Props = {
   /** Nesting depth, used only for the text indent. */
   depth?: number;
   onContextMenu?: (event: MouseEvent) => void;
-  /**
-   * Opens the same menu the right-click does, from a ⋯ button that appears at
-   * the row's right edge under the pointer. Rows without one — the three fixed
-   * views — simply don't pass it.
-   */
+  /** Opens the row's menu from a ⋯ button under the pointer; the fixed views
+   * don't pass it. */
   onOpenMenu?: (at: { x: number; y: number }) => void;
   /** That menu is open for this row: the button stays out while it is. */
   menuOpen?: boolean;
   /** Disclosure control for a row with children, rendered before the dot. */
   toggle?: React.ReactNode;
-  /**
-   * Drawn in the dot's place. For the rows that stand for a place rather than
-   * a tag — a glyph says which place; a dot could only say "a row".
-   */
+  /** Drawn in the dot's place, for rows that stand for a place, not a tag. */
   icon?: React.ReactNode;
 };
 
 /**
- * One line in the rail: dot or icon, name, count. No separators, no second
- * line, no truncation beyond the name itself.
- *
- * The selected state is the tag's own hue at 16% with the name at full
- * contrast; hover is a neutral ink tint. The two are deliberately different
- * *kinds* of signal rather than two strengths of one — "you are here" and "the
- * pointer is here" have to stay tellable apart when both are true at once.
- *
- * Under the pointer, a row with a menu trades its count for the ⋯ button that
- * opens it. Trades rather than makes room for: shifting the count left would
- * move a number the eye is already reading, and the count is the one thing on
- * the row you don't need while you're reaching for its menu.
+ * One rail line: dot or icon, name, count. Selected = the tag's hue at 16%
+ * with full-contrast name; hover = a neutral ink tint — two different kinds of
+ * signal. A row with a menu trades its count for the ⋯ button on hover.
  */
 export function RailRow({
   href,
@@ -78,23 +63,15 @@ export function RailRow({
         }
         className={`row-tint flex min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1 text-[13px] ${
           selected
-            ? // A tag lights up in its own hue; the rows that aren't tags —
-              // All notes, All tags, Images — have none to light up in, so
-              // they take the neutral one instead of inheriting a colour that
-              // would be saying something untrue.
+            ? // A tag lights in its hue; the fixed views take the neutral tint.
               `${hue === undefined ? "row-selected" : "hue-row-selected"} text-ink`
             : "text-ink-muted"
         }`}
       >
-        {/* Every row opens with a mark on the same left edge, so every name in
-            the rail starts on the same one. A tag's is a disc in its own hue;
-            a pinned note's is a plain ring; the three fixed views get a glyph
-            instead, since they're places and a dot can't tell you which.
-
-            The glyph sits *in* the dot's 7px footprint rather than beside it —
-            centred there it overhangs 3.5px each side into the row's own
-            padding, which costs the names nothing and keeps them aligned
-            across the groups. */}
+        {/* Every row opens with a mark on the same left edge: a hue disc for a
+            tag, a plain ring for a pinned note, a glyph for the fixed views.
+            The glyph sits in the dot's 7px footprint, overhanging into the
+            row's padding. */}
         {icon ? (
           <span
             aria-hidden
@@ -115,10 +92,7 @@ export function RailRow({
           />
         )}
 
-        {/* The name is always present as text. Hue never carries meaning on
-            its own — roughly one man in twelve can't separate two of the
-            sixteen slots, and locked lightness (good for consistency) takes
-            away the brightness difference that would otherwise rescue it. */}
+        {/* The name is always text — hue never carries meaning alone. */}
         <span className="min-w-0 flex-1 truncate">{label}</span>
         {count !== undefined && (
           <span
@@ -135,37 +109,28 @@ export function RailRow({
         )}
       </Link>
 
-      {/* Outside the link because a button inside an anchor isn't markup, so
-          it's placed over the count's own corner instead. Last in the DOM as
-          well as on screen: tab reaches the row, then the row's menu. */}
+      {/* Outside the link (no button inside an anchor); last in the DOM. */}
       {onOpenMenu && (
         <button
           type="button"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           aria-label={`Options for ${label}`}
-          // Swallowed so the open menu's dismiss-on-outside-press doesn't
-          // close it half a frame before the click would reopen it — that
-          // makes the button a toggle rather than a control that never
-          // closes what it opened. It also keeps the press off the rail's own
-          // click handler, which shuts the touch drawer.
+          // Swallowed so the toggle can close what it opened, and off the
+          // rail's click handler (which shuts the touch drawer).
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            // Anchored to the button rather than to the pointer: activating it
-            // from the keyboard reports no coordinates at all, and a menu that
-            // opens in the corner of the screen isn't the same control.
+            // Anchored to the button — the keyboard has no coordinates.
             const box = event.currentTarget.getBoundingClientRect();
             onOpenMenu({ x: box.right - 4, y: box.bottom + 4 });
           }}
           className={`row-tint absolute right-1 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-[var(--radius-control)] text-ink-faint transition-opacity duration-150 hover:text-ink motion-reduce:transition-none ${
             menuOpen
               ? "opacity-100"
-              : // Hidden but still in the tab order — opacity, not visibility,
-                // is what lets it appear on focus for a keyboard. Pointers
-                // that can't hover have no way to summon it, so on those it
-                // simply stands there.
+              : // Hidden by opacity (not visibility) so focus can summon it;
+                // always shown on touch, which can't hover.
                 "pointer-events-none opacity-0 focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 pointer-coarse:pointer-events-auto pointer-coarse:opacity-100"
           }`}
         >

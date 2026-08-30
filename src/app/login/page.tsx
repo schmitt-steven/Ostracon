@@ -5,15 +5,12 @@ export default function LoginPage() {
     <div className="flex flex-1 items-center justify-center p-8">
       <div className="glass lift-3 w-full max-w-md rounded-[var(--radius-zone)] px-10 py-12">
         <div className="mb-8 text-center">
-          <span
-            aria-hidden
-            className="mx-auto mb-4 block h-3.5 w-3.5 rounded-full bg-accent"
-          />
+         
           <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">
-            SE Knowledge Base
+            Ostracon
           </h1>
           <p className="mt-1.5 text-base text-ink-muted">
-            Notes on Software Engineering and related topics
+            Personal knowledge base
           </p>
         </div>
         <LoginForm />

@@ -3,29 +3,15 @@ import { version as nextVersion } from "next/package.json";
 import { describeRegion, type Region } from "./regions";
 
 /**
- * What this particular copy of the app is — read out of the environment it was
- * started in.
- *
- * Everything here is free: Vercel sets these variables on the build and on the
- * running function, so describing a release costs no network call and can be
- * rendered on the first pass of the page. The things that *do* cost a call —
- * how big the database is, what's in the blob store — live in [services] and
- * arrive after.
- *
- * Off Vercel (a `next dev` on this laptop) almost none of it is set, and that
- * is a fact worth printing rather than an error: the section says "Local" and
- * shows the parts that are still true — the runtime versions, and whichever
- * database and blob store `.env.local` happens to point at, which for this
- * project are the real ones.
+ * What this copy of the app is, read from its environment — free (Vercel sets
+ * these variables), so it renders on the first pass. The costly facts (DB
+ * size, blob store) live in [services]. Off Vercel almost none of it is set
+ * and the section says "Local".
  */
 
 /**
- * Where this copy is running. Vercel's own three, plus the one it has no word
- * for because it never sees it.
- *
- * "development" is `vercel dev` — the platform's local emulator, still fed by
- * the platform's environment. "local" is a plain `next dev`, where there is no
- * platform at all.
+ * Where this copy runs. "development" is `vercel dev` (platform emulator);
+ * "local" is plain `next dev` (no platform).
  */
 export type DeployTarget = "production" | "preview" | "development" | "local";
 
@@ -68,10 +54,7 @@ const GIT_HOSTS: Record<string, { repo: string; commit: string }> = {
 /**
  * Reads the environment as it stands right now.
  *
- * A function rather than a module-level constant: on Vercel, `VERCEL_REGION`
- * is set per invocation, and a constant computed when the module first loaded
- * would keep reporting the region of whichever cold start happened to
- * evaluate it.
+ * A function, not a constant — `VERCEL_REGION` is set per invocation.
  */
 export function describeRelease(): Release {
   const onVercel = Boolean(process.env.VERCEL);
@@ -103,17 +86,14 @@ export function describeRelease(): Release {
           sha,
           short: sha.slice(0, 7),
           ref: process.env.VERCEL_GIT_COMMIT_REF || null,
-          // Only the subject line: Vercel passes the whole message, and a body
-          // with four paragraphs in it is not a tooltip.
+          // Subject line only — Vercel passes the whole message.
           message:
             process.env.VERCEL_GIT_COMMIT_MESSAGE?.split("\n")[0]?.trim() ||
             null,
           url: repoUrl && host ? `${repoUrl}/${host.commit}/${sha}` : null,
         }
       : null,
-    // Written out in full rather than destructured off `process.env`: this one
-    // is not an environment variable at runtime at all but a literal the build
-    // substitutes in, and the substitution only finds the whole expression.
+    // Written in full, not destructured — the build substitutes this literal.
     builtAt: process.env.BUILD_TIME || null,
     runtime: { next: nextVersion, node: process.version.replace(/^v/, "") },
   };

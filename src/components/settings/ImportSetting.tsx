@@ -12,25 +12,10 @@ import {
 import { SettingRow } from "./SettingRow";
 
 /**
- * Data's second row: an archive, read back in.
- *
- * **It asks before it writes, and that is the point of the row.** Picking a
- * file only opens it — in this tab, where nothing has been sent anywhere yet —
- * and what appears is what was found: how many notes, how many images, when the
- * archive was made. The import happens on a second press. An import is one of
- * the few things in this app that cannot be undone with ⌘Z, so it is the one
- * place where a confirmation is worth the extra press.
- *
- * **Everything it adds is new.** No note is replaced, no image is overwritten,
- * nothing already here is touched: a title that already exists gets a second
- * note beside the first, exactly as it would if you had typed it. That is the
- * whole safety model of this control, and it is what the summary line promises
- * before you commit to anything.
- *
- * **Loose Markdown files are somebody else's job.** They can be dropped
- * anywhere on the window and always could — see [NoteImport], which is mounted
- * in the shell and owns every file drop in the app. This row takes a `.zip`,
- * because an archive is the thing you cannot do by dragging.
+ * Data's second row: an archive, read back in. Picking a file only opens it
+ * (in this tab, nothing sent) and shows what was found; the import is a second
+ * press, because it can't be undone. Everything it adds is new — nothing here
+ * is replaced. Loose Markdown files go through [NoteImport]; this takes a `.zip`.
  */
 
 type Stage =
@@ -75,9 +60,7 @@ export function ImportSetting() {
         setStage({ kind: "working", progress }),
       );
       setStage({ kind: "done", outcome });
-      // The collection under this page has changed — the rail's counts, the
-      // index, every tag. The action revalidated the tree on the server; this
-      // is what makes the browser go and collect it.
+      // The action revalidated the tree; this collects it.
       router.refresh();
     });
   }
@@ -101,8 +84,7 @@ export function ImportSetting() {
         }
       />
 
-      {/* Hidden rather than styled away: never tabbed to, never read out, and
-          only ever opened by the button beside it. */}
+      {/* Hidden — opened only by the button beside it. */}
       <input
         ref={inputRef}
         type="file"
@@ -119,13 +101,7 @@ export function ImportSetting() {
   );
 }
 
-/**
- * The line under the row, in every state it has.
- *
- * One place rather than a notice per outcome, for the reason the row above has
- * one control: this is a settings row, and a settings row says one thing at a
- * time about itself.
- */
+/** The line under the row, one component for every state it has. */
 function Report({
   stage,
   onImport,
@@ -183,16 +159,7 @@ function Report({
   );
 }
 
-/**
- * What is in the archive, and — when it says — when it was made.
- *
- * The skipped count is a second sentence rather than a clause, because it is a
- * different kind of fact: the first says what you are about to get, the second
- * says what you are not. A zipped Obsidian vault brings `.canvas` files and an
- * `.obsidian/` folder along with the notes, and finding out afterwards that a
- * third of the archive didn't arrive is how a working import comes to look
- * broken.
- */
+/** What's in the archive, when it was made, and what will be skipped. */
 function describe(reading: ArchiveReading): string {
   const parts = [count(reading.notes.length, "note")];
   if (reading.images.length > 0) {
@@ -218,10 +185,7 @@ function progressLine(progress: ImportProgress): string {
   return `Importing ${noun}s — ${progress.done} of ${progress.total}…`;
 }
 
-/**
- * What landed. The failures are a second clause rather than a second line: an
- * import that mostly worked is one sentence about a thing that mostly worked.
- */
+/** What landed, with any failures as a trailing clause. */
 function outcomeLine(outcome: ImportOutcome): string {
   const clauses = [`Imported ${count(outcome.notes, "note")}`];
   if (outcome.images > 0) clauses.push(`${count(outcome.images, "image")}`);

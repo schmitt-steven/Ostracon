@@ -5,21 +5,10 @@ import { SearchIcon } from "@/icons";
 import { setPaletteOpen } from "@/lib/command/palette-state";
 
 /**
- * The magnifier that sits at the right-hand end of an overview's heading row.
- *
- * It opens the palette, exactly as ⌘K and the rail's [SearchTrigger] do —
- * there is one search in this app and this is another door into it, not a
- * second field. It was a tag index's control first, on the argument that a tag
- * page is where "find something in here" occurs; the same is true of any list
- * you are standing in front of, so All notes, Untagged and All tags carry it
- * too. The palette reads the route it was opened from and narrows itself
- * accordingly, so the button doesn't have to say what it will search — only
- * what you are looking at.
- *
- * The 28px circle is the note header's control, unchanged, so a header control
- * is the same object wherever it appears. `label` is what a screen reader
- * hears; `hint` is the tooltip a pointer gets, and the two differ because the
- * first has to name the target and the second can say what will happen.
+ * The magnifier at the right end of an overview's heading row — opens the
+ * palette, like ⌘K and [SearchTrigger]. The palette reads the route and
+ * narrows itself. `label` names the target for a screen reader; `hint` is the
+ * pointer tooltip.
  */
 export function HeaderSearchButton({
   label,

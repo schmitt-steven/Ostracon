@@ -3,12 +3,9 @@ import { requireAuth } from "@/lib/auth/require-auth";
 import { filterNotes, listNotesOverview, toLite } from "@/lib/notes/queries";
 
 /**
- * The notes carrying no hashtag at all.
- *
- * Deliberately a plain list with nothing inviting about it. In a system where
- * tags are the only way of organising anything, this is the new `/misc/` — the
- * folder everything ends up in — so the editor nudges a note out of here
- * rather than this view making it comfortable to stay.
+ * The notes carrying no tag — deliberately a plain list. It's the new
+ * `/misc/`, so the editor nudges notes out of here rather than this view
+ * making it comfortable to stay.
  */
 export default async function UntaggedPage() {
   await requireAuth();

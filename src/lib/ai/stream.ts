@@ -8,9 +8,7 @@ import type { Provider } from "./providers";
 import type { AiAction } from "./types";
 
 // Output lands directly in a markdown note, so the model is told to write
-// note-shaped prose: no chat preamble, no restating of the selection, no
-// fenced wrapper around the whole answer (which would break the note's own
-// formatting once inserted).
+// note-shaped prose — no chat preamble, no fenced wrapper around the answer.
 const SYSTEM_PROMPT = `You are a writing assistant embedded in a personal software-engineering knowledge base. The user selects text in a note and asks you about it, and your answer is inserted into that note as markdown.
 
 Write the answer only. No preamble, no sign-off, no restating the question, and no "Here is..." opener. Do not wrap the whole response in a code fence — use fences only for actual code. Match the note's voice: direct, technical, no filler. Prefer a short paragraph over a bulleted list unless the content is genuinely a list.`;
@@ -46,8 +44,8 @@ function buildUserPrompt({
   const instruction =
     action === "ask" ? (question?.trim() ?? "") : INSTRUCTIONS[action];
 
-  // Context is fenced in a tag rather than quoted inline, so text that itself
-  // contains backticks or markdown headings can't be read as instructions.
+  // Fenced in a tag, not quoted inline, so its own markup can't read as
+  // instructions.
   const context = selection
     ? ["<selection>", selection, "</selection>"]
     : noteBody
@@ -67,12 +65,9 @@ function buildUserPrompt({
     .join("\n");
 }
 
-// The SDK builds its error message out of a `{"error":{"message":...}}` body.
-// Gemini wraps that same object in a JSON array, which matches neither the
-// expected shape nor the not-JSON-at-all fallback, so its errors arrive as the
-// bare "404 status code (no body)" with the explanation thrown away. Unwrapping
-// it here — the one place that touches the wire — keeps the repair out of every
-// caller, which can go on reading `APIError.message`.
+// The SDK reads its error message from `{"error":{"message":...}}`; Gemini
+// wraps that in a JSON array, so its explanation is lost. Unwrapping it here,
+// the one place that touches the wire, keeps `APIError.message` working.
 async function fetchUnwrappingErrors(
   input: string | URL | Request,
   init?: RequestInit,
@@ -88,12 +83,10 @@ async function fetchUnwrappingErrors(
       unwrapped = JSON.stringify(parsed[0]);
     }
   } catch {
-    // Not JSON — an HTML error page from a proxy, say. Passed through as-is,
-    // since the SDK reports a body it can't parse as the message verbatim.
+    // Not JSON (an HTML proxy error page, say) — passed through as-is.
   }
 
-  // Both headers describe the bytes on the wire, which have now been decoded
-  // and rewritten, so neither survives the copy.
+  // These describe the original bytes, which have been rewritten.
   const headers = new Headers(response.headers);
   headers.delete("content-length");
   headers.delete("content-encoding");
@@ -105,9 +98,7 @@ async function fetchUnwrappingErrors(
 }
 
 /**
- * Reduces whatever the SDK threw to one line worth showing the user. Failures
- * here are usually actionable — a local server that isn't running, a retired
- * model, a spent quota — so the message should say which one it was.
+ * Reduces whatever the SDK threw to one actionable line for the user.
  */
 export function describeCompletionError(
   error: unknown,
@@ -117,23 +108,19 @@ export function describeCompletionError(
     return `${providerLabel} didn't respond in time.`;
   }
   if (error instanceof APIConnectionError) {
-    // What the SDK gives for an unreachable host, which for a local provider
-    // almost always means the app isn't running — worth saying, since that's a
-    // fix the user can act on.
+    // Unreachable host — for a local provider, usually "not running".
     return `Couldn't reach ${providerLabel}. Is it running?`;
   }
   if (error instanceof APIError) {
-    // `message` already leads with the status code, so it isn't repeated here.
-    // With no body to explain it, that status is all there is to report.
+    // `message` already leads with the status code.
     return `${providerLabel}: ${error.message}`;
   }
   return error instanceof Error ? error.message : "The model request failed.";
 }
 
 /**
- * Streams the model's answer as plain text chunks. Throws before yielding
- * anything if the provider rejects the request, so the caller can turn that
- * into an HTTP error rather than a half-written stream.
+ * Streams the model's answer as text chunks. Throws before the first yield if
+ * the provider rejects the request, so the caller can send an HTTP error.
  */
 export async function* streamCompletion(
   provider: Provider,
@@ -144,8 +131,7 @@ export async function* streamCompletion(
     apiKey: provider.apiKey,
     baseURL: provider.baseURL,
     fetch: fetchUnwrappingErrors,
-    // Local servers are on loopback and a stalled request should surface
-    // quickly rather than hanging the editor; the browser can always retry.
+    // A stalled request should surface rather than hang the editor.
     timeout: 60_000,
     maxRetries: 1,
   });

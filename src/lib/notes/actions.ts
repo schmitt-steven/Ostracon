@@ -23,37 +23,23 @@ import { uniqueSlugFor } from "./slug";
 import { linkedSlugs, syncLinksForNote } from "./wikilinks";
 
 const NoteInput = z.object({
-  // Title is intentionally optional: a very common flow is opening a new
-  // note and typing the body first. An empty title is filled in with the
-  // note's day (see defaultNoteTitle) rather than blocking the save, so what
-  // reaches the column is never blank and every reader — list, backlinks,
-  // slug — gets something to name the note by.
+  // Optional — an empty title is filled with the day title (see
+  // defaultNoteTitle) rather than blocking the save.
   title: z.string().max(300),
   bodyMd: z.string(),
-  // Tags arrive as their own field, from the tag bar above the editor. They
-  // are deliberately *not* read out of the body: a `#word` in the prose is a
-  // reference to a tag, not an act of filing, so a save must be able to carry
-  // a tag the body never mentions and to drop one it still does.
+  // Their own field, from the tag bar — not read out of the body, since a
+  // `#word` in prose is a reference, not filing.
   tags: z.array(z.string().max(120)),
 });
 
-/**
- * A submitted tag list, cleaned and capped.
- *
- * The cap is a guard on the column, not a rule for the writer: fifty distinct
- * tags on one note is a paste accident, and the array index shouldn't be asked
- * to carry an unbounded list because of one.
- */
+/** A submitted tag list, cleaned and capped (50 is a paste-accident guard). */
 function tagsFor(tags: string[]): string[] {
   return normalizeTagList(tags).slice(0, 50);
 }
 
 /**
- * The note as it stands, read before an update overwrites it.
- *
- * Two things need it. `createdAt` is the day title's anchor, so a note saved
- * with an empty title keeps landing on the day it was started rather than on
- * today. The rest is the previous state to diff against — see [shellChanged].
+ * The note before an update overwrites it — `createdAt` anchors the day title,
+ * the rest is the previous state for [shellChanged] to diff.
  */
 async function currentNote(id: string) {
   const [row] = await db
@@ -77,21 +63,10 @@ function uploadSet(contentMd: string): string {
 }
 
 /**
- * Whether this save changed anything the surrounding shell is showing.
- *
- * `refresh()` re-runs the whole route tree — layout included — on the client,
- * and it used to fire on every save, which meant a full server render every
- * 800ms of typing. Almost none of those had anything to correct: the rail
- * shows the tag tree and its counts, the titles of pinned notes, and how many
- * uploads the collection holds, and prose moves none of them. So it fires when
- * one of those three actually moved, and body edits pay nothing.
- *
- * It also has to stay this quiet for a second reason. A newly created note
- * swaps its URL under a still-mounted editor (see NoteEditor's onCreated), so
- * for the rest of that session the router's address and its rendered tree
- * belong to different routes — and a refresh would resolve that disagreement
- * by tearing the editor down, which is the exact thing the swap exists to
- * avoid.
+ * Whether this save changed anything the shell shows (pinned titles, tag tree
+ * and counts, upload count) — the gate on `refresh()`, so body edits during
+ * autosave don't trigger a full route re-render. Staying quiet also protects a
+ * URL-swapped editor from being torn down (see NoteEditor's onCreated).
  */
 function shellChanged(
   before: { title: string; tags: string[]; contentMd: string } | undefined,
@@ -131,15 +106,9 @@ const UpdateInput = NoteInput.extend({
   id: z.uuid(),
   expectedVersion: z.number().int(),
   /**
-   * Whether the caller's rendered tree still matches the URL it sits under.
-   *
-   * False for an editor that created its note and swapped its own URL to it
-   * (see NoteEditor's onCreated): from then until the next real navigation the
-   * router's address says /notes/[slug] while the mounted tree is still
-   * /notes/new's, and `refresh()` would settle that disagreement by throwing
-   * the editor away mid-sentence — the exact thing the swap exists to prevent.
-   * The save itself is unaffected; only the shell goes without its update, and
-   * the `revalidatePath` calls below mean the first navigation away collects it.
+   * False for an editor that swapped its own URL after creating its note (see
+   * NoteEditor's onCreated) — `refresh()` would then tear it down mid-sentence.
+   * The save is unaffected; the shell update is collected on the next navigation.
    */
   canRefreshShell: z.boolean().default(true),
 });
@@ -167,17 +136,14 @@ export async function updateNote(input: unknown): Promise<UpdateNoteResult> {
   } = UpdateInput.parse(input);
   const tags = tagsFor(submitted);
   const before = await currentNote(id);
-  // Clearing the title is the same intent as never having typed one, so it
-  // lands back on the day title instead of leaving the note nameless. A
-  // missing row means the note was deleted mid-edit; the update below is about
-  // to no-op on that same absence, so any title will do.
+  // Clearing the title lands back on the day title. A missing row (deleted
+  // mid-edit) makes the update below a no-op, so any title will do.
   const finalTitle = title.trim()
     ? title
     : defaultNoteTitle(before?.createdAt ?? new Date());
   const contentMd = stringifyContentMd({ title: finalTitle, tags }, bodyMd);
 
-  // Slug is intentionally never re-derived from title here — fixed at
-  // creation so URLs/bookmarks/backlink hrefs survive renames.
+  // Slug is fixed at creation, never re-derived — URLs survive renames.
   const [updated] = await db
     .update(notes)
     .set({
@@ -205,8 +171,7 @@ export async function updateNote(input: unknown): Promise<UpdateNoteResult> {
   }
 
   const affectedSlugs = await syncLinksForNote(id, bodyMd);
-  // Unconditional, unlike the refresh below: these only mark caches stale, so
-  // whatever the user opens next is correct however small the edit was.
+  // Unconditional (unlike the refresh below) — only marks caches stale.
   revalidatePath("/");
   revalidatePath(`/notes/${updated.slug}`);
   for (const s of affectedSlugs) revalidatePath(`/notes/${s}`);
@@ -223,20 +188,18 @@ export async function deleteNote(input: unknown): Promise<void> {
   await requireAuth();
   const id = z.uuid().parse(input);
 
-  // The body is read before the row goes, since it's the only record of which
-  // uploads the note was holding.
+  // Read before the row goes — the body is the only record of its uploads.
   const [note] = await db
     .select({ slug: notes.slug, contentMd: notes.contentMd })
     .from(notes)
     .where(eq(notes.id, id))
     .limit(1);
-  // Already gone — deleting the same note twice (a stale list, a double
-  // submit) is a no-op, not an error.
+  // Already gone — a double delete is a no-op.
   if (!note) return;
 
   const affectedSlugs = await linkedSlugs(id);
 
-  // `links` rows at both ends cascade with the note (see schema).
+  // `links` rows cascade with the note (see schema).
   await db.delete(notes).where(eq(notes.id, id));
   await deleteNoteImages(id, note.contentMd);
 
@@ -258,26 +221,15 @@ export type PinNoteResult = {
   pinned: boolean;
   /** The pin was refused because MAX_PINNED_NOTES are already pinned. */
   full: boolean;
-  /**
-   * The note's slug, or null if the row was gone. The caller needs it to name
-   * this note in the rail's pinned order (see [notePinKey]), which lives in the
-   * browser — and the buttons that pin address the note by id, not slug.
-   */
+  /** The note's slug (null if gone) — the caller names it in the browser-held
+   * pinned order (see [notePinKey]). */
   slug: string | null;
 };
 
 /**
- * Pins a note to the rail, or unpins it.
- *
- * Neither `version` nor `updatedAt` moves. Pinning is not an edit: bumping the
- * version would make the open editor's next autosave collide with a change the
- * same user just made from the same page, and bumping `updatedAt` would push
- * the note to the top of every recency-sorted list for the crime of being
- * marked interesting.
- *
- * The cap is applied in the `where` clause rather than by reading the count
- * first and deciding in JS. Two quick presses dispatch as two actions, and a
- * check-then-write would let both see four pinned notes and both write.
+ * Pins or unpins a note. `version` and `updatedAt` don't move — pinning isn't
+ * an edit. The cap is checked in the `where` clause, not read-then-decide, so
+ * two quick presses can't both slip past a count of four.
  */
 export async function setNotePinned(input: unknown): Promise<PinNoteResult> {
   await requireAuth();
@@ -299,9 +251,7 @@ export async function setNotePinned(input: unknown): Promise<PinNoteResult> {
     .where(
       and(
         eq(notes.id, id),
-        // Already pinned is a no-op, not a re-pin: a note that was second in
-        // the section shouldn't jump to the end because the button was pressed
-        // twice. It also keeps this note out of its own capacity count.
+        // Already-pinned is a no-op, and stays out of its own capacity count.
         isNull(notes.pinnedAt),
         sql`(select count(*) from ${notes} where ${notes.pinnedAt} is not null) < ${MAX_PINNED_NOTES}`,
       ),
@@ -313,10 +263,8 @@ export async function setNotePinned(input: unknown): Promise<PinNoteResult> {
     return { pinned: true, full: false, slug: row.slug };
   }
 
-  // Nothing matched, and the clause can't say which of its three conditions
-  // failed — so ask the row. Pinned already means the press was redundant;
-  // unpinned means the section is full; gone means the note was deleted
-  // elsewhere and there is nothing to report either way.
+  // Nothing matched — ask the row which condition failed: already pinned
+  // (redundant), unpinned (section full), or gone.
   const [current] = await db
     .select({ pinnedAt: notes.pinnedAt, slug: notes.slug })
     .from(notes)
@@ -330,27 +278,20 @@ export async function setNotePinned(input: unknown): Promise<PinNoteResult> {
   };
 }
 
-/**
- * The rail is built in the layout, so a pin changes a part of the page the
- * note's own route never rendered — `refresh` is what re-runs the layout for
- * the page the press came from.
- */
+// The rail is in the layout, so a pin needs `refresh` to re-run it for the
+// page the press came from.
 function revalidatePinned(slug: string, canRefreshShell: boolean): void {
   revalidatePath("/");
   revalidatePath(`/notes/${slug}`);
-  // The button holds its own pressed state, so withholding this costs only the
-  // rail's section, and only until the next navigation collects it.
+  // The button holds its own state, so withholding this costs only the rail
+  // section until the next navigation.
   if (canRefreshShell) refresh();
 }
 
 const RenameTagInput = z.object({
   from: z.string().min(1).max(120),
   to: z.string().min(1).max(120),
-  /**
-   * Restricts the rename to a known set of notes. Only the undo path sets it:
-   * renaming `#b` back to `#a` across *everything* would also catch notes that
-   * already said `#b` before the rename and had nothing to do with it.
-   */
+  /** Restricts the rename to a known set of notes — only the undo path sets it. */
   onlyIds: z.array(z.uuid()).optional(),
 });
 
@@ -360,22 +301,11 @@ export type RenameTagResult = {
 };
 
 /**
- * Renames a tag by rewriting every note that carries or mentions it.
- *
- * There is no tag table to update, and that's the point: the notes are the
- * only record of which tags exist, so a rename is a sweep across them and
- * nothing else. Two things move per note, and both have to, or the rename
- * would half-land: the frontmatter record (what the note is filed under) and
- * the `#name` references in the prose (which would otherwise be left pointing
- * at a tag that no longer exists). Children come along — renaming `#infra`
- * moves `#infra/ci` to `#newname/ci` — since the child's name is the parent's
- * with a path appended.
- *
- * Undo is the caller's to offer, and it's exact rather than approximate: the
- * returned ids are the notes this touched, and passing them back as `onlyIds`
- * with the names swapped restores precisely those. That's why no snapshot
- * table is needed for a "one undoable operation" — the operation is its own
- * inverse over a known set.
+ * Renames a tag by rewriting every note that carries or mentions it — there's
+ * no tag table. Both the frontmatter record and the `#name` references in the
+ * prose move, and children come along (`#infra` → `#infra/ci` becomes
+ * `#newname/ci`). Undo is exact: pass the returned ids back as `onlyIds` with
+ * the names swapped.
  */
 export async function renameTag(input: unknown): Promise<RenameTagResult> {
   await requireAuth();
@@ -404,12 +334,10 @@ export async function renameTag(input: unknown): Promise<RenameTagResult> {
     const tags = tagsFor(
       current.map((tag) => (tagMatches(tag, source) ? renamed(tag) : tag)),
     );
-    // A note already carrying the target name collapses two tags into one, so
-    // compare the resulting lists rather than counting hits.
+    // Compare the resulting lists — renaming onto an existing tag merges them.
     const filedChanged = tags.join("\n") !== current.join("\n");
 
-    // Rewritten back-to-front so each splice leaves the offsets of the ones
-    // still to come untouched.
+    // Back-to-front so each splice leaves later offsets intact.
     const hits = scanTags(body).filter((hit) => tagMatches(hit.name, source));
     let next = body;
     for (let i = hits.length - 1; i >= 0; i--) {
@@ -440,19 +368,10 @@ export async function renameTag(input: unknown): Promise<RenameTagResult> {
 const TagInput = z.object({ tag: z.string().min(1).max(120) });
 
 /**
- * Every note filed under `target` or anything beneath it, read the way the
- * rename sweep reads them.
- *
- * Descendants come along because they have to, not for symmetry with rename:
- * a tag exists only as far as something is filed under it (see [knownTagSet]),
- * so unfiling `#infra` while `#infra/ci` survives would have `#infra` reappear
- * immediately as that child's ancestor. Deleting the subtree is the only scope
- * in which the tag actually goes away.
- *
- * `parseContentMd` rather than the `tags` column, again as rename does: a note
- * last saved before tags moved into frontmatter has no record there, and
- * [resolveNoteTags] is what reads those the old way — off the prose. Skipping
- * that would let the tag survive its own deletion on exactly those notes.
+ * Every note filed under `target` or beneath it. Descendants are included —
+ * a tag exists only as far as something is filed under it (see [knownTagSet]).
+ * Reads via `parseContentMd`/[resolveNoteTags], not the `tags` column, so
+ * pre-frontmatter notes are caught too.
  */
 async function notesUnderTag(target: string) {
   const rows = await db
@@ -486,18 +405,9 @@ export type TagDeletionStats = {
 };
 
 /**
- * What deleting the notes under a tag would actually take with it.
- *
- * Only the destructive half of the dialog asks for this, and it asks the
- * server rather than counting what it was handed, because the count it was
- * handed comes from the tag tree — which knows how many notes are filed under
- * a tag and nothing about what *else* they are filed under.
- *
- * That second number is the one that stops the wrong press. A note tagged
- * `#infra` and `#reading` is as much a reading note as an infra one, and "12
- * notes" says nothing about it; "4 of them are also filed elsewhere" is the
- * difference between clearing out a scratch tag and losing a third of your
- * reading list to it.
+ * What deleting the notes under a tag would take with it — note count, and how
+ * many are also filed elsewhere. The second number is what stops a wrong
+ * press, and the tag tree doesn't have it.
  */
 export async function tagDeletionStats(
   input: unknown,
@@ -524,25 +434,10 @@ export type UnfileTagResult = {
 };
 
 /**
- * Removes a tag from every note filed under it, leaving the notes alone.
- *
- * Only the frontmatter record moves. A `#name` written in the prose is left
- * exactly as it was, which is deliberate and not an omission: this app already
- * draws a line between the two — "a `#word` in the prose is a reference to a
- * tag, not an act of filing" (see [NoteInput]) — and a reference to a tag that
- * no longer exists is a state it already renders on purpose, as the muted span
- * `remarkHashtag` gives anything it can't resolve. Nothing is left broken, and
- * no sentence is rewritten to say something its author didn't write.
- *
- * It is also what keeps the undo exact and free. Rewriting the prose would
- * mean stripping `#`es that could never be put back — there is no way to tell
- * afterwards which bare "infra"s used to be tags and which were always just
- * the word — so the operation would stop being reversible for the sake of
- * tidiness. As it stands the previous list *is* the whole previous state.
- *
- * The counterpart of rename's sweep, and unlike it this one cannot collide:
- * removing names from a list can't produce a duplicate or overrun the cap, so
- * the result goes to the column as it comes out of the filter.
+ * Removes a tag from every note filed under it. Only the frontmatter record
+ * moves — a `#name` in prose is a reference (see [NoteInput]) and stays as
+ * written, rendering as an unresolved span. This also keeps the undo exact:
+ * the previous list is the whole previous state.
  */
 export async function unfileTag(input: unknown): Promise<UnfileTagResult> {
   await requireAuth();
@@ -578,19 +473,10 @@ const RestoreTagsInput = z.object({
 });
 
 /**
- * Puts each note's tag list back to a list it held before — the undo half of
- * [unfileTag], and nothing else calls it.
- *
- * The whole previous list rather than "add these names back", because the
- * order of a note's tags is load-bearing: the first one is what the note is
- * read under when it was reached from somewhere with no tag of its own, and
- * so what the editor washes the pane in (see [normalizeTagList]). Appending
- * the removed names would put a note tagged `#infra, #ops` back as `#ops,
- * #infra` and quietly recolour it.
- *
- * Which means this overwrites rather than merges, and is only safe because of
- * where it is offered from: a modal that has been open, over these notes,
- * since the moment the list was taken.
+ * Puts each note's tag list back to one it held before — the undo half of
+ * [unfileTag]. Overwrites with the whole previous list, because tag order is
+ * load-bearing (see [normalizeTagList]); safe only because it's offered from a
+ * modal open over these notes since the list was taken.
  */
 export async function restoreNoteTags(input: unknown): Promise<void> {
   await requireAuth();
@@ -602,8 +488,7 @@ export async function restoreNoteTags(input: unknown): Promise<void> {
       .from(notes)
       .where(eq(notes.id, entry.id))
       .limit(1);
-    // Deleted from elsewhere in the meantime — there is nothing to put a tag
-    // back on, and that is not an error worth failing the rest of the undo for.
+    // Deleted meanwhile — skip, don't fail the rest of the undo.
     if (!row) continue;
 
     const { data, body } = parseContentMd(row.contentMd);
@@ -625,20 +510,10 @@ export async function restoreNoteTags(input: unknown): Promise<void> {
 }
 
 /**
- * Deletes every note filed under a tag, and so the tag with them.
- *
- * The other branch of the same dialog, and the one that doesn't come back:
- * there is no trash in this app, [deleteNote] hard-deletes, and this does the
- * same in bulk. Which is why the dialog makes you type the tag's name and why
- * [tagDeletionStats] is on the screen before the press — see there.
- *
- * Two orderings matter. Backlinks are read first, because `links` rows cascade
- * with the note (see schema) and afterwards there is no way to ask what used
- * to point at it — the surviving notes on the other end need their backlink
- * panes revalidated. The images go last, after the rows are gone, because
- * [deleteNoteImages] keeps any upload another note still references: run per
- * note beforehand and each doomed note's doomed siblings would count as
- * holders, so a picture shared across the batch would be kept forever.
+ * Hard-deletes every note filed under a tag (no trash — see [tagDeletionStats]
+ * and the type-the-name dialog). Ordering matters twice: backlinks are read
+ * before the delete (the `links` rows cascade), and images after it (so a
+ * doomed sibling isn't counted as a holder of a shared upload).
  */
 export async function deleteTaggedNotes(
   input: unknown,

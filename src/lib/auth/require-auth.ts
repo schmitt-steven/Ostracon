@@ -16,15 +16,9 @@ import {
 } from "./session-store";
 
 /**
- * The authoritative answer to "who is asking", and the only one that accounts
- * for revocation — the proxy's check is deliberately optimistic and can still
- * wave through a session that was signed out from another device.
- *
- * Wrapped in React's `cache` so the lookup and its occasional lastSeenAt write
- * happen once per request no matter how many callers ask. That matters here:
- * the root layout asks in order to render the signed-in chrome, the page asks
- * again to guard itself, and every Server Action asks a third time. Without
- * the dedupe each of those is its own round trip to Neon.
+ * The authoritative "who is asking" — the only check that accounts for
+ * revocation (the proxy's is optimistic). Wrapped in React's `cache` so the
+ * layout, the page and each Server Action share one lookup per request.
  */
 export const getSession = cache(async (): Promise<SessionRecord | null> => {
   const cookie = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
@@ -36,9 +30,8 @@ export const getSession = cache(async (): Promise<SessionRecord | null> => {
   const session = await loadActiveSession(token.sessionId);
   if (!session) return null;
 
-  // Both read from the same request's headers and neither touches the
-  // network, so this is header parsing rather than a second round trip — the
-  // write it feeds is the throttled one inside touchSession.
+  // Header parsing, not round trips; the only write is the throttled one in
+  // touchSession.
   await touchSession(session, {
     ip: await clientIp(),
     location: await clientLocation(),
@@ -51,12 +44,8 @@ export async function isAuthenticated(): Promise<boolean> {
 }
 
 /**
- * Gates a page, route handler, or Server Action, and hands back the session it
- * verified so callers that care which device is acting don't have to look it
- * up again.
- *
- * Existing callers ignore the return value, which is why this stayed a single
- * call rather than growing a second "and give me the session" variant.
+ * Gates a page, route handler, or Server Action, returning the verified
+ * session for callers that need to know which device is acting.
  */
 export async function requireAuth(): Promise<SessionRecord> {
   const session = await getSession();

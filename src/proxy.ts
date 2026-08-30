@@ -3,16 +3,10 @@ import type { NextRequest } from "next/server";
 import { parseSessionToken, SESSION_COOKIE_NAME } from "@/lib/auth/session";
 
 /**
- * An optimistic check, and only that: it establishes that a cookie carries our
- * signature and hasn't aged out, which is enough to keep signed-out traffic
- * off every route without a database round trip on every request. Whether the
- * session is still *current* — not revoked from another device — is settled by
- * requireAuth at the point the data is actually reached. Next.js is explicit
- * that proxy shouldn't be a full authorization solution, and a lookup here
- * would be one per request including every RSC fetch.
- *
- * The gap is deliberate and bounded: a revoked cookie gets past this and no
- * further, and requireAuth routes it through SESSION_END_PATH to be cleared.
+ * An optimistic check only: the cookie carries our signature and hasn't aged
+ * out — enough to keep signed-out traffic off every route without a DB hit.
+ * requireAuth settles whether the session is still current; a revoked cookie
+ * gets past this and no further, and is cleared via SESSION_END_PATH.
  */
 export async function proxy(request: NextRequest) {
   const cookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;

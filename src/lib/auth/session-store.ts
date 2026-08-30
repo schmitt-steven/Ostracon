@@ -4,36 +4,25 @@ import { db } from "@/db/client";
 import { sessions } from "@/db/schema";
 import { SESSION_MAX_AGE_SECONDS } from "./session";
 
-/**
- * How stale lastSeenAt is allowed to get before a read pays for a write.
- *
- * Every authenticated request already costs one lookup; touching the row on
- * each one would double that to serve a column whose whole purpose is to be
- * read by a human at human resolution. Five minutes is far below "when did I
- * last use this device" and far above "every click".
- */
+// How stale lastSeenAt may get before a read pays for a write. lastSeenAt is
+// read at human resolution, so 5 minutes costs nothing anyone would notice.
 const TOUCH_INTERVAL_MS = 5 * 60_000;
 
-/**
- * How long a revoked row is kept after the fact. Long enough that "I signed
- * that iPad out last week" is still answerable, short enough that the table
- * doesn't accumulate.
- */
+// How long a revoked row is kept, so "I signed that iPad out last week" stays
+// answerable without the table growing forever.
 const REVOKED_RETENTION_MS = 7 * 24 * 60 * 60_000;
 
 export type SessionRecord = typeof sessions.$inferSelect;
 
 /**
- * Everything about the requester that a session row records. Grouped because
- * the two writers — the login that creates a row and the request that touches
- * one — take the same facts, and a shared shape is what keeps the created and
- * last-seen halves of the table describing the same things.
+ * The requester facts a session row records. Shared shape between the two
+ * writers (create and touch) so the created and last-seen columns line up.
  */
 export type ClientFacts = { ip: string; location: string | null };
 
 /**
- * Records a new session and returns its id, which the caller signs into the
- * cookie. Expiry is stamped here so the row and the token agree from birth.
+ * Records a new session and returns its id for the cookie. Expiry is stamped
+ * here so the row and the token agree from birth.
  */
 export async function createSession(
   input: ClientFacts & { userAgent: string | null },
@@ -53,18 +42,12 @@ export async function createSession(
     })
     .returning({ id: sessions.id });
 
-  // The insert either returns a row or throws; this satisfies the type without
-  // inventing a fallback that would hand out an unusable cookie.
   if (!row) throw new Error("Failed to create session");
   return row.id;
 }
 
 /**
- * The session behind a verified token, or null if it is no longer current —
- * revoked from any device, or past its deadline.
- *
- * The id is only ever supplied by parseSessionToken, so this is a lookup, not
- * a check of whether the caller may name that id.
+ * The session behind a verified token, or null if it's revoked or expired.
  */
 export async function loadActiveSession(
   id: string,
@@ -84,14 +67,9 @@ export async function loadActiveSession(
 }
 
 /**
- * Marks a session used. Skips the write unless lastSeenAt has gone stale, so
- * the common request pays nothing.
- *
- * The location is written alongside the address rather than checked against
- * the row the way the address is: it is *derived* from that address, so a
- * moved session is already caught by the comparison above it, and a row whose
- * location is still null because it predates the column gets backfilled at the
- * next stale read rather than never.
+ * Marks a session used, skipping the write unless lastSeenAt has gone stale or
+ * the address changed. Location rides along with the address rather than being
+ * compared (it's derived from it).
  */
 export async function touchSession(
   session: SessionRecord,
@@ -114,11 +92,7 @@ export async function touchSession(
     .where(eq(sessions.id, session.id));
 }
 
-/**
- * Signs one session out. Idempotent, and a no-op against an id that isn't
- * there — revoking twice, or revoking something already swept, is not an
- * error worth surfacing.
- */
+/** Signs one session out. Idempotent; a no-op against an unknown id. */
 export async function revokeSession(id: string): Promise<void> {
   await db
     .update(sessions)
@@ -126,11 +100,7 @@ export async function revokeSession(id: string): Promise<void> {
     .where(and(eq(sessions.id, id), isNull(sessions.revokedAt)));
 }
 
-/**
- * "Sign out my other devices" — every live session except the one asking.
- * Keeping the caller signed in is the point: the alternative logs you out of
- * the device you're using to do the tidying.
- */
+/** "Sign out my other devices" — every live session except `keepId`. */
 export async function revokeOtherSessions(keepId: string): Promise<number> {
   const revoked = await db
     .update(sessions)
@@ -141,15 +111,8 @@ export async function revokeOtherSessions(keepId: string): Promise<number> {
 }
 
 /**
- * The sessions that are currently signed in, newest activity first.
- *
- * Live ones only — not revoked, not expired. Rows stay in the table after
- * being signed out (see revokeSession, and REVOKED_RETENTION_MS above), but
- * that is for the sake of *this instance's* record, not the reader's: what the
- * settings list is for is deciding which devices to sign out, and a device
- * that is already signed out is nothing to decide about. Printed anyway it
- * would be a greyed row that outnumbers the live ones within a week of
- * ordinary use, on a page whose entire point is to be scanned.
+ * The currently signed-in sessions, newest activity first. Live only — revoked
+ * rows are kept for the record (REVOKED_RETENTION_MS) but not shown.
  */
 export async function listSessions(): Promise<SessionRecord[]> {
   return db
@@ -159,10 +122,7 @@ export async function listSessions(): Promise<SessionRecord[]> {
     .orderBy(desc(sessions.lastSeenAt));
 }
 
-/**
- * Drops rows nothing will ask about again. Called on successful login, so the
- * table stays bounded without a scheduled job.
- */
+/** Drops expired and long-revoked rows. Called on login, in place of a cron. */
 export async function pruneSessions(): Promise<void> {
   const now = new Date();
   await db

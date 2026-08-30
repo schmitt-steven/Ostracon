@@ -13,20 +13,12 @@ function slugify(title: string): string {
 }
 
 /**
- * The same allocation as [uniqueSlugFor], decided against a set held in memory
- * rather than against a query per candidate.
+ * Like [uniqueSlugFor], but allocated against an in-memory set (from
+ * [takenSlugs]) rather than a query per candidate — for bulk imports. Each
+ * claim is added to the set, so unwritten notes still get distinct slugs.
  *
- * An import of eight hundred notes asking the database whether each slug is
- * free — and then whether `-2` is free, and `-3` — is thousands of round trips
- * for a question one `select slug from notes` already answers. The caller loads
- * that set once and hands it here; every claim is added to it, so two files
- * called `Setup.md` in the same archive still come out as `setup` and `setup-2`
- * without either of them having been written yet.
- *
- * `preferred` is the slug an archived note asks to keep, so a restore into an
- * empty collection gives back the URLs it was taken from. It is honoured only
- * when it is free and only when it is a slug at all — a file can ask for
- * anything, and `slugify` is what decides what a slug looks like here.
+ * `preferred` is a slug an archived note asks to keep; honoured only when free
+ * and only after `slugify`.
  */
 export function claimSlug(
   taken: Set<string>,
@@ -78,9 +70,8 @@ export async function uniqueSlugFor(title: string): Promise<string> {
   const base = slugify(title);
 
   if (base.length === 0) {
-    // No usable title text (empty or e.g. all punctuation) — use a short
-    // random slug rather than a shared "note"/"untitled" base, which would
-    // otherwise pile up as meaningless "note-2", "note-15", ... counters.
+    // No usable title text — a short random slug rather than a shared
+    // "untitled" base that would pile up as "untitled-2", "untitled-15", ...
     for (;;) {
       const candidate = `untitled-${randomBytes(4).toString("hex")}`;
       if (!(await slugExists(candidate))) return candidate;

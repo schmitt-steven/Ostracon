@@ -17,30 +17,16 @@ import {
 } from "./archive";
 
 /**
- * Everything in the collection, as a zip, written straight down the wire.
+ * Everything in the collection, as a zip streamed down the wire.
  *
- * **Streamed rather than built.** Not for elegance — a buffered response is
- * capped at a few megabytes on the platform this runs on, and an archive of a
- * real collection is mostly images. Streaming also means the function never
- * holds more than one image at a time, so the memory cost of exporting four
- * hundred of them is the same as exporting one.
- *
- * The consequence worth knowing: a stream that dies half way produces a zip
- * with no central directory, and every unzip tool on earth refuses that
- * outright. A truncated download is loud, which for a backup is the only
- * acceptable way for it to fail.
- *
- * **Text is deflated, images are stored.** A PNG or a WebP has already been
- * compressed once and spending CPU to grow it by a percent is a strange way to
- * make a download slower; markdown halves. So notes go through [ZipDeflate] and
- * uploads through [ZipPassThrough], which also means an image is copied from
- * the blob store to the client without ever being decoded.
- *
- * **The manifest is written last.** Zip readers work from the central
- * directory at the end of the file, so entry order is nobody's business but
- * ours — and writing the header last is what lets it report the images that
- * turned out to be missing, which is a fact only discovered by trying to fetch
- * them.
+ * - Streamed, not buffered: the platform caps a buffered response at a few MB,
+ *   and this way memory stays at one image regardless of collection size. A
+ *   stream that dies mid-way yields a zip with no central directory, which no
+ *   tool will open — a loud failure, which for a backup is the right one.
+ * - Text is deflated ([ZipDeflate]), images are stored ([ZipPassThrough]) —
+ *   already-compressed formats don't shrink, and this way they're never decoded.
+ * - The manifest is written last, so it can report the images that turned out
+ *   to be missing.
  */
 
 /** A note as the archive needs it: everything, because the file carries it all. */
@@ -54,14 +40,9 @@ type ExportedNote = {
 };
 
 /**
- * A timestamp fflate will accept in a zip entry.
- *
- * The DOS date field a zip carries cannot express a year outside 1980–2099,
- * and fflate refuses rather than truncating. Note dates are normally this
- * decade, but a note imported from a hand-written file can claim anything — so
- * the *filesystem* timestamp is clamped while the note's real date goes into
- * frontmatter untouched. The archive is the lossy one here, and only about the
- * thing filesystems were always going to be lossy about.
+ * A timestamp fflate will accept in a zip entry — the DOS date field can't
+ * express a year outside 1980–2099. Only the filesystem timestamp is clamped;
+ * the note's real date is untouched in frontmatter.
  */
 const ZIP_EPOCH = new Date("1980-01-01T00:00:00.000Z");
 const ZIP_LAST_DATE = new Date("2099-12-31T23:59:59.000Z");
@@ -73,8 +54,7 @@ function zipMtime(date: Date): Date {
 }
 
 async function loadNotes(): Promise<ExportedNote[]> {
-  // Oldest first, so the archive reads as the collection grew and two runs
-  // over an unchanged collection produce the same file order.
+  // Oldest first — stable order across runs.
   return db
     .select({
       slug: notes.slug,
@@ -89,12 +69,8 @@ async function loadNotes(): Promise<ExportedNote[]> {
 }
 
 /**
- * Every upload the collection points at, mapped to its place in the archive.
- *
- * Built across all notes at once rather than per note, because markdown gets
- * copied between notes and the copy keeps the original's URL — the same image
- * referenced from three notes is one entry that all three point at, which is
- * also how [deleteNoteImages] already understands ownership.
+ * Every upload the collection points at, mapped to its archive path. Built
+ * across all notes at once, so an image shared by three notes is one entry.
  */
 function imageEntries(rows: ExportedNote[]): Map<string, string> {
   const entryByUrl = new Map<string, string>();
@@ -102,14 +78,10 @@ function imageEntries(rows: ExportedNote[]): Map<string, string> {
 
   for (const row of rows) {
     for (const url of referencedUrls(row.contentMd)) {
-      // External images are referenced, not held: they stay absolute, and
-      // fetching them would mean this app reaching out to arbitrary hosts on
-      // a signed-in user's behalf.
+      // External images are referenced, not held — stay absolute.
       if (!isUploadedBlobUrl(url) || entryByUrl.has(url)) continue;
       const name = imageEntryName(url);
-      // Two blobs whose pathnames sanitise to one name — vanishingly unlikely
-      // given the store's timestamp prefix, and a silently overwritten image
-      // is not a failure mode worth leaving open.
+      // Guard against two blobs sanitising to one name (very unlikely).
       if (!name || taken.has(name)) continue;
       taken.add(name);
       entryByUrl.set(url, name);
@@ -141,8 +113,7 @@ export function archiveFilename(now = new Date()): string {
 
 export function exportArchiveStream(): ReadableStream<Uint8Array> {
   const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
-  // Deliberately not awaited: the response is the readable half, and this
-  // fills the writable half for as long as the client keeps reading.
+  // Not awaited — the response is the readable half; this fills the writable.
   void writeArchive(writable);
   return readable;
 }
@@ -150,16 +121,8 @@ export function exportArchiveStream(): ReadableStream<Uint8Array> {
 async function writeArchive(writable: WritableStream<Uint8Array>) {
   const writer = writable.getWriter();
 
-  /**
-   * The chain that carries fflate's output into the stream.
-   *
-   * fflate hands over finished chunks from a synchronous callback, and
-   * `writer.write` is the thing that knows whether the client is keeping up.
-   * Chaining them turns the second into backpressure for the first: every
-   * producer step below awaits this before pushing more, so a slow download
-   * throttles the blob fetch rather than filling memory with an archive
-   * nobody is reading yet.
-   */
+  // Carries fflate's synchronous chunk callback into `writer.write`. Every
+  // producer step awaits this, so a slow download backpressures the blob fetch.
   let flush: Promise<void> = Promise.resolve();
   let failure: unknown = null;
 
@@ -185,8 +148,7 @@ async function writeArchive(writable: WritableStream<Uint8Array>) {
 
     for (const [index, row] of rows.entries()) {
       const file = new ZipDeflate(filenames[index]!, { level: 6 });
-      // A property rather than an option — fflate takes the compression
-      // settings in the constructor and the entry's attributes on the object.
+      // A property, not a constructor option — that's fflate's API.
       file.mtime = zipMtime(row.updatedAt);
       zip.add(file);
       file.push(strToU8(noteFile(row, entryByUrl)), true);
@@ -220,24 +182,15 @@ async function writeArchive(writable: WritableStream<Uint8Array>) {
     await flush;
     if (failure) throw failure;
   } catch (error) {
-    // Aborting is the point: the client is left with a zip that has no central
-    // directory, which no tool will open. See the note at the top about why a
-    // loud truncation beats a quiet one.
+    // Abort deliberately — a zip with no central directory is a loud failure.
     await writer.abort(error).catch(() => undefined);
   }
 }
 
 /**
- * One upload, from the blob store into the archive without being decoded.
- *
- * The response is checked before the entry is added, so a blob that has been
- * deleted out from under a note leaves no half-written file behind — it is
- * reported in the manifest instead, and the note keeps its now-dangling
- * relative link, which is a truer record than silently dropping the reference.
- *
- * A failure *after* the entry is open is a different matter and is allowed to
- * throw: the archive is already committed to holding that file, and finishing
- * it short would produce a zip that opens and lies.
+ * One upload copied into the archive without being decoded. A deleted blob is
+ * caught before the entry is added (reported in the manifest); a failure after
+ * the entry is open throws, since a short entry would make a zip that lies.
  */
 async function copyImage(
   zip: Zip,

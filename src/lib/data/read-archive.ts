@@ -22,20 +22,10 @@ import {
 } from "./import-rules";
 
 /**
- * Opening an archive and deciding what, if anything, is in it worth importing.
- *
- * Nothing is written by this file and nothing is sent anywhere. It reads the
- * zip, applies every rule in [import-rules], and hands back a description the
- * interface can print — so the person importing sees "128 notes · 43 images,
- * exported 12 August" and presses a button, rather than finding out what was in
- * the file by looking at what it did to their collection afterwards.
- *
- * **The refusals happen in two places, in this order.** fflate's `filter` runs
- * over the central directory — the zip's own index — before anything is
- * inflated, which is where the size and count caps are applied and where a zip
- * bomb is turned away without being decompressed. Everything that needs to see
- * the actual bytes happens after: an image is what its magic number says it is
- * (see [sniffImageType]), never what its extension claims.
+ * Opens an archive and describes what's importable in it — writes nothing,
+ * sends nothing. Refusals happen in two stages: fflate's `filter` applies the
+ * size/count caps over the central directory before anything is inflated;
+ * byte-level checks (image type via [sniffImageType]) happen after.
  */
 
 /** A note file, ready for the import action. */
@@ -52,25 +42,16 @@ export type ArchiveReading = {
   notes: ArchiveNote[];
   images: ArchiveImage[];
   /**
-   * Whether the archive said it was ours. Decides whether each note's
-   * frontmatter may name its own title, slug and dates — see [ImportedFile].
+   * Whether the archive said it was ours — decides whether frontmatter may
+   * name a note's own title, slug and dates (see [ImportedFile]).
    */
   fromArchive: boolean;
   /** When it was written, when it says. Null for anything not ours. */
   exportedAt: string | null;
   /**
-   * Files in the archive that are neither a note nor an image, counted so the
-   * interface can say so.
-   *
-   * A zipped Obsidian vault carries `.canvas` files and an `.obsidian/` folder;
-   * a folder zipped on a Mac carries `.DS_Store`. None of those are refusals —
-   * the archive is fine and the import proceeds — but an import that quietly
-   * dropped a third of what you handed it, with no number anywhere, reads as
-   * the feature being broken rather than as the files being wrong.
-   *
-   * The manifest is not counted. It is part of the format rather than
-   * something skipped, and reporting "1 other file" for every archive this app
-   * wrote itself would make the number noise.
+   * Files that are neither a note nor an image (`.canvas`, `.DS_Store`, …),
+   * counted so a partial import doesn't look broken. The manifest isn't
+   * counted — it's part of the format.
    */
   ignored: number;
   /** Set when the archive was refused whole. Everything else is then empty. */
@@ -95,12 +76,8 @@ function mb(bytes: number): string {
 const decoder = new TextDecoder("utf-8", { fatal: true });
 
 /**
- * Entries the reader is prepared to look at, decided from the zip's index.
- *
- * Everything expensive is downstream of this function returning true, so it is
- * where the caps belong. It also carries the running totals, which is why it is
- * built per call rather than being a constant: `filter` is called once per
- * entry and is the only place that sees them all.
+ * The `filter` fflate calls per entry, deciding what's worth decompressing —
+ * where the caps belong. Built per call because it carries the running totals.
  */
 function entryFilter(): {
   filter: (file: UnzipFileInfo) => boolean;
@@ -127,9 +104,7 @@ function entryFilter(): {
         refusal ??= `That archive holds more than ${MAX_ARCHIVE_ENTRIES} files.`;
         return false;
       }
-      // Directory entries are zero-length names ending in a slash; there is
-      // nothing in them and the paths already carry the structure. Not
-      // counted as skipped — a folder is not a file somebody expected back.
+      // Directory entries — nothing in them; not counted as skipped.
       if (file.name.endsWith("/")) return false;
       if (!isSafeEntryName(file.name)) {
         refusal ??= "That archive holds a file with an unsafe name.";
@@ -143,11 +118,8 @@ function entryFilter(): {
       }
 
       if (file.name === MANIFEST_NAME) return true;
-      // Per-entry caps, matched to what the thing will become: a note goes to
-      // an action that refuses more than this, an image to an upload route
-      // that refuses more than that. Anything else — a `.yaml`, a `.canvas`, a
-      // `.DS_Store` — is not something this app stores, and is dropped here
-      // without being decompressed.
+      // Per-entry caps matched to what each becomes; anything else is dropped
+      // undecompressed.
       if (file.name.toLowerCase().endsWith(NOTE_EXTENSION)) {
         return file.originalSize <= MAX_IMPORT_BYTES || skip();
       }
@@ -169,12 +141,8 @@ function openZip(bytes: Uint8Array, filter: (f: UnzipFileInfo) => boolean) {
 }
 
 /**
- * The manifest, if there is one that says what we need it to say.
- *
- * A version from the future is refused rather than guessed at: a reader that
- * doesn't know what changed cannot know whether reading it anyway is safe, and
- * the archive is still perfectly importable as plain markdown, which is what
- * returning null here makes it.
+ * The manifest, if valid. A version from the future returns null — the archive
+ * is still importable as plain markdown.
  */
 function readManifest(bytes: Uint8Array | undefined): ArchiveManifest | null {
   if (!bytes) return null;
@@ -201,8 +169,7 @@ export async function readArchive(file: File): Promise<ArchiveReading> {
   try {
     unzipped = await openZip(new Uint8Array(await file.arrayBuffer()), filter);
   } catch {
-    // A refusal recorded by the filter is the better explanation of the two,
-    // because a filter that stopped reading is usually why the parse failed.
+    // A filter refusal is usually why the parse failed — prefer it.
     return empty(refusal() ?? "That file isn't a zip archive we can read.");
   }
   const refused = refusal();
@@ -212,18 +179,14 @@ export async function readArchive(file: File): Promise<ArchiveReading> {
 
   const notes: ArchiveNote[] = [];
   const images: ArchiveImage[] = [];
-  // Starting from what the filter already turned away — those entries were
-  // never decompressed, so this loop is the only place that could miss them.
+  // Start from what the filter already turned away.
   let ignored = filtered();
 
   for (const [name, bytes] of Object.entries(unzipped)) {
-    // Part of the format, not a file that was skipped. See ArchiveReading.
     if (name === MANIFEST_NAME) continue;
 
     if (name.startsWith(IMAGES_DIR)) {
-      // The extension is not evidence — a zip entry has no MIME type, so the
-      // bytes are the only thing that can answer. An entry that isn't one of
-      // the five formats this app stores is left where it is.
+      // The bytes decide the type, not the extension.
       const type = sniffImageType(bytes);
       if (!type || images.length >= MAX_ARCHIVE_IMAGES) {
         ignored += 1;
@@ -232,8 +195,7 @@ export async function readArchive(file: File): Promise<ArchiveReading> {
       const basename = name.slice(IMAGES_DIR.length);
       images.push({
         entry: name,
-        // The sniffed type, not any claim the archive made. This is the `type`
-        // the upload route will see, and it will sniff the bytes again anyway.
+        // The sniffed type — the upload route will sniff again anyway.
         file: new File([bytes as BlobPart], basename, { type }),
       });
       continue;
@@ -245,8 +207,7 @@ export async function readArchive(file: File): Promise<ArchiveReading> {
         continue;
       }
       try {
-        // Strict UTF-8: a `.md` that isn't text is not a note, and decoding it
-        // leniently would import a screenful of replacement characters.
+        // Strict UTF-8 — a `.md` that isn't text is not a note.
         notes.push({ name, text: decoder.decode(bytes) });
       } catch {
         ignored += 1;

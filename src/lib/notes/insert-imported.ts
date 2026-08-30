@@ -14,30 +14,18 @@ import { MAX_PINNED_NOTES } from "./pins";
 import { claimSlug, takenSlugs } from "./slug";
 
 /**
- * Turning files into rows — the half both ways in share.
- *
- * Two callers with two different ideas of what a file *is*. A `.md` dropped on
- * the window came from somewhere else and is read the way it always has been:
- * the filename is the title, because the filename is the only name the person
- * dropping it can see. A file out of one of our own archives came with a record
- * about itself, and that record wins — its title, its slug, the day it was
- * written. See [ImportedFile.fromArchive], which is the whole difference.
- *
- * Everything else is shared, and is shared because doing it per note does not
- * survive contact with a real collection: slugs are allocated against a set
- * held in memory rather than a query apiece, and the rows go in a few hundred
- * at a time rather than one at a time. Links are nobody's business here — see
- * [rebuildAllLinks] for why an import cannot resolve them as it goes.
+ * Files → rows, the half both import paths share. The one difference is
+ * `fromArchive`: an archived file's frontmatter (title, slug, dates) is
+ * trusted; a plain drop uses the filename as title. Everything else — bulk
+ * slug allocation, chunked inserts — is shared because per-note doesn't scale.
+ * Links aren't touched here; see [rebuildAllLinks].
  */
 
 export type ImportedFile = {
   name: string;
   text: string;
-  /**
-   * Whether this file came out of an archive this app wrote — which is to say,
-   * whether the manifest was there and said so. It is the reader's answer to
-   * "may I believe this frontmatter", and nothing else turns on it.
-   */
+  /** Whether the archive manifest was present and said this file is ours —
+   * i.e. whether its frontmatter may be believed. */
   fromArchive: boolean;
 };
 
@@ -51,14 +39,9 @@ export type InsertedNote = ImportedNote & { id: string; body: string };
 const INSERT_CHUNK = 100;
 
 /**
- * What a file says about itself.
- *
- * A `.md` file that opens with a YAML block is one that came from a tool like
- * this one, and its frontmatter is a record *about* the note rather than part
- * of it — left in place it would render as a table at the top of the note and
- * then sit underneath a second block written by the save. So it is read, and
- * the rest is dropped. `.txt` files are never parsed: a text file that happens
- * to start with `---` is a text file that starts with `---`.
+ * What a file says about itself. A `.md` opening with a YAML block has its
+ * frontmatter read and stripped; `.txt` is never parsed (a `---` there is just
+ * a `---`).
  */
 function readFile(
   file: ImportedFile,
@@ -81,13 +64,8 @@ function readFile(
 }
 
 /**
- * How many more notes may be pinned before the rail stops being scannable.
- *
- * A restored archive can ask for five pins; a hostile one can ask for five
- * hundred. The cap [setNotePinned] enforces on the button is enforced here too,
- * against what is already pinned, and the overflow is dropped rather than
- * refused — an import that failed because of the rail would be a strange thing
- * to explain.
+ * Pins still available — [MAX_PINNED_NOTES] minus what's already pinned. An
+ * archive asking for more has the overflow dropped, not refused.
  */
 async function pinBudget(): Promise<number> {
   const [row] = await db
@@ -110,10 +88,7 @@ export async function insertImportedNotes(
     const { data, body } = readFile(file, now);
     const trusted = file.fromArchive;
 
-    // The archive's title, then the filename, then the day it arrived — the
-    // same last resort [createNote] uses for a note saved without one, anchored
-    // to the note's own creation date so a restored archive keeps the day
-    // titles it had.
+    // Archive title, then filename, then the day title anchored to `created`.
     const created = trusted ? (data.created ?? now) : now;
     const title =
       (trusted ? data.title?.trim() : "") ||
@@ -123,9 +98,7 @@ export async function insertImportedNotes(
     const tags = normalizeTagList(data.tags ?? []).slice(0, 50);
     const slug = claimSlug(taken, title, trusted ? data.slug : null);
 
-    // An archived pin is honoured while there is room for it. Order is the
-    // archive's own, so the first five pinned notes in the file are the five
-    // that come back.
+    // Archived pins honoured in file order while budget lasts.
     let pinnedAt: Date | null = null;
     if (trusted && data.pinned && pinsLeft > 0) {
       pinnedAt = data.pinned;
@@ -144,8 +117,7 @@ export async function insertImportedNotes(
     };
   });
 
-  // The body travels with each row for the caller's benefit (link syncing
-  // wants it) and is not a column, so it comes off before the insert.
+  // The body is for the caller (link syncing), not a column — dropped here.
   const values = rows.map((row) => ({
     slug: row.slug,
     title: row.title,
@@ -162,9 +134,7 @@ export async function insertImportedNotes(
       .insert(notes)
       .values(values.slice(i, i + INSERT_CHUNK))
       .returning({ id: notes.id, slug: notes.slug });
-    // Matched by slug rather than by position: RETURNING happens to come back
-    // in insertion order, and "happens to" is not what a note's identity
-    // should rest on. The slug is unique by definition.
+    // Matched by slug, not position — RETURNING order isn't guaranteed.
     for (const row of written) idBySlug.set(row.slug, row.id);
   }
 

@@ -13,11 +13,8 @@ type Props = {
   /** False at the top of the pinned section, which greys "Move up" out. */
   canMoveUp?: boolean;
   canMoveDown?: boolean;
-  /**
-   * The move itself belongs to the rail — see [Rail.moveProps]. Omitted by the
-   * tag directory, which can't see the pinned section's order and so offers no
-   * move items at all rather than two that are permanently greyed out.
-   */
+  /** The move belongs to the rail (see [Rail.moveProps]); omitted by the tag
+   * directory, which can't see the pinned order. */
   onMove?: (direction: -1 | 1) => void;
   onRename: () => void;
   onDelete: () => void;
@@ -27,15 +24,8 @@ type Props = {
   y: number;
 };
 
-/**
- * The rail row's context menu — the one place any of a tag's settings live.
- *
- * Colour is in here and nowhere else on purpose. Tags are created by typing
- * `#thing` mid-sentence, and a colour prompt at that moment would turn writing
- * into configuring; the derived hue is always already right enough to carry
- * on. This is for the case where two tags you use constantly collided on the
- * same slot, which is a real annoyance and a rare one.
- */
+/** The rail row's context menu — pin, move, rename, delete, and the hue
+ * palette (its only home; a colour prompt at tag-creation would be too much). */
 export function TagMenu({
   tag,
   pinned,
@@ -60,8 +50,7 @@ export function TagMenu({
           togglePinned(tag);
           onClose();
         }}
-        // The list is capped, so the control says why it's unavailable rather
-        // than silently doing nothing on click.
+        // Capped — the item says why rather than doing nothing.
         disabled={!pinned && pinnedCount >= MAX_PINNED_TAGS}
       >
         {pinned
@@ -106,10 +95,7 @@ export function TagMenu({
         Rename everywhere…
       </button>
 
-      {/* Below rename, because it is the same kind of thing done to the whole
-          tag at once, and in --danger so the pair doesn't read as two spellings
-          of the same press. The ellipsis is doing real work: what it opens
-          asks which of the two deletions you meant before anything happens. */}
+      {/* Below rename, in --danger; the ellipsis opens the two-deletions dialog. */}
       <button
         type="button"
         role="menuitem"
@@ -122,8 +108,7 @@ export function TagMenu({
         Delete tag…
       </button>
 
-      {/* Shared with the index heading's dot — same swatches, same reset, one
-          implementation. */}
+      {/* Shared with the index heading's dot. */}
       <div className="px-3 pb-1.5 pt-2.5">
         <TagHuePalette tag={tag} hue={hue} />
       </div>

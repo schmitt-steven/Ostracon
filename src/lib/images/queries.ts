@@ -32,9 +32,7 @@ async function ownersByUrl(): Promise<Map<string, ImageOwner>> {
   const owners = new Map<string, ImageOwner>();
   for (const row of rows) {
     for (const url of referencedUrls(row.contentMd)) {
-      // Oldest note wins. An image can be referenced from several notes once
-      // its markdown gets copied around, but it was uploaded into whichever of
-      // them existed first — which is what "the note it was uploaded in" means.
+      // Oldest note wins — that's the one it was uploaded into.
       if (!owners.has(url)) {
         owners.set(url, { id: row.id, slug: row.slug, title: row.title });
       }
@@ -46,14 +44,12 @@ async function ownersByUrl(): Promise<Map<string, ImageOwner>> {
 async function listAllBlobs(): Promise<ListBlobResultBlob[]> {
   const blobs: ListBlobResultBlob[] = [];
   let cursor: string | undefined;
-  // list() caps out at 1000 per page and the gallery claims to show everything,
-  // so the cursor is followed rather than silently truncating the tail.
+  // list() pages at 1000; the gallery shows everything, so follow the cursor.
   do {
     const page = await list({
       prefix: UPLOAD_PREFIX,
       cursor,
-      // Explicit token for the same reason as the upload route — see the
-      // comment there about OIDC resolution.
+      // Explicit token — see the upload route's note on OIDC resolution.
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
     blobs.push(...page.blobs);
@@ -72,10 +68,8 @@ export async function listStoredImages(): Promise<StoredImage[]> {
   return blobs
     .flatMap((blob) => {
       const note = owners.get(blob.url);
-      // A blob no note points at is a stray — markdown that was replaced or
-      // deleted while the upload stayed behind. This is a view of the images
-      // in the notes, not of the bucket, so those are left out rather than
-      // shown as something to clean up.
+      // A blob no note points at is a stray — left out; this is a view of the
+      // images in the notes, not of the bucket.
       if (!note) return [];
       return [
         {

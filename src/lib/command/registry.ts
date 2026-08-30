@@ -1,12 +1,9 @@
 "use client";
 
-// Commands the palette offers that only exist while a particular view is on
-// screen — the editor's mode switches and "Suggest tags", today.
-//
-// A registry rather than props or context because the palette is mounted in
-// the shell, above the router, and the editor is several levels below it. The
-// alternative is threading a callback through every layout between them, which
-// coupleseach one to a feature none of them care about.
+// Commands the palette offers only while a particular view is on screen (the
+// editor's mode switches and "Suggest tags", today). A registry, not props or
+// context, because the palette sits in the shell above the router and the
+// editor is levels below it.
 
 import type { ActionIcon } from "@/components/command/types";
 
@@ -15,20 +12,11 @@ export type Command = {
   label: string;
   /** Groups the palette's list. Sentence case, like everything else. */
   group: string;
-  /**
-   * The muted line under the label in the palette: what this does, in a
-   * fragment. Every row there states why it is on screen, and a command with
-   * nothing to say falls back to its group — "Editor" is a true answer even
-   * when it isn't a good one.
-   */
+  /** The muted line under the label; falls back to the group name. */
   detail?: string;
   /** Extra words to match against — never shown. */
   keywords?: string;
-  /**
-   * The glyph beside the row. Defaults to the palette's generic "runs
-   * something" arrow, which is the honest answer for a command that hasn't
-   * said what it is about.
-   */
+  /** The glyph beside the row; defaults to a generic "runs something" arrow. */
   icon?: ActionIcon;
   /** Shown right-aligned, in mono. */
   shortcut?: string;
@@ -59,17 +47,15 @@ export function subscribeContextualCommands(onChange: () => void): () => void {
 }
 
 /**
- * Publishes a view's commands and returns the teardown. Whatever registered
- * last wins outright — there is only ever one view in the main pane, so
- * merging two sets would mean offering commands for a screen that has already
- * been navigated away from.
+ * Publishes a view's commands and returns the teardown. Last registration
+ * wins — there's only ever one view in the main pane.
  */
 export function registerCommands(commands: Command[]): () => void {
   contextual = commands;
   for (const listener of listeners) listener();
   return () => {
-    // Only clear if nothing else has registered since; on a navigation the new
-    // view mounts before the old one's cleanup runs.
+    // Only clear if nothing registered since (the new view mounts before this
+    // runs).
     if (contextual !== commands) return;
     contextual = EMPTY;
     for (const listener of listeners) listener();

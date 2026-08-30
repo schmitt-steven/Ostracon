@@ -2,17 +2,10 @@ import "server-only";
 import { headers } from "next/headers";
 
 /**
- * The client's address, as best the platform will tell us.
- *
- * This trusts the platform to overwrite `x-forwarded-for` with the real peer
- * address (Vercel does). Behind a proxy that appends rather than replaces, a
- * client could forge the leftmost entry; check that before deploying
- * elsewhere. What that costs depends on the caller: the login throttle keys
- * its buckets on this, so a forgeable value hands an attacker a fresh bucket
- * per request, while the session table only records it for display.
- *
- * Requests with no forwarded address share the "unknown" value, which fails
- * closed for the throttle.
+ * The client's address. Trusts the platform to overwrite `x-forwarded-for`
+ * with the real peer address (Vercel does) — behind a proxy that appends, the
+ * leftmost entry is forgeable, which matters because the login throttle keys
+ * on this. No forwarded address -> "unknown", which fails closed.
  */
 export async function clientIp(): Promise<string> {
   const h = await headers();

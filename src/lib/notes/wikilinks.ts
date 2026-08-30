@@ -15,9 +15,8 @@ export function extractWikilinkTitles(bodyMd: string): string[] {
 }
 
 /**
- * Resolves wikilink titles to slugs. When multiple notes share a title
- * (no uniqueness constraint on title), the oldest note wins — deterministic,
- * documented tiebreak rather than an arbitrary one.
+ * Resolves wikilink titles to slugs. Titles aren't unique; the oldest note
+ * wins the tiebreak.
  */
 export async function resolveWikilinkTitles(
   titles: string[],
@@ -49,10 +48,8 @@ export async function resolveWikilinkTitles(
 }
 
 /**
- * Slugs of every note linked with this one in either direction: the notes it
- * points at (whose backlink panels list it) and the notes pointing at it
- * (whose wikilinks to it are about to go dead). Deleting a note changes how
- * all of those render, so the caller revalidates them.
+ * Slugs of every note linked with this one in either direction — for
+ * revalidating their backlink panels after a delete.
  */
 export async function linkedSlugs(noteId: string): Promise<string[]> {
   const rows = await db
@@ -60,7 +57,7 @@ export async function linkedSlugs(noteId: string): Promise<string[]> {
     .from(links)
     .innerJoin(
       notes,
-      // The note at whichever end of the row isn't the one being asked about.
+      // Whichever end of the row isn't `noteId`.
       sql`${notes.id} = case when ${links.fromId} = ${noteId} then ${links.toId} else ${links.fromId} end`,
     )
     .where(or(eq(links.fromId, noteId), eq(links.toId, noteId)));
@@ -69,12 +66,9 @@ export async function linkedSlugs(noteId: string): Promise<string[]> {
 }
 
 /**
- * Recomputes the `links` rows for a note from its current body: delete-then-insert
- * rather than diffing (simpler, still fine at this app's scale). Not run inside a
- * transaction — neon-http has no transaction support; a crash between the note
- * write and this call just leaves backlinks stale until the next save.
- * Returns the slugs of every note whose backlinks may have changed (old + new
- * targets), so the caller can revalidate those paths.
+ * Recomputes a note's `links` rows from its body — delete-then-insert, no
+ * transaction (neon-http has none; a crash just leaves backlinks stale until
+ * the next save). Returns the slugs whose backlinks may have changed.
  */
 export async function syncLinksForNote(
   noteId: string,

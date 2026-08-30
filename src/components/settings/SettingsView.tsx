@@ -26,15 +26,10 @@ export function SettingsView({
 
   const scroller = useRef<HTMLDivElement>(null);
 
-  // Every section that has mounted, by id. A ref rather than state: this is
-  // read during a scroll to measure against, and nothing about the page's
-  // appearance depends on the map itself.
+  // Mounted sections by id — a ref, read during scroll to measure against.
   const sections = useRef(new Map<SettingsSectionId, HTMLElement>());
 
-  // One stable callback for all six rather than a factory per row — the
-  // element already carries its own id, which is the only thing the map needs
-  // to file it under, and a fresh closure per render would detach and reattach
-  // every ref on every keystroke of state.
+  // One stable callback for all six — the element carries its own id.
   const register = useCallback((element: HTMLElement | null) => {
     if (element) {
       sections.current.set(element.id as SettingsSectionId, element);
@@ -42,22 +37,10 @@ export function SettingsView({
   }, []);
 
   /**
-   * Which section the reader is standing on, worked out from the scroll box
-   * itself on every scroll.
-   *
-   * Measured rather than observed: an IntersectionObserver answers "is this on
-   * screen", and with six short sections the honest answer is usually "three
-   * of them are". What the overview has to light is the one whose heading the
-   * reader has last passed, which is a comparison against a single line — the
-   * top of the box plus the clearance the page keeps there. That clearance is
-   * already declared as the scroller's `scroll-padding-top`, which is what
-   * anchor jumps land against, so it is read back from there rather than
-   * written down a second time as a number that could drift.
-   *
-   * Bottoming out is its own case. The last section can be shorter than the
-   * space left below it, and then no amount of scrolling brings its heading up
-   * to the line — so reaching the end of the box *is* being in the last
-   * section, whatever the measurement says.
+   * Which section the reader is on — the last heading passed above the
+   * scroller's top + `scroll-padding-top` (read back so it can't drift from
+   * where anchor jumps land). Reaching the bottom counts as the last section,
+   * which can be too short to scroll its heading to the line.
    */
   const syncActive = useCallback((box: HTMLDivElement) => {
     if (box.scrollTop + box.clientHeight >= box.scrollHeight - 2) {
@@ -71,8 +54,7 @@ export function SettingsView({
     let current = SETTINGS_SECTIONS[0]!.id;
     for (const section of SETTINGS_SECTIONS) {
       const element = sections.current.get(section.id);
-      // +1 for the fraction of a pixel a smooth scroll lands off by, which
-      // would otherwise leave the section you just jumped to unlit.
+      // +1 for the sub-pixel a smooth scroll lands off by.
       if (element && element.getBoundingClientRect().top <= line + 1) {
         current = section.id;
       }
@@ -80,21 +62,15 @@ export function SettingsView({
     setActive(current);
   }, []);
 
-  // The scroll handler answers for every position but the first one. Landing
-  // on /settings#access scrolls the box before this ever renders, and that
-  // scroll is the browser's rather than the reader's, so there is no event to
-  // work from — hence one pass at mount, from whatever section is up there.
+  // One pass at mount for the initial position — landing on /settings#access
+  // scrolls before this renders, with no event to work from.
   useEffect(() => {
     if (scroller.current) syncActive(scroller.current);
   }, [syncActive]);
 
   /**
-   * The overview's rows are anchors and behave like anchors — the hash goes in
-   * the address bar, so a section can be linked to and comes back on a reload.
-   * What is taken over from the browser is only the *manner* of the jump:
-   * smoothly, unless the reader has asked for less motion, so that a press
-   * three rows down reads as travel across the page rather than as the page
-   * having been replaced.
+   * The overview rows are real anchors (hash in the address bar). Only the
+   * manner of the jump is taken over: smooth, unless reduced-motion.
    */
   function goTo(id: SettingsSectionId) {
     const element = sections.current.get(id);
@@ -102,92 +78,46 @@ export function SettingsView({
 
     const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     element.scrollIntoView({ behavior: still ? "auto" : "smooth" });
-    // Lit now rather than when the scroll arrives: the press is the answer to
-    // "where am I", and waiting a third of a second to agree with it looks
-    // like the control missed.
+    // Lit now, not when the scroll arrives.
     setActive(id);
     window.history.replaceState(null, "", `#${id}`);
   }
 
   return (
-    // No wash vars, as the gallery and the tag directory do without them: this
-    // page belongs to no tag, so `.pane` falls back to the neutral palette.
+    // No wash vars — this page belongs to no tag, so `.pane` is neutral.
     <div className="pane pane-etched h-full">
       <div
         ref={scroller}
         onScroll={(event) => syncActive(event.currentTarget)}
-        // One number for the top of this pane — --space-block — in both
-        // senses: the space the page starts with, and the line an anchor jump
-        // (or a section's turn in the overview) comes to rest on. The scrollbar
-        // keeps the global --scroll-end inset, which is what it is for on a box
-        // with nothing floating over it.
-        //
-        // Only the *scroll* padding is set here; the space itself is the
-        // content's own padding, one box in. That split is not cosmetic. A
-        // sticky child's constraint rectangle starts below the scroll
-        // container's padding, so `padding-top: 32px` here and `top: 32px` on
-        // the overview stack rather than coincide — the column comes to rest
-        // 64px down, a full --space-block below the first section heading it is
-        // supposed to line up with, before a single pixel has been scrolled.
+        // Only scroll-padding here; the visual space is the content's own
+        // padding one box in, so the sticky overview stacks with it rather than
+        // doubling it.
         className="h-full overflow-y-auto scroll-pt-[var(--space-block)]"
       >
-        {/* Wider than the 680px the reading views hold to, and only because
-            there are two columns here: the sections keep a text measure of
-            their own and the overview takes the rest. */}
+        {/* Wider than the 680px reading measure — two columns here. */}
         <div
-          // Trailing space, deliberately deep. It is what lets every section —
-          // including the last — be scrolled far enough for its heading to
-          // reach the line the overview measures against; without it the
-          // bottom two rows could never be lit by scrolling to them.
+          // Deep trailing space so even the last section can scroll its heading
+          // to the measured line.
           className="mx-auto max-w-[880px] px-6 pt-[var(--space-block)] pb-[35vh]"
         >
-          {/* Two columns above 900px and one below it. Narrower than that the
-              overview would be a 100px column of clipped words beside a text
-              measure with nothing left in it — so it stops being a margin and
-              becomes the first thing on the page instead, which is what a
-              contents list is on paper anyway. */}
+          {/* Two columns above 900px, one below. */}
           <div className="flex flex-col gap-[var(--space-block)] min-[900px]:flex-row min-[900px]:gap-12">
-            {/* The page's title and its contents list, one block.
-
-                The title used to run across the top of both columns, and it
-                shouldn't have: a heading spanning the page says "everything
-                below me", which put Appearance a step down from Settings when
-                the two are the same rank — the page *is* its sections. Standing
-                at the head of the overview it says what it actually is, which
-                is the name of the list under it. It sticks with that list, so
-                scrolled halfway down the page you can still see what place
-                these six rows belong to. */}
+            {/* Title + contents list, one sticky block. */}
             <div
-              // self-start is what makes the sticky work: a flex item stretches
-              // to the row's full height by default, and an element as tall as
-              // its container has nowhere to stick to.
-              //
-              // It comes to rest on the same line everything else on this page
-              // does — there is no header to clear now, so the clearance is the
-              // pane's own.
+              // self-start so the sticky has room to stick (a stretched flex
+              // item is as tall as its container).
               className="min-[900px]:sticky min-[900px]:top-[var(--space-block)] min-[900px]:w-[168px] min-[900px]:shrink-0 min-[900px]:self-start"
             >
               <h1
-                // Sitting on the first section's baseline rather than at the
-                // same top edge. Both are Fraunces at leading-tight, so the
-                // first baseline of each falls 0.9865em below the top of its
-                // line box — 27.6px at 28px, 21.7px at 22px — and the 6px
-                // between them is exactly this pull. Left flush, the larger
-                // title would appear to float a step above the heading it is
-                // meant to line up with.
+                // Pulled up 6px to sit on the first section heading's baseline
+                // rather than its top edge.
                 className="-mt-1.5 font-display text-[28px] font-medium leading-tight text-ink"
               >
                 Settings
               </h1>
               <nav
                 aria-label="Settings sections"
-                // The rail's own spacing for a heading over a list of rows —
-                // --space-item, not the --space-group that separates one
-                // section of the rail from the next. This *is* one group: a
-                // name and the six rows it names. The title's own line box
-                // adds its descender space on top, so the gap reads a little
-                // wider than eight pixels, which is about right under 28px
-                // type.
+                // The rail's heading-over-list spacing (--space-item).
                 className="mt-[var(--space-item)]"
               >
                 <ul className="flex flex-col gap-[var(--space-item)]">
@@ -201,15 +131,9 @@ export function SettingsView({
                             event.preventDefault();
                             goTo(section.id);
                           }}
-                          // "true" rather than "page": every row here points
-                          // into the page you are already on, so none of them
-                          // is the current *page* — what is being said is which
-                          // location within it.
+                          // "true", not "page" — these point within the current page.
                           aria-current={here ? "true" : undefined}
-                          // The rail's row, to the pixel — same padding, same
-                          // 13px, same neutral selected tint. The two lists are
-                          // the same object doing the same job at different
-                          // scopes, and nothing is gained by drawing them apart.
+                          // The rail's row, to the pixel.
                           className={`row-tint block truncate rounded-[var(--radius-control)] px-2.5 py-1 text-[13px] ${
                             here ? "row-selected text-ink" : "text-ink-muted"
                           }`}
@@ -223,19 +147,8 @@ export function SettingsView({
               </nav>
             </div>
 
-            {/* The top of this page's own three-step scale: 8px inside a row,
-                16px between rows, 40px between sections. Every step is at
-                least double the last, which is the least that reads as a step
-                at all.
-
-                40 rather than the --space-block the rest of the page is
-                measured in, and it is the one number here off the scale. A
-                section is not one more row: it has a display-face heading of
-                its own, and a heading needs more clear space above it than the
-                rows under it need from each other, or it reads as a label on
-                the row below rather than as the name of what follows. Doubling
-                16 gave the ratio but not that. It went to 48 once and that was
-                too far — the sections drifted apart into separate pages. */}
+            {/* 40px between sections — more than the 16px between rows, since a
+                section's display-face heading needs the clear space. */}
             <div className="flex min-w-0 flex-1 flex-col gap-10">
               {SETTINGS_SECTIONS.map((section) => (
                 <section
@@ -247,28 +160,15 @@ export function SettingsView({
                   <h2
                     id={`${section.id}-heading`}
                     className={`font-display text-[22px] font-medium leading-tight ${
-                      // The one heading in the page that isn't ink. Colour is
-                      // the only thing separating this section from the four
-                      // above it, and it is the one section where knowing that
-                      // before you read the control matters.
+                      // The one non-ink heading — Danger zone earns the warning.
                       section.id === "danger" ? "text-danger" : "text-ink"
                     }`}
                   >
                     {section.label}
                   </h2>
-                  {/* The controls stand on the page, in no container of their
-                      own. A panel around them would be drawing a box to hold
-                      one row — the heading above already says where a setting
-                      belongs, and the gap between sections already says where
-                      one ends.
-
-                      10px rather than the --space-item the rail uses under its
-                      headings: this heading is 22px Fraunces with a display
-                      face's descenders, and eight pixels under it left the
-                      first setting's name looking stuck to the word above it
-                      rather than filed under it. Two pixels is the whole of
-                      the correction — it is a heading over its own contents,
-                      not a divider. */}
+                  {/* Controls stand on the page, no panel. 10px under the
+                      heading — 2px more than the rail's, for the display face's
+                      descenders. */}
                   <div className="mt-2.5">
                     {section.id === "appearance" ? (
                       <ThemeSetting />

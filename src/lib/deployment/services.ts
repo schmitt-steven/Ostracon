@@ -5,19 +5,10 @@ import { db } from "@/db/client";
 import { describeRegion, type Region } from "./regions";
 
 /**
- * The two services this app is nothing without — a Neon database and a Vercel
- * blob store — described twice over: who they are, and how much is in them.
- *
- * The split is not tidiness, it's latency. *Who* is parsed out of the
- * connection string and the token, costs nothing, and can go out with the
- * first byte of the page. *How much* is two network round trips, one of which
- * walks the whole blob store — so the settings page renders without it and
- * lets it arrive on its own (see [DeploymentSection]).
- *
- * **Nothing here may print a credential.** `DATABASE_URL` carries a password
- * and `BLOB_READ_WRITE_TOKEN` is a write key; what leaves this module is only
- * ever the parts of them that are already public — a hostname, a store id that
- * every image URL in the app spells out anyway.
+ * The Neon database and Vercel blob store, described two ways: who they are
+ * (parsed from the connection string / token — free, renders immediately) and
+ * how much is in them (two round trips — streamed in, see [DeploymentSection]).
+ * Nothing here prints a credential; only already-public parts leave the module.
  */
 
 /* ------------------------------------------------------------------ */
@@ -38,21 +29,10 @@ export type DatabaseIdentity = {
 };
 
 /**
- * Takes a Neon hostname apart.
- *
- * They read
- * `ep-<name>-<id>[-pooler].[c-<n>.]<region>.<cloud>.neon.tech` — the `c-N`
- * label is new and not always there, so the region is found by counting in
- * from the right rather than from the left.
- *
- * The cloud label is parsed past and thrown away. Which of AWS and Azure Neon
- * happens to rent the machine from is Neon's business, not this app's: the
- * thing you would act on is the region, and printing `aws` beside it only
- * raises a question about a provider you never deal with.
- *
- * Anything that doesn't end in `neon.tech` is left alone and reported as a
- * bare host: this app is meant for Neon, but a plain Postgres URL should show
- * what it is rather than be mis-parsed into fields that don't exist.
+ * Takes a Neon hostname apart:
+ * `ep-<name>-<id>[-pooler].[c-<n>.]<region>.<cloud>.neon.tech`. The `c-N` label
+ * is optional, so the region is counted from the right. The cloud label is
+ * dropped. A non-`neon.tech` host is reported as a bare host.
  */
 function readNeonHost(host: string): Omit<DatabaseIdentity, "name"> {
   const bare = { endpoint: null, region: null, pooled: false, host };
@@ -63,13 +43,12 @@ function readNeonHost(host: string): Omit<DatabaseIdentity, "name"> {
   const [endpoint, ...rest] = labels.slice(0, -2);
   if (!endpoint) return bare;
 
-  // The compute-size label carries nothing a reader wants and would otherwise
-  // be mistaken for the region.
+  // Drop the compute-size label so it isn't mistaken for the region.
   const place = rest.filter((label) => !/^c-\d+$/.test(label));
 
   return {
     endpoint: endpoint.replace(/-pooler$/, ""),
-    // Second from the right, the cloud being last.
+    // Second from the right; the cloud is last.
     region: place.length >= 2 ? describeRegion(place[place.length - 2]!) : null,
     pooled: endpoint.endsWith("-pooler"),
     host,
@@ -96,8 +75,7 @@ export function describeDatabase(): DatabaseIdentity {
       ...readNeonHost(parsed.hostname),
     };
   } catch {
-    // A malformed connection string is a real possibility and not this page's
-    // business to diagnose — the stats below will fail loudly enough.
+    // A malformed connection string isn't this page's job to diagnose.
     return {
       name: null,
       endpoint: null,
@@ -109,13 +87,8 @@ export function describeDatabase(): DatabaseIdentity {
 }
 
 /**
- * The blob store's id — `store_` plus the sixteen characters that also name
- * the subdomain every uploaded image is served from, so this is public by
- * construction.
- *
- * Read from `BLOB_STORE_ID` where the platform sets it, and otherwise cut out
- * of the read-write token, which spells it as
- * `vercel_blob_rw_<id>_<secret>`. Only the id part is ever returned.
+ * The blob store's id — public by construction (it names the image subdomain).
+ * From `BLOB_STORE_ID`, or cut out of `vercel_blob_rw_<id>_<secret>`.
  */
 export function describeBlobStore(): string | null {
   const declared = process.env.BLOB_STORE_ID;
@@ -130,12 +103,8 @@ export function describeBlobStore(): string | null {
 /* ------------------------------------------------------------------ */
 
 /**
- * Either the numbers or the reason there aren't any.
- *
- * A settings page that throws because a database is briefly unreachable is a
- * settings page you can't use to find out that the database is unreachable —
- * so both callers below answer with this instead of raising, and the section
- * prints "Unavailable" where the figure would have gone.
+ * The numbers, or a failure the section prints as "Unavailable" — a stats
+ * error shouldn't take down the page that reports it.
  */
 export type Stats<T> = { ok: true; value: T } | { ok: false };
 
@@ -148,8 +117,7 @@ export type DatabaseStats = {
 
 export async function databaseStats(): Promise<Stats<DatabaseStats>> {
   try {
-    // One round trip for both facts. Neon charges by connection time as much
-    // as anything, and these are two questions about one database.
+    // One round trip for both facts — Neon charges by connection time.
     const result = await db.execute<{
       server_version: string;
       size_bytes: string;
@@ -165,11 +133,9 @@ export async function databaseStats(): Promise<Stats<DatabaseStats>> {
     return {
       ok: true,
       value: {
-        // Postgres appends its build details on some installations; the
-        // version is the first word of it.
+        // First word — Postgres appends build details on some installs.
         serverVersion: row.server_version.split(" ")[0] ?? row.server_version,
-        // bigint, cast to text on the way out so it survives the wire intact
-        // rather than being handed over as a float that has already rounded.
+        // Cast to text in SQL so the bigint survives the wire un-rounded.
         sizeBytes: Number(row.size_bytes),
       },
     };
@@ -181,12 +147,8 @@ export async function databaseStats(): Promise<Stats<DatabaseStats>> {
 export type BlobStats = { count: number; sizeBytes: number };
 
 /**
- * Everything in the store, not just the images the gallery shows.
- *
- * The gallery deliberately hides blobs no note points at, because it is a view
- * of the pictures in the notes. This is a view of the *store* — what is being
- * paid for and what would be lost — so a stray upload counts here even though
- * nothing links to it.
+ * Everything in the store, including blobs no note points at — this is a view
+ * of what's being paid for, not of the pictures in the notes.
  */
 export async function blobStats(): Promise<Stats<BlobStats>> {
   try {
@@ -197,8 +159,7 @@ export async function blobStats(): Promise<Stats<BlobStats>> {
     do {
       const page = await list({
         cursor,
-        // Explicit token for the same reason as the upload route — see the
-        // comment there about OIDC resolution.
+        // Explicit token — see the upload route's note on OIDC resolution.
         token: process.env.BLOB_READ_WRITE_TOKEN,
       });
       for (const blob of page.blobs) {
@@ -217,11 +178,8 @@ export async function blobStats(): Promise<Stats<BlobStats>> {
 /* ------------------------------------------------------------------ */
 
 /**
- * Sizes as a person reads them, up to a terabyte.
- *
- * Its own rather than the gallery's: that one stops at MB because a single
- * photograph does, and a database or a whole store does not. One decimal above
- * a kilobyte, none below — "1.4 MB" is a size, "1433.6 KB" is a measurement.
+ * Sizes as a person reads them, up to a terabyte (the gallery's stops at MB).
+ * One decimal above a kilobyte, none below.
  */
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

@@ -4,19 +4,12 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ACTION_LABELS, type AiAction } from "@/lib/ai/types";
 import type { AnswerPlacement } from "./CodeMirrorEditor";
 
-// Wide enough for the footer's five controls to sit on one line at their
-// natural width — below about 500 "Insert below" is the one that gives, and it
-// wraps to two lines while everything beside it stays put.
+// Wide enough for the footer's five controls on one line.
 const CARD_WIDTH = 520;
-// Tall enough to read a paragraph or two without scrolling, short enough that
-// the card can't cover the passage it's answering about.
+// Tall enough for a paragraph or two, short enough not to cover the passage.
 const MAX_BODY_HEIGHT = 280;
 
-/**
- * Shown while a request is in flight with nothing back from it yet. Its own
- * component so the clock starts from mount: the count needs to reset on a
- * Retry, and owning it here does that without resetting state from an effect.
- */
+// The "waiting" line, its own component so the clock resets on Retry.
 function WaitingLine() {
   const [elapsed, setElapsed] = useState(0);
 
@@ -63,10 +56,8 @@ type Props = {
 };
 
 /**
- * The answer to an AI request, held outside the note until the user accepts
- * it. Nothing here writes to the document — that's what makes the AI's
- * contribution legible as the AI's, and what makes Stop and Discard cost
- * nothing instead of leaving half a paragraph behind to clean up.
+ * The answer to an AI request, held outside the note until accepted — so the
+ * AI's contribution stays legible as the AI's, and Stop/Discard cost nothing.
  */
 export function AiAnswerCard({
   x,
@@ -86,10 +77,8 @@ export function AiAnswerCard({
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Escape discards; clicking outside deliberately doesn't. A generated answer
-  // is expensive enough that losing one to a stray click in the note — which
-  // is exactly where the user looks while reading it — would be worse than
-  // making dismissal explicit.
+  // Escape discards; an outside click doesn't — an answer is too expensive to
+  // lose to a stray click in the note.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") onDiscard();
@@ -98,8 +87,7 @@ export function AiAnswerCard({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onDiscard]);
 
-  // Follow the tail while tokens arrive, but only from the bottom: scrolling
-  // up to re-read something already generated shouldn't be yanked back down.
+  // Follow the tail while streaming, but not if the user has scrolled up.
   useLayoutEffect(() => {
     const body = bodyRef.current;
     if (!body || !streaming) return;
@@ -114,8 +102,7 @@ export function AiAnswerCard({
     return () => clearTimeout(timer);
   }, [copied]);
 
-  // Same viewport clamp as [AiMenu] — fixed positioning would otherwise let a
-  // card raised near the bottom edge hang off-screen.
+  // Viewport clamp, as [AiMenu].
   const left = Math.min(Math.max(x, 12), window.innerWidth - CARD_WIDTH - 12);
   const top = Math.min(y, window.innerHeight - 320);
 
@@ -133,8 +120,7 @@ export function AiAnswerCard({
         <span aria-hidden className="shrink-0 text-xl leading-none text-action">
           ✦
         </span>
-        {/* min-w-0 so the two lines truncate inside the row rather than
-            pushing Stop off the card's edge. */}
+        {/* min-w-0 so the lines truncate rather than push Stop off the edge. */}
         <div className="min-w-0 flex-1">
           <p className="truncate text-base font-medium text-ink">
             {question?.trim() || ACTION_LABELS[action]}
@@ -161,17 +147,14 @@ export function AiAnswerCard({
       >
         {empty ? (
           streaming ? (
-            // A hosted model can sit on a request for the better part of a
-            // minute before the first token, and a bare blinking caret over an
-            // empty box reads as a hang rather than as waiting.
+            // A hosted model can sit on a request for most of a minute — a
+            // bare caret would read as a hang.
             <WaitingLine />
           ) : (
             <p className="text-sm text-ink-faint">No answer came back.</p>
           )
         ) : (
-          /* The markdown source, not a rendering of it: this is the text that
-             will land in the note, so showing it as it will arrive is more
-             honest than previewing a formatted version of it. */
+          /* The markdown source, not a rendering — it's what lands in the note. */
           <p className="whitespace-pre-wrap break-words font-mono text-sm leading-relaxed text-ink">
             {trimmed}
             {streaming && (
@@ -195,8 +178,7 @@ export function AiAnswerCard({
             ? "Replace selection"
             : "Insert below"}
         </button>
-        {/* The other placement stays available as a secondary, so a rewrite
-            can be kept alongside the original when that's what's wanted. */}
+        {/* The other placement as a secondary. */}
         {canReplace && (
           <button
             type="button"

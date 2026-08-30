@@ -1,12 +1,8 @@
 import type { Span } from "@/lib/search/highlight";
 
 /**
- * Matched text, marked.
- *
- * Spans in, elements out — the matched runs never pass through a string that
- * gets parsed as HTML, so a note titled `<img onerror=…>` renders as that
- * title and nothing else. This is the only reason the search layer returns
- * offsets instead of a pre-marked string.
+ * Matched text, marked. Spans in, elements out — no string is ever parsed as
+ * HTML, which is why the search layer returns offsets, not a marked string.
  */
 export function Highlighted({ spans }: { spans: Span[] }) {
   return (

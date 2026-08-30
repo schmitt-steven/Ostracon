@@ -25,33 +25,19 @@ type Props = {
 };
 
 /**
- * The right half, which is always there.
- *
- * A preview pane that appears for notes and collapses for everything else
- * would make the palette change width as you arrow down a list — so a tag and
- * an action get a summary here too. There is no state in which this pane is
- * empty, because there is no state in which no row is highlighted: the Actions
- * section always has at least one row in it.
+ * The right half, always present — a note, tag or action gets a summary here,
+ * so the palette doesn't change width as you arrow down. Never empty: the
+ * Actions section always has a row.
  */
 export function PalettePreview({ row, tags, hueOf, onNavigate }: Props) {
   return (
     <aside
-      // Not a live region: `aria-activedescendant` on the input already
-      // announces the row this pane is describing, and a second announcement
-      // of the same move is what makes a palette exhausting to hear.
-      //
-      // Held off the palette's right and bottom edges rather than filling the
-      // column to them, so the tonal step reads as a card lying on the panel
-      // instead of as a second panel butted against it. The margin is what
-      // makes the radius legible — a rounded corner flush into the frame's own
-      // corner is just a nick out of the panel. Same --radius-zone as the
-      // palette around it: this is a zone, and the app has exactly two radii.
+      // Not a live region — the input's `aria-activedescendant` already
+      // announces this row. Held off the palette edges so it reads as a card
+      // on the panel; same --radius-zone.
       className="zone-step mb-3 mr-3 mt-3 hidden min-h-0 flex-col rounded-[var(--radius-zone)] px-5 py-4 md:flex"
     >
-      {/* "Preview" over an action would promise a look at the thing before it
-          happens, which is not what this pane does — it explains what the verb
-          is and which key runs it. Notes and tags do get shown a piece of the
-          thing itself, so those keep the word. */}
+      {/* "Info" for an action (no look-before), "Preview" for notes and tags. */}
       <p className="shrink-0 pb-3 text-[11px] uppercase tracking-wider text-ink-faint">
         {row?.kind === "action" ? "Info" : "Preview"}
       </p>
@@ -72,13 +58,8 @@ export function PalettePreview({ row, tags, hueOf, onNavigate }: Props) {
 }
 
 /**
- * The shape every preview takes: prose that scrolls, facts that don't.
- *
- * `meta` is pinned to the foot of the pane rather than following the text,
- * because it is the part you compare *between* rows — a word count that lands
- * at a different height for every note is one you have to hunt for each time
- * you press the down arrow. Bottom-aligned rather than top-aligned so an
- * extra line (a note with images) grows upward and leaves the rest in place.
+ * Every preview's shape: prose that scrolls, `meta` pinned to the foot so it
+ * lands at the same height for every row and grows upward.
  */
 function Pane({
   children,
@@ -89,20 +70,10 @@ function Pane({
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* `overflow-wrap` is inherited, so one declaration here covers the
-          title, the excerpt and the tag list. Notes contain pasted URLs and
-          blob ids — text with no space in it for a hundred characters — and
-          the default only breaks between words, which for those means not at
-          all.
-
-          The inset-and-bleed is where the tag pills get their padding from.
-          It has to be here rather than on the tag row itself: this element is
-          the clipping box, so a negative margin *inside* it is overflow —
-          `overflow-y: auto` forces the used `overflow-x` to `auto` as well,
-          and six stray pixels on the right become a scrollbar under every
-          tagged note. Widening the box instead puts that space inside the
-          scroll port, where a pill can sit in it and nothing overflows. The
-          content box lands exactly where it did, so nothing else moves. */}
+      {/* `[overflow-wrap:anywhere]` inherited by the title/excerpt/tags —
+          notes carry pasted URLs with no break point. The `-mx-1.5` inset is
+          padding for the tag pills, widening the scroll port so a pill in it
+          doesn't force a horizontal scrollbar. */}
       <div className="-mx-1.5 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1.5 [overflow-wrap:anywhere]">
         {children}
       </div>
@@ -126,10 +97,8 @@ function NotePreview({
 }) {
   const { note } = row;
   const words = note.text.split(/\s+/).filter(Boolean).length;
-  // The same window the row uses, opened wider. Where the row has to admit it
-  // has nothing to show, this pane has the space to show the note anyway — the
-  // Matches line below already names the term that matched, so an unhighlighted
-  // opening line here is context rather than a claim.
+  // The row's window, opened wider — and where the row has nothing to show,
+  // this shows the opening line anyway (the Matches line names the term).
   const body = snippet(note.text, note.raw, note.terms, 320);
   const spans =
     body.source === "none" ? excerpt(note.text, [], 320) : body.spans;
@@ -149,13 +118,9 @@ function NotePreview({
             </span>
           </Meta>
           <Meta label="Words">{words}</Meta>
-          {/* Only when there are any. A standing "Images 0" on every note
-              would spend a line saying nothing about most of them. The label
-              already says what is being counted, so the value is a number,
-              like the one above it. */}
+          {/* Only when there are any. */}
           {note.images > 0 && <Meta label="Images">{note.images}</Meta>}
-          {/* Only with a query behind it. On a recent row there is nothing to
-              have matched, and "0 matches" would read as a failed search. */}
+          {/* Only with a query — "0 matches" on a recent row reads as a fail. */}
           {note.reason.kind !== "recent" && (
             <Meta label="Matches">{matchSummary(note)}</Meta>
           )}
@@ -167,12 +132,8 @@ function NotePreview({
       </h2>
 
       {note.tags.length > 0 && (
-        // The pill's height, given back. These are flex items, so unlike the
-        // inline tags this replaced they take their padding as height — four
-        // pixels the pane didn't have. The pill grows into the gap above and
-        // below instead, and the row measures what it did as bare text. Its
-        // *width* is handled a level up, on the scroll container: a negative
-        // margin here would overflow that box rather than fit inside it.
+        // `-my-0.5` gives back the pill padding so the row measures as bare
+        // text; width is handled on the scroll container a level up.
         <p className="-my-0.5 flex flex-wrap gap-x-1 gap-y-0.5 text-[12px]">
           {note.tags.map((name) => (
             <TagLink
@@ -186,8 +147,7 @@ function NotePreview({
       )}
 
       <p className="text-[14px] leading-relaxed text-ink-muted">
-        {/* A longer window than the row's, around the same match: the row
-            answers "is this the one?", this answers "what does it say?". */}
+        {/* A longer window than the row's, around the same match. */}
         <Highlighted spans={spans} />
       </p>
     </Pane>
@@ -211,8 +171,7 @@ function TagPreview({
 
   return (
     <Pane
-      // Both keys spelled out, because a tag is the one row where the two
-      // verbs go to genuinely different places.
+      // Both keys spelled out — a tag's two verbs go to different places.
       meta={
         <>
           <Meta label="⏎">Open the #{row.name} index</Meta>
@@ -224,9 +183,7 @@ function TagPreview({
         style={{ "--h": hueOf(row.name) } as React.CSSProperties}
         className="flex flex-col gap-3"
       >
-        {/* Clickable too, though ⏎ already goes here: a heading sitting dead
-            above a list of sub-tags that all follow a click is the odd one
-            out, and the mouse shouldn't have to reach back to the row. */}
+        {/* Clickable too, so the mouse doesn't have to reach back to the row. */}
         <h2 className="font-display text-[19px] leading-snug">
           <Link
             href={tagHref(row.name)}
@@ -284,23 +241,14 @@ function ActionPreview({ row }: { row: Extract<Row, { kind: "action" }> }) {
 }
 
 /**
- * Where the term was found, counted.
- *
- * The last case is the one worth spelling out. The search is prefix-and-fuzzy,
- * so a note can earn its row on a term the visible text never spells — you
- * typed `vecel` and the index matched `vercel`, or the word sits inside markup
- * that [plainText] strips before any of this counts it. There is nothing to
- * count and nothing to highlight, so the row names the term it matched
- * instead: seeing `“vercel”` under a query of `vecel` explains both why the
- * note is here and why no word in it is marked.
+ * Where the term was found, counted. When there's nothing to count (a fuzzy
+ * hit, or a term only in stripped markup), the row names the term instead.
  */
 function matchSummary(note: NoteHit): string {
   const inTitle = countMatches(note.title, note.terms);
   const inBody = countMatches(note.text, note.terms);
-  // Counted off the raw markdown only when the prose has none, and named for
-  // where it actually is: a hit inside a link's URL or a fenced block is a
-  // true match that the rendered note never shows, and calling it "in body"
-  // would send someone hunting for a word that isn't there to find.
+  // Off the raw markdown only when the prose has none, and named "in markup"
+  // so nobody hunts the rendered note for a word that isn't there.
   const inMarkup = inBody > 0 ? 0 : countMatches(note.raw, note.terms);
   const counted = [
     inTitle > 0 && `${inTitle} in title`,
@@ -333,11 +281,8 @@ function Meta({
   );
 }
 
-/**
- * A tag in the preview as a link.
- * ⌘-click opens the index in a new tab, and the palette stays where it was instead of
- * closing behind a page that never loaded.
- */
+/** A tag in the preview, as a link. ⌘-click opens a new tab and the palette
+ * stays put. */
 function TagLink({
   name,
   hueOf,

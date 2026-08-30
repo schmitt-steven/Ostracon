@@ -17,33 +17,18 @@ type Props = {
 };
 
 /**
- * The scrolling box inside a `.pane`, and the one thing every pane needs a
- * client component for: whether anything has scrolled under the header yet.
+ * The scrolling box inside a `.pane`, and the one bit of client state a pane
+ * needs: whether anything has scrolled under the header.
  *
- * It scrolls *inside* the pane rather than being it, because the wash is
- * painted on the pane's own box and an element that scrolls would drag its
- * background up out of view with the text.
+ * It scrolls inside the pane, not as the pane, so the wash stays put. The
+ * header floats over the scroller rather than living in it (`position: sticky`
+ * would leave a scrollbar-gutter strip of wash beside it once the bar takes
+ * width); the scroller carries `--head-h` of top padding to stand it off, the
+ * same token the header row's `min-h` uses.
  *
- * **The header is not in the scrolling box.** It used to be, held in place with
- * `position: sticky`, and that is the obvious way to build this — until the
- * scrollbar stops being an overlay. A scroll container's children are clipped
- * to its *scrollport*, which is the padding box minus the scrollbar gutter, so
- * the moment the bar takes width the header stops a bar's width short of the
- * pane's right edge and the wash shows through beside it. Nothing paints into
- * that gutter — not a negative margin, not a wider border — because the clip
- * happens after layout. The only fix is to be outside the box that has the
- * gutter, so the header floats over the scroller and the scroller carries
- * `--head-h` of top padding to stand it off.
- *
- * That height is a token rather than a measurement: every header's row carries
- * `min-h-[var(--head-h)]`, so the height this reserves and the height the
- * header takes are the same declared number — one CSS variable in two places
- * instead of a ResizeObserver and a layout jump on hydration.
- *
- * The flag goes on the frame rather than on the header, and `.pane-head` reads
- * it from any ancestor — so a page that is otherwise entirely server-rendered
- * (the gallery) gets a live glass header by wrapping its contents, without
- * turning into a client component to hold one boolean.
+ * The `scrolled` flag goes on the frame and `.pane-head` reads it from any
+ * ancestor, so a server-rendered page (the gallery) gets a live glass header
+ * by wrapping its contents.
  */
 export function PaneScroller({ head, children, className, onBlur }: Props) {
   const [scrolled, setScrolled] = useState(false);

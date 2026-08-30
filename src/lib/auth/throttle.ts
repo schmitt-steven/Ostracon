@@ -17,9 +17,8 @@ const STREAK_RESET_MS = Math.max(60 * 60_000, MAX_COOLDOWN_MS * 2);
 
 /**
  * Cooldown owed after `failures` consecutive failures: nothing for the first
- * few, then the ladder above (6th failure -> 2m, 7th -> 5m, 8th -> 10m, 9th
- * and beyond -> 30m). The repeating last rung holds a sustained attack to two
- * guesses an hour without ever locking the account permanently.
+ * few, then the ladder above (6th -> 2m, 7th -> 5m, 8th -> 10m, 9th+ -> 30m).
+ * The repeating last rung caps a sustained attack without a permanent lockout.
  */
 function cooldownMs(failures: number): number {
   if (failures <= FREE_ATTEMPTS) return 0;
@@ -37,11 +36,8 @@ function remainingSeconds(failedCount: number, lastFailureAt: Date): number {
   return remaining > 0 ? Math.ceil(remaining / 1000) : 0;
 }
 
-/**
- * The bucket a login attempt is counted against. There is no username to key
- * on — the app has a single shared password — so the client address is all we
- * have. See lib/auth/client-info for what that address is worth.
- */
+// The bucket a login attempt is counted against. No username to key on (single
+// shared password), so it's the client address — see lib/auth/client-info.
 const clientKey = clientIp;
 
 export type Throttle = { key: string; retryAfter: number };
@@ -66,9 +62,9 @@ export async function checkThrottle(): Promise<Throttle> {
 }
 
 /**
- * Records a failed guess and returns the cooldown it just earned. The streak
- * is incremented in the same statement that reads it, so concurrent guesses
- * can't both read the same count and each write back count + 1.
+ * Records a failed guess and returns the cooldown it earned. The streak is
+ * incremented in the same statement that reads it, so concurrent guesses can't
+ * race on the count.
  */
 export async function recordFailure(key: string): Promise<number> {
   const now = new Date();

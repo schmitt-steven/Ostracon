@@ -35,7 +35,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "SE Knowledge Base",
+  title: "Ostracon",
   description: "Personal software-engineering notes",
 };
 

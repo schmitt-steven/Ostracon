@@ -16,12 +16,8 @@ export type TagHues = {
 };
 
 /**
- * Resolved tag hues.
- *
- * Overrides are keyed on the *root* tag, never on the full path, because
- * children inherit their parent's hue — that inheritance is the entire reason
- * nesting is legible without indent guides, and letting `#infra/ci` be
- * recoloured on its own would break it for the sake of one row.
+ * Resolved tag hues. Overrides are keyed on the root tag — children inherit
+ * their parent's hue.
  */
 export function useTagHues(): TagHues {
   const preferences = useSyncExternalStore(

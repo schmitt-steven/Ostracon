@@ -1,22 +1,14 @@
 /**
- * What may be uploaded into a note, and how much of it at once.
- *
- * Isomorphic on purpose: the file dialog's filter, the drop handler and the
- * upload route all read the same numbers, and the route re-checks every one of
- * them. The client's copy is there to explain a refusal *before* someone
- * spends a minute uploading — it is not the control. `/api/uploads` is a POST
- * endpoint anyone signed in can reach directly.
+ * What may be uploaded into a note, and how much at once. Isomorphic — the
+ * file dialog, the drop handler and the upload route read the same numbers,
+ * and the route re-checks all of them (the client copy only explains refusals
+ * early).
  */
 
 /**
- * The types the route accepts, by exact MIME rather than an `image/` prefix.
- *
- * SVG is deliberately absent. It is a document, not a bitmap: it can carry
- * script, and a stored SVG served back to the reader is stored XSS wherever
- * the browser treats it as same-origin. Uploads land on the blob store's own
- * host (`*.public.blob.vercel-storage.com`), which is already a separate
- * origin from the app — but "the origin happens to save us" is not a reason to
- * accept an executable format nobody asked to paste.
+ * The MIME types the route accepts, exact. SVG is absent on purpose — it can
+ * carry script, and an executable format nobody asked to paste doesn't belong
+ * here even behind a separate-origin blob host.
  */
 export const IMAGE_MIME_TYPES = [
   "image/png",
@@ -36,13 +28,9 @@ export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_IMAGE_FILES = 10;
 
 /**
- * Per drop, summed over the originals.
- *
- * The guard is against the accident — a folder dragged in by mistake — not
- * against the work: what actually goes over the wire is compressed first (see
- * [compressImage]), so ten phone photos pass here and upload as a few hundred
- * kilobytes. Only a batch that is enormous *before* anything has been decoded
- * gets turned away, and it gets turned away without a byte being sent.
+ * Per drop, summed over the originals — a guard against a folder dragged in by
+ * mistake, checked before anything is decoded or sent. Real photos are
+ * compressed first (see [compressImage]).
  */
 const MAX_IMAGE_BATCH_BYTES = 60 * 1024 * 1024;
 
@@ -51,13 +39,9 @@ export function isAllowedImageType(type: string): boolean {
 }
 
 /**
- * Whether a drag *looks* like it carries images.
- *
- * Mid-drag the browser will name each item's type but not let anything read
- * it, so this is the widest the question can be asked — an `image/svg+xml`
- * answers yes here and is then refused on the drop, which is the right way
- * round: the overlay's job is to say where a drop would go, and the refusal
- * belongs to the drop that actually happened.
+ * Whether a drag *looks* like it carries images. Loose on purpose — mid-drag
+ * the browser only exposes the type, so `image/svg+xml` passes here and is
+ * refused on the actual drop.
  */
 export function looksLikeImageType(type: string): boolean {
   return type.toLowerCase().startsWith("image/");
@@ -70,11 +54,7 @@ export type SkippedImage = { name: string; reason: ImageSkipReason };
 export type ImageBatch = {
   accepted: File[];
   skipped: SkippedImage[];
-  /**
-   * Set when the batch is refused whole rather than filtered. Only the total
-   * size does this: dropping 300MB is one mistake, and skipping "some" of it
-   * would leave the user guessing which half landed.
-   */
+  /** Set when the whole batch is refused (only total size does this). */
   refusal: string | null;
 };
 
@@ -116,9 +96,8 @@ export function validateImageBatch(files: File[]): ImageBatch {
 }
 
 /**
- * What went wrong, as one sentence, or null when nothing did. Grouped by
- * cause and counted rather than listed: a folder dropped by accident is
- * thirty refusals with one reason, and thirty filenames is a wall.
+ * What went wrong, as one sentence, or null. Grouped by cause and counted, not
+ * listed by filename.
  */
 export function describeSkippedImages(skipped: SkippedImage[]): string | null {
   if (skipped.length === 0) return null;

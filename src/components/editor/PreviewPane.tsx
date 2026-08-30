@@ -20,11 +20,8 @@ export type PreviewHandle = {
 
 type Props = {
   bodyMd: string;
-  /**
-   * The note's tags, as the bar currently holds them. Sent with the body so a
-   * `#name` just added in the bar renders as a resolved reference instead of
-   * waiting for the save to land — see [renderNoteHtml].
-   */
+  /** The note's current tag bar, sent with the body so a just-added `#name`
+   * resolves without a save — see [renderNoteHtml]. */
   tags: string[];
   /** Server-rendered HTML for `initialBodyMd`, so the first paint is instant. */
   initialHtml: string;
@@ -49,27 +46,19 @@ export function PreviewPane({
 }: Props) {
   const [html, setHtml] = useState(initialHtml);
   const [rendered, setRendered] = useState(initialBodyMd);
-  // The tag list `html` was rendered against. Seeded from the mount-time tags
-  // rather than left empty, because `initialHtml` came off the server rendered
-  // against exactly those — starting it blank would burn a render on open.
+  // The tags `html` was rendered against — seeded from mount-time tags, which
+  // `initialHtml` was server-rendered against.
   const [renderedTags, setRenderedTags] = useState(() => tags.join(","));
   const scrollerRef = useRef<HTMLDivElement | null>(null);
-  /**
-   * The image being looked at full size, or null. Held here rather than in
-   * the lightbox because the rendered HTML is inert markup — the click that
-   * opens it is caught by delegation below, which is the same arrangement
-   * wikilinks use.
-   */
+  // The zoomed image, or null — the click is caught by delegation below, like
+  // wikilinks.
   const [zoomed, setZoomed] = useState<{ src: string; alt: string } | null>(
     null,
   );
-  // Bumped per request so a slow render that resolves after a newer one
-  // can't overwrite it.
+  // Bumped per request so a stale render can't overwrite a newer one.
   const requestSeq = useRef(0);
 
-  // `tags` is in the dependency list but not in `rendered`: adding a tag
-  // changes how the body renders (an unresolved `#name` becomes a link), so a
-  // tag change has to re-render even though the text is untouched.
+  // A tag change re-renders even with the text untouched (`#name` → link).
   const tagKey = tags.join(",");
   useEffect(() => {
     if (!active || (bodyMd === rendered && tagKey === renderedTags)) return;
@@ -97,17 +86,13 @@ export function PreviewPane({
         const root = scrollerRef.current;
         if (!root) return;
         const blocks = [...root.querySelectorAll<HTMLElement>("[data-line]")];
-        // Last block that starts at or before the line — the one the cursor is
-        // actually sitting inside, since a block spans until the next one.
+        // The last block starting at or before the line.
         let target: HTMLElement | undefined;
         for (const block of blocks) {
           if (Number(block.dataset.line) <= line) target = block;
           else break;
         }
-        // scrollIntoView rather than scrollTo on this element: the pane no
-        // longer scrolls itself (its height is content-driven now), so the
-        // scrolling ancestor is the whole note view and only the browser knows
-        // which one that is.
+        // scrollIntoView, not scrollTo — the pane doesn't scroll itself.
         target?.scrollIntoView({ block: "nearest", behavior: "smooth" });
       },
     }),
@@ -115,12 +100,10 @@ export function PreviewPane({
   );
 
   function handleClick(event: React.MouseEvent<HTMLDivElement>) {
-    // Wikilinks navigate (WikilinkNav) — don't also yank the editor around.
+    // Wikilinks navigate (WikilinkNav) — don't also sync the editor.
     const el = event.target as HTMLElement;
     if (el.closest("a")) return;
-    // An image opens instead of syncing the editor's scroll: it is the one
-    // block in a note that is too small to read at the column's width, and
-    // the sentence beside it is still there to click for the sync.
+    // An image opens the lightbox instead of syncing.
     if (el instanceof HTMLImageElement && el.currentSrc) {
       setZoomed({ src: el.currentSrc, alt: el.alt });
       return;
@@ -130,8 +113,7 @@ export function PreviewPane({
   }
 
   return (
-    // No overflow and no padding of its own: the height is content-driven and
-    // the note view around it owns both the scrolling and the text column.
+    // No overflow or padding — the note view owns scrolling and the column.
     <div ref={scrollerRef} onClick={handleClick} className={className}>
       <div>
         {html ? (

@@ -21,25 +21,14 @@ import { ALL_NOTES_HREF, tagHref } from "@/lib/tags/routes";
 
 type Props = {
   tag: string;
-  /**
-   * Notes under this tag or anything beneath it — as [TagRenameDialog], and
-   * counted by whoever opened this for the same reason. The destructive branch
-   * asks the server for its own number (see [tagDeletionStats]); this one is
-   * what the first screen can say without waiting.
-   */
+  /** Notes under this tag or beneath it — as [TagRenameDialog]. The
+   * destructive branch re-counts via [tagDeletionStats]. */
   noteCount: number;
   onClose: () => void;
 };
 
-/**
- * What was cleared out of the browser's tag preferences on the user's behalf,
- * kept so the undo can put it back.
- *
- * These live in localStorage rather than the database, so no server action can
- * reach them — a tag deleted without this leaves its name pinned, where the
- * rail drops the row (it can't find the tag in the tree) but the stored name
- * goes on counting against MAX_PINNED_TAGS forever.
- */
+/** The localStorage tag prefs cleared on delete (no server action can reach
+ * them), kept for undo — otherwise a deleted tag's name stays pinned forever. */
 type ClearedPreferences = {
   /** Pinned names that were under the tag, including the tag itself. */
   pinned: string[];
@@ -52,10 +41,7 @@ function clearPreferences(tag: string): ClearedPreferences {
   const pinned = before.pinned.filter((name) => tagMatches(name, tag));
   for (const name of pinned) togglePinned(name);
 
-  // Only when the tag *is* a root. Hues are stored per root segment because
-  // children inherit them (see [setTagHue]), so deleting `#infra/ci` must
-  // leave `#infra`'s colour alone — and deleting `#infra` takes every
-  // descendant with it, so nothing is left to wear it.
+  // Only when the tag is a root — hues are stored per root (see [setTagHue]).
   const root = tagRoot(tag);
   const hue = root === tag ? (before.hues[root] ?? null) : null;
   if (hue !== null) setTagHue(tag, null);
@@ -64,28 +50,16 @@ function clearPreferences(tag: string): ClearedPreferences {
 }
 
 function restorePreferences(tag: string, cleared: ClearedPreferences): void {
-  // Back to front: each pin prepends its name, so replaying the list in order
-  // would hand it back reversed.
+  // Back to front — each pin prepends its name.
   for (const name of [...cleared.pinned].reverse()) togglePinned(name);
   if (cleared.hue !== null) setTagHue(tag, cleared.hue);
 }
 
 /**
- * Deleting a tag, both meanings of it.
- *
- * The tag exists nowhere but on the notes — the same fact rename is built on —
- * so there is no row to delete and the question is only ever what happens to
- * the notes carrying it. Two answers, and they are not variations on each
- * other: one unfiles and can be taken back in full, the other deletes the
- * notes and cannot be taken back at all. The dialog is shaped around that
- * asymmetry rather than presenting them as a pair of equal options — the safe
- * one acts on its press, the destructive one only opens a second screen that
- * makes you type the name.
- *
- * Nested tags come along in both. Not for tidiness: a tag exists exactly as
- * far as something is filed under it, so leaving `#infra/ci` behind would have
- * `#infra` reappear in the tree the moment the dialog closed, and the delete
- * would look like it had done nothing.
+ * Deleting a tag, both meanings. There's no tag row, only the notes: one
+ * branch unfiles them (fully undoable, acts on its press), the other deletes
+ * them (irreversible, opens a type-the-name screen). Nested tags come along in
+ * both, or the parent would reappear in the tree.
  */
 export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
   const [view, setView] = useState<"choose" | "confirm">("choose");
@@ -105,12 +79,8 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
   const router = useRouter();
   const pathname = usePathname();
 
-  /**
-   * Whether the page underneath is this tag's own index — in which case
-   * finishing has to leave it, or the dialog closes onto an index of a tag
-   * that no longer exists. Checked here rather than at the three call sites
-   * because the rail opens this from wherever you happen to be standing.
-   */
+  // Whether the page underneath is this tag's own index — then finishing has
+  // to navigate away.
   const href = tagHref(tag);
   const viewingTag = pathname === href || pathname.startsWith(`${href}/`);
 
@@ -139,12 +109,8 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
     });
   }
 
-  /**
-   * Opens the destructive screen — but reads the numbers first, so it arrives
-   * complete. A confirmation that renders its own consequence a moment after
-   * you are already looking at the button is a confirmation you have started
-   * pressing past.
-   */
+  // Opens the destructive screen, reading the numbers first so it arrives
+  // complete.
   function openConfirm() {
     startTransition(async () => {
       try {
@@ -160,9 +126,7 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
     startTransition(async () => {
       try {
         const result = await deleteTaggedNotes({ tag });
-        // Emptied from somewhere else between opening this and arming it. Not
-        // a success worth reporting: nothing was deleted, and "Deleted #tag
-        // and 0 notes" reads as a bug rather than as the no-op it was.
+        // Emptied elsewhere between opening and arming — a no-op, not a success.
         if (result.count === 0) {
           setError("No notes carry that tag any more.");
           return;
@@ -180,16 +144,13 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
     startTransition(async () => {
       await restoreNoteTags({ entries: done.undo });
       if (cleared) restorePreferences(tag, cleared);
-      // [onClose] rather than [finish]: the tag is back, so the index this was
-      // opened over is a real page again and there is nothing to navigate away
-      // from — which is exactly what finish would have done.
+      // [onClose], not [finish] — the tag is back, nothing to navigate from.
       onClose();
     });
   }
 
-  // On the document rather than on the panel, unlike the rename dialog: that
-  // one always has an autofocused field to catch the key, and this one opens on
-  // a screen of two choices with focus still wherever the menu left it.
+  // On the document (not the panel) — this opens with focus wherever the menu
+  // left it.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") finish();
@@ -201,19 +162,13 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
   const armed = normalizeTag(typed.trim()) === tag;
   const doomed = stats?.noteCount ?? noteCount;
 
-  // Into <body>, for the reason spelled out in [TagRenameDialog]: `fixed` is a
-  // utility and `.pane > *` is not, so a caller rendering this as a direct
-  // child of its pane got it laid out in flow instead of over the viewport —
-  // and this panel is the taller of the two, so it landed past the bottom of
-  // the window and read as a dialog that never opened at all.
+  // Into <body>, as [TagRenameDialog].
   return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-label={`Delete #${tag}`}
-      // Centred, as the rename dialog is. The three screens in here are
-      // different heights, and anchoring the top would have the panel grow
-      // downwards off an 18vh line as you move through them.
+      // Centred — the three screens are different heights.
       className="scrim fixed inset-0 z-50 flex items-center justify-center p-6"
       onClick={(event) => {
         if (event.target === event.currentTarget) finish();
@@ -235,12 +190,8 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
                 </>
               )}
             </p>
-            {/* Said afterwards rather than before, because it is a reassurance
-                and not a decision: nobody choosing between these two branches
-                is weighing what happens to their prose. The word is still
-                there, it just points at nothing now — which is a state this
-                app already renders (see remarkHashtag) rather than a loose
-                end left by the delete. */}
+            {/* A reassurance, said afterwards — a `#{tag}` in prose stays as
+                an unresolved reference (see remarkHashtag). */}
             {done.kind === "unfiled" && (
               <p className="mt-1 text-[13px] text-ink-muted">
                 Their text is unchanged — any #{tag} written into a sentence
@@ -278,11 +229,8 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
                 : `Permanently deletes all ${doomed}, along with any images only they were using.`}{" "}
               This can&apos;t be undone.
             </p>
-            {/* The number the tag tree can't give: how many of these notes are
-                somebody else's as well. A note tagged #{tag} and #reading is as
-                much a reading note, and "{doomed} notes" says nothing about it
-                — so it is said here, in --danger, above the field that arms
-                the button rather than below it. */}
+            {/* The number the tag tree can't give — how many are also filed
+                elsewhere. */}
             {stats && stats.alsoTagged > 0 && (
               <p className="mt-2 text-[13px] text-danger">
                 {stats.alsoTagged === 1
@@ -290,11 +238,7 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
                   : `${stats.alsoTagged} of them are also filed under other tags — they go too.`}
               </p>
             )}
-            {/* Typed, not pressed twice. The one-note delete in the index is a
-                small popover with a Keep and a Delete in it, which is the right
-                weight for one row you are looking at; this is a batch you can't
-                see, with no undo behind it, and the name is the only thing that
-                proves you know which tag you are standing on. */}
+            {/* Typed, not pressed twice — this is an unseen batch with no undo. */}
             <label
               htmlFor={armId}
               className="mt-4 block text-[13px] text-ink-muted"
@@ -309,8 +253,7 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
                 id={armId}
                 autoFocus
                 value={typed}
-                // As the rename field: the `#` is a fixture to the left, so a
-                // typed one is absorbed rather than counted against the match.
+                // The `#` is a fixture; a typed one is absorbed.
                 onChange={(event) => {
                   setTyped(event.target.value.replace(/#/g, ""));
                   setError(null);
@@ -325,8 +268,7 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
             </div>
             {error && <p className="mt-2 text-[13px] text-danger">{error}</p>}
             <div className="mt-5 flex items-center justify-end gap-2">
-              {/* Back, not Cancel: the choice is still on the other screen and
-                  this is one step of two, so the way out leads there. */}
+              {/* Back, not Cancel — this is step two of two. */}
               <button
                 type="button"
                 onClick={() => {
@@ -342,9 +284,8 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
                 type="button"
                 onClick={deleteNotes}
                 disabled={!armed || pending}
-                // Unseated and in --danger, where the rename dialog's default
-                // is seated and in --ink. This is the one button in the app
-                // that should not look like the obvious thing to press.
+                // Unseated, in --danger — the one button that shouldn't look
+                // like the obvious press.
                 className={`rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] ${
                   armed && !pending
                     ? "bg-danger-wash text-danger hover:text-danger-hover"
@@ -360,17 +301,13 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
         ) : (
           <>
             <p className="text-base text-ink">Delete #{tag}</p>
-            {/* The count first, as the rename dialog does it: "every note that
-                carries it" is true of a two-note tidy-up and a hundred-note
-                migration alike, and those are different decisions. */}
+            {/* The count first, as the rename dialog. */}
             <p className="mt-1 text-[13px] text-ink-muted">
-              Filed on {noteCount} {noteCount === 1 ? "note" : "notes"}. Any 
+              Filed on {noteCount} {noteCount === 1 ? "note" : "notes"}. Any
               nested tags are deleted too.
             </p>
 
-            {/* Two rows rather than a choice control with a confirm under it.
-                The branches aren't settings of one operation — they are two
-                different things to do, and each row is its own press. */}
+            {/* Two rows — two different things to do, each its own press. */}
             <div className="mt-4 flex flex-col gap-1.5">
               <button
                 type="button"

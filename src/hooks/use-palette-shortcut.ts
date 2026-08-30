@@ -3,20 +3,14 @@
 import { useSyncExternalStore } from "react";
 
 /**
- * How to spell the command-palette shortcut for the machine reading it:
- * `⌘K` on a Mac, `Ctrl K` everywhere else. The palette itself binds both
- * (see CommandPalette's key handler), so this is only about the hint.
- *
- * The platform never changes under a live page, so there is nothing to
- * subscribe to — the store is a constant and `subscribe` is a no-op. It still
- * goes through useSyncExternalStore so the server and the first client render
- * can disagree without React treating it as a hydration error.
+ * The command-palette shortcut label: `⌘K` on a Mac, `Ctrl K` elsewhere. Only
+ * the hint — the palette binds both. Goes through useSyncExternalStore (with a
+ * no-op subscribe) so server/client can disagree without a hydration error.
  */
 function isMac(): boolean {
   if (typeof navigator === "undefined") return false;
   const platform =
-    // userAgentData is the current API; navigator.platform is the fallback
-    // that still works everywhere it doesn't.
+    // userAgentData where available, navigator.platform as fallback.
     (
       navigator as Navigator & { userAgentData?: { platform?: string } }
     ).userAgentData?.platform ||
@@ -33,11 +27,8 @@ function getSnapshot(): string {
   return isMac() ? "⌘K" : "Ctrl K";
 }
 
-/**
- * Mac. The server can't see the client's platform, and `⌘K` is what this app
- * has always rendered — so a Windows reader sees it correct itself on
- * hydration, and nobody sees it change the other way.
- */
+// `⌘K` — the server can't see the platform; a Windows reader sees it correct
+// on hydration.
 function getServerSnapshot(): string {
   return "⌘K";
 }

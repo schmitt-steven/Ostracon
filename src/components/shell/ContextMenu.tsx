@@ -9,32 +9,20 @@ type Props = {
   /** Viewport coordinates of the click that opened it. */
   x: number;
   y: number;
-  /**
-   * Which corner `x` names. "end" hangs the menu's right edge there, for the
-   * one caller that opens from a button instead of a pointer: a control parked
-   * in the right end of a header wants its menu under itself, not running off
-   * to the right of it.
-   */
+  /** Which corner `x` names — "end" hangs the right edge there, for a
+   * button-opened menu. */
   align?: "start" | "end";
-  /**
-   * A trigger whose presses don't count as "outside". Without it a button that
-   * toggles the menu can never close it: the press dismisses the menu, and then
-   * its own click opens it straight back up.
-   */
+  /** A trigger whose presses don't count as "outside", so a toggle button can
+   * close the menu it opened. */
   ignoreRef?: React.RefObject<HTMLElement | null>;
   onClose: () => void;
   children: React.ReactNode;
 };
 
 /**
- * The panel a rail row's right-click opens: placed at the pointer, flipped
- * back inside the viewport, dismissed by Escape or by a press anywhere else.
- *
- * Shared by [TagMenu], [NoteMenu] and [SortControl] because they all say the
- * same thing — a short list of choices floating over the page — and a menu that
- * closed on Escape in one corner of the app and not another would be a
- * difference the user has no way to predict from looking. What differs between
- * them is only the items.
+ * A menu panel at the pointer, flipped inside the viewport, dismissed by
+ * Escape or an outside press. Shared by [TagMenu], [NoteMenu] and
+ * [SortControl] so they behave alike; only the items differ.
  */
 export function ContextMenu({
   label,
@@ -51,8 +39,7 @@ export function ContextMenu({
     top: y,
   });
 
-  // Flipped back inside the viewport once its real size is known — opening
-  // near the bottom of a long rail otherwise puts half the menu off-screen.
+  // Flipped inside the viewport once its real size is known.
   useEffect(() => {
     const box = ref.current?.getBoundingClientRect();
     if (!box) return;
@@ -63,10 +50,8 @@ export function ContextMenu({
     });
   }, [x, y, align]);
 
-  // Focus moves into the menu on open, so the keyboard has somewhere to be and
-  // Escape lands here rather than on whatever is behind. An item marked
-  // `data-autofocus` wins — a menu of choices should open on the one already
-  // in force, not on the top of the list.
+  // Focus into the menu on open; `data-autofocus` (the in-force choice) wins
+  // over the first item.
   useEffect(() => {
     const items = itemsOf(ref.current);
     (
@@ -74,10 +59,8 @@ export function ContextMenu({
     )?.focus();
   }, []);
 
-  // Whatever had focus before gets it back, but only if the menu still had it
-  // when it closed: a press somewhere else has already chosen a new home for
-  // focus, and dragging it back to the trigger would undo that choice. A
-  // focused item being unmounted drops focus to <body>, which is the tell.
+  // Restore focus to the opener, but only if focus fell to <body> (i.e. the
+  // menu still had it) — an outside press already chose a new home.
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     return () => {
@@ -100,10 +83,8 @@ export function ContextMenu({
         return;
       }
 
-      // Arrow keys walk the items, because this replaced a native <select> in
-      // one place and a keyboard user shouldn't be able to tell which menu they
-      // are in. Disabled items are skipped rather than stepped over silently —
-      // they can't be chosen, so stopping on them is a dead press.
+      // Arrow keys walk the items (this replaced a native <select>). Disabled
+      // items are excluded by the selector, not stepped over.
       if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
 
       const items = itemsOf(ref.current);
@@ -112,10 +93,7 @@ export function ContextMenu({
 
       const step = event.key === "ArrowDown" ? 1 : -1;
       const here = items.indexOf(document.activeElement as HTMLButtonElement);
-      // Wraps: four items in a corner of the screen, and hunting for the end of
-      // a list that short is worse than looping past it. From outside the list
-      // — focus lost to a press on the panel's padding — down opens at the top
-      // and up at the bottom, the way the ends of a list are reached.
+      // Wraps; from outside the list, down opens at the top and up at the bottom.
       const next =
         here === -1
           ? step === 1
@@ -132,11 +110,8 @@ export function ContextMenu({
     };
   }, [onClose, ignoreRef]);
 
-  // Into <body>, because `fixed` only means "to the viewport" while no ancestor
-  // has claimed it: a scrolled [PaneScroller] header turns its backdrop-filter
-  // on, which makes it the containing block for anything fixed inside it, and
-  // the menu would jump by the height of the header the moment the page moved.
-  // Coordinates are the viewport's here, so the panel has to be too.
+  // Into <body> — a scrolled [PaneScroller] header's backdrop-filter would
+  // otherwise become the containing block for this `fixed` panel.
   return createPortal(
     <div
       ref={ref}
@@ -151,11 +126,8 @@ export function ContextMenu({
   );
 }
 
-/**
- * The rows the keyboard can land on, in the order they are drawn. Disabled ones
- * are left out by the selector rather than filtered after, so an all-disabled
- * menu simply has nowhere to go instead of trapping focus on a dead item.
- */
+/** The keyboard-reachable rows, in draw order — disabled ones excluded by the
+ * selector. */
 function itemsOf(root: HTMLElement | null) {
   return Array.from(
     root?.querySelectorAll<HTMLButtonElement>(
@@ -164,15 +136,7 @@ function itemsOf(root: HTMLElement | null) {
   );
 }
 
-/**
- * One row of any of the menus. Exported so they can't drift apart.
- *
- * Disabled goes to the faintest ink and stops taking the pointer, which also
- * takes away the hover tint — an item that lights up under the pointer and
- * then does nothing is the thing being disabled is meant to prevent. It stays
- * in the list rather than disappearing: "Move up" vanishing off the top row
- * would move every item below it, so the same press would land on a different
- * verb depending on which row the menu was opened from.
- */
+/** One menu row's classes, exported so the menus can't drift. Disabled stays
+ * in the list (so verbs don't shift) but goes faint and inert. */
 export const menuItem =
   "row-tint w-full rounded-[var(--radius-control)] px-3 py-1.5 text-left text-[13px] text-ink-muted hover:text-ink disabled:pointer-events-none disabled:text-ink-faint";

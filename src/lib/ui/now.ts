@@ -1,22 +1,16 @@
 "use client";
 
-// One clock for every relative date on the page.
-//
-// A list of fifty notes is fifty "14 min" labels that all go stale at the same
-// moment, and giving each its own setInterval would mean fifty timers waking
-// the tab up out of step with each other. This is a single minute-ticking
-// store they all subscribe to — and it only runs while something is watching.
+// One minute-ticking clock every relative date on the page subscribes to,
+// instead of a setInterval per label. Runs only while something is watching.
 
 const listeners = new Set<() => void>();
 let snapshot = 0;
 let timer: ReturnType<typeof setInterval> | null = null;
 
 /**
- * Zero until the first tick, which is the signal to render the *server's*
- * idea of the time rather than the reader's. Relative labels are computed from
- * the viewer's clock and timezone, which the server can't know — so the first
- * paint uses the server's and this store swaps in the real one immediately
- * after mount, in one re-render, rather than every label hydrating differently.
+ * Zero until the first tick — the signal to use the server's time, not the
+ * reader's. Keeps the first paint stable across hydration; the real clock
+ * swaps in one re-render after mount.
  */
 export function getNow(): number {
   return snapshot;

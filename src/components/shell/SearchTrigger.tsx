@@ -8,29 +8,10 @@ import { scopeFromPath, scopePrompt } from "@/lib/command/scope";
 import { usePaletteShortcut } from "@/hooks/use-palette-shortcut";
 
 /**
- * The rail's search entry point — the one that made ⌘K findable.
- *
- * A button dressed as an input, which is the only honest way to draw this: it
- * has to look like the thing you type into, because that is what a search
- * affordance looks like, but typing into it would mean two carets and two
- * behaviours for one field. Clicking it opens the palette, and the first
- * keystroke lands there.
- *
- * Which means it has to say what the palette will actually do. It reads the
- * route the same way the palette does, so on a tag's page this says `Search
- * #infra…` and the field it opens says the same thing with the chip beside
- * it. Fixed wording was the one thing here that could be wrong: it offered to
- * jump anywhere from inside a tag the palette then opened already narrowed
- * to, and the surprise landed after the click rather than before it.
- *
- * Off a scoped route it goes back to naming all three verbs. A palette that
- * also *does* things and *goes* places has to say so somewhere, and this is
- * the only door with room for the sentence.
- *
- * The `⌘K` chip is the label doing double duty: a reader who has never met
- * the convention can click, and one who has never clicked can learn the
- * shortcut without being told. It's hidden on touch, where the shortcut
- * doesn't exist and the bottom bar carries this instead.
+ * The rail's search entry point — a button dressed as an input. Clicking opens
+ * the palette; the first keystroke lands there. It reads the route like the
+ * palette does, so on a tag's page it says `Search #infra…` and matches what
+ * the palette then opens. The `⌘K` chip teaches the shortcut; hidden on touch.
  */
 export function SearchTrigger() {
   const scope = scopeFromPath(usePathname());

@@ -18,44 +18,28 @@ export type NoteOverview = {
   slug: string;
   title: string;
   /**
-   * Read out of the note's frontmatter, not out of the `tags` column.
-   *
-   * The column is a derived index that a save rewrites (see notes/actions); it
-   * exists for the GIN index, not as a second opinion. Deriving here means the
-   * list can never show a tag the note itself has no record of — and it is
-   * where a pre-tag-bar note gets read the old way exactly once (see
-   * [resolveNoteTags]).
+   * Read from the note's frontmatter, not the `tags` column — the column is a
+   * derived index for GIN, rewritten on save (see notes/actions). Deriving
+   * here also handles pre-tag-bar notes (see [resolveNoteTags]).
    */
   tags: string[];
   /** One line of prose under the title, hashtags removed. */
   snippet: string;
   /**
-   * The uploads this note's body points at, deduplicated.
-   *
-   * Server-side only — `toLite` drops it, because the one thing that wants it
-   * is the rail's image count and sending every URL of every note to the
-   * browser to arrive at a single number would be a strange way to spend the
-   * payload. It's derived here rather than queried separately because the body
-   * is already open at this point; counting them anywhere else means reading
-   * every note a second time.
+   * The uploads this note's body points at, deduplicated. Server-side only
+   * (`toLite` drops it); derived here because the body is already open.
    */
   imageUrls: string[];
-  /**
-   * How much is actually written in the note, markup discounted — the ranking
-   * behind the "Longest" sort. Measured here rather than in the browser
-   * because the body never crosses to the client on this path; only the number
-   * derived from it does.
-   */
+  /** Readable characters written in the note, markup discounted — the
+   * "Longest" sort's ranking. */
   textLength: number;
   createdAt: Date;
   updatedAt: Date;
 };
 
 export async function listNotesOverview(): Promise<NoteOverview[]> {
-  // contentMd is pulled to be *read*, not just measured: the frontmatter tags
-  // and the snippet both come out of it. This is a single-user knowledge base and the overview
-  // already scans the whole table, so the alternative — a second round trip per
-  // note, or trusting a denormalised column — buys nothing.
+  // contentMd is pulled to be read, not just measured: the frontmatter tags
+  // and the snippet both come out of it.
   const rows = await db
     .select({
       id: notes.id,
@@ -74,8 +58,7 @@ export async function listNotesOverview(): Promise<NoteOverview[]> {
       ...rest,
       tags: resolveNoteTags(data.tags, body),
       snippet: noteSnippet(body),
-      // Only our own uploads: a note also carries plain external image URLs,
-      // and those are referenced rather than held by this collection.
+      // Only our own uploads, not external image URLs.
       imageUrls: [
         ...new Set(referencedUrls(contentMd).filter(isUploadedBlobUrl)),
       ],
@@ -94,11 +77,9 @@ export type NoteOverviewLite = Omit<
 };
 
 /**
- * Field by field rather than a spread: this is the boundary where a server
- * type becomes a client one, and `imageUrls` must not cross it. Written out,
- * a field added to NoteOverview later fails to compile here until someone
- * decides whether the browser should see it — which a spread would answer
- * silently, and always with yes.
+ * Server type -> client type. Field by field, not a spread, so a new
+ * NoteOverview field has to be opted into the client payload explicitly
+ * (`imageUrls` must not cross).
  */
 export function toLite(note: NoteOverview): NoteOverviewLite {
   return {
@@ -114,11 +95,8 @@ export function toLite(note: NoteOverview): NoteOverviewLite {
 }
 
 /**
- * The notes an index route shows.
- *
- * `tag` null means every note; `untagged` narrows to the notes carrying none.
- * A parent tag matches its children (`#infra` includes `#infra/ci`), which is
- * what makes the rail's nested counts survive being clicked on.
+ * The notes an index route shows. `tag` null means all; `untagged` narrows to
+ * notes with none; a parent tag matches its children (`#infra` ⊇ `#infra/ci`).
  */
 export function filterNotes(
   all: NoteOverview[],
@@ -133,28 +111,15 @@ export function filterNotes(
 export type PinnedNote = { id: string; slug: string; title: string };
 
 /**
- * The pinned notes, most recently pinned first.
- *
- * Newest first because the rail's pinned section reads top-down and the note
- * you just pinned is the one you pinned it to reach. It is only the arrival
- * order — [sortByPinOrder] puts anything the user has moved where they left
- * it — but it is the order every un-moved row is shown in.
- *
- * Its own query rather than a filter over [listNotesOverview]: the rail needs
- * two columns of at most five rows, the overview reads and parses every note
- * in the table, and the two are wanted at the same moment — so this runs
- * alongside it instead of waiting for it.
- *
- * The limit repeats the cap the action already enforces. Belt and braces: if a
- * row ever slips past it, the rail stays the size it's drawn for rather than
- * growing a sixth line.
+ * The pinned notes, most recently pinned first — the arrival order
+ * [sortByPinOrder] then reorders. Its own small query rather than a filter
+ * over [listNotesOverview], so it can run alongside it. The limit re-asserts
+ * the cap the pin action already enforces.
  */
 export async function listPinnedNotes(): Promise<PinnedNote[]> {
   return (
     db
-      // The id comes along for the rail's own unpin, which addresses the note by
-      // id the way [setNotePinned] does everywhere else; the slug is what the
-      // row links to.
+      // id for the rail's unpin, slug for the row link.
       .select({ id: notes.id, slug: notes.slug, title: notes.title })
       .from(notes)
       .where(isNotNull(notes.pinnedAt))
@@ -185,13 +150,9 @@ export async function getNoteBySlug(slug: string): Promise<Note | undefined> {
 }
 
 /**
- * Every tag name that exists, for resolving `#name` references.
- *
- * Read from the `tags` column rather than by parsing every note: this runs on
- * each live-preview render, and unlike a note's own tag list it needs no
- * per-note precision — the column is exactly what the last save wrote, and a
- * tag one save behind resolves the same either way. Ancestors are included, so
- * `#infra` is a real reference when only `#infra/ci` is filed anywhere.
+ * Every tag name that exists, for resolving `#name` references. Read from the
+ * `tags` column (fast, runs on every live-preview render); precision to the
+ * last save is enough here. Ancestors are included.
  */
 export async function listKnownTags(): Promise<Set<string>> {
   const rows = await db.select({ tags: notes.tags }).from(notes);
@@ -208,8 +169,7 @@ export type SearchCorpusNote = {
 };
 
 // Full corpus for the client-side search index — the one place bodyMd is
-// shipped to the client at all. Frontmatter is stripped since indexing the
-// raw YAML would just add search-noise (matches on "title:"/"tags:").
+// shipped to the client. Frontmatter is stripped to keep YAML out of the index.
 export async function getSearchCorpus(): Promise<SearchCorpusNote[]> {
   const rows = await db
     .select({

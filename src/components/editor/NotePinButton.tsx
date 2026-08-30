@@ -7,18 +7,9 @@ import { MAX_PINNED_NOTES } from "@/lib/notes/pins";
 import { forgetPin, notePinKey, recordPin } from "@/lib/tags/preferences";
 
 /**
- * Pin, to the left of the trash in the note's header.
- *
- * The two controls are a pair in shape and nothing else: same 28px circle,
- * same 16px glyph, but this one seats itself in neutral ink while it's on and
- * the other only ever reddens under the pointer. Pinning is a state the note is
- * in, so the button has to be able to show it at rest — a control you press
- * to find out what it did would be the wrong shape for something reversible.
- *
- * The pressed state is local rather than read back from the server on every
- * render: the action re-renders the route (which is how the rail's section
- * appears), but that lands a moment later, and a pin that stays unfilled until
- * the round trip completes reads as a press that didn't take.
+ * Pin, left of the trash in the note's header. Seats itself in neutral ink
+ * while on (pinning is a state, shown at rest). Pressed state is local, since
+ * the route re-render that shows the rail section lands a moment later.
  */
 export function NotePinButton({
   noteId,
@@ -30,13 +21,9 @@ export function NotePinButton({
   title: string;
   /** The stored state. Re-synced below whenever the server sends a new one. */
   pinned: boolean;
-  /**
-   * False while the editor around this button is sitting under a URL it swapped
-   * in itself, having just created the note. The action then skips the refresh
-   * that would otherwise put the rail's pinned section up to date — and would
-   * take the half-written note down with it. The local state below is what
-   * keeps the button honest in the meantime.
-   */
+  /** False while the editor sits under a URL it swapped in itself — the action
+   * then skips the refresh (which would tear the editor down); local state
+   * keeps the button honest. */
   canRefreshShell: boolean;
 }) {
   const [pinned, setPinned] = useState(serverPinned);
@@ -45,18 +32,15 @@ export function NotePinButton({
 
   const name = title || "Untitled";
 
-  // The row can also change from outside this button — unpinned from another
-  // tab, or a refresh landing after some other edit — and the prop is the only
-  // news of it. Assigning during render (rather than in an effect) so the
-  // corrected state paints in the same frame as the prop arrives.
+  // Re-sync to the prop (unpinned from another tab, a refresh) during render,
+  // so the correction paints in the same frame.
   const [lastServerPinned, setLastServerPinned] = useState(serverPinned);
   if (serverPinned !== lastServerPinned) {
     setLastServerPinned(serverPinned);
     setPinned(serverPinned);
   }
 
-  // The "five already" notice is a statement about the moment it was pressed,
-  // so it goes away by itself rather than sitting there until it's dismissed.
+  // The "five already" notice auto-dismisses.
   useEffect(() => {
     if (!full) return;
     const timer = setTimeout(() => setFull(false), 4000);
@@ -73,14 +57,11 @@ export function NotePinButton({
         pinned: next,
         canRefreshShell,
       });
-      // The server is the authority on both answers: it holds the cap, and a
-      // refused pin has to snap the button back rather than leave it lit over
-      // a note the rail isn't showing.
+      // The server holds the cap — a refused pin snaps the button back.
       setPinned(result.pinned);
       setFull(result.full);
-      // Where the row goes is the browser's half of a pin (see [recordPin]),
-      // and it follows what actually happened rather than what was pressed: a
-      // pin the cap refused must not claim the top of the section.
+      // The row's position is the browser's half of a pin (see [recordPin]),
+      // following what happened, not what was pressed.
       if (result.slug !== null) {
         const key = notePinKey(result.slug);
         if (result.pinned) recordPin(key);
@@ -93,24 +74,14 @@ export function NotePinButton({
     <div className="relative shrink-0">
       <button
         type="button"
-        // Same reason as the trash's: the header names no note out loud.
+        // The header names no note out loud.
         aria-label={pinned ? `Unpin ${name}` : `Pin ${name}`}
         aria-pressed={pinned}
         title={pinned ? "Unpin from the sidebar" : "Pin to the sidebar"}
         disabled={saving}
         onClick={toggle}
-        // Neutral, not coloured. The header has exactly one colour to spend and
-        // the trash beside it has it: --danger, meaning "this one is the
-        // irreversible one". Any second hue here — the burnt orange this had
-        // first, the blue that replaced it — is read against that red before
-        // it's read on its own terms, so at 28px it landed as a milder version
-        // of its neighbour rather than as a different kind of thing.
-        //
-        // So the pin borrows the rail's neutral pair instead: .row-tint for
-        // "under the pointer" and .row-selected for "on", the same two steps of
-        // translucent ink a selected rail row is drawn with. Translucent rather
-        // than a fixed grey, which is what lets one declaration serve both
-        // themes — dark ink over paper, pale ink over the dark surface.
+        // Neutral, not coloured — the header's one colour (--danger) belongs to
+        // the trash. Borrows the rail's translucent .row-tint / .row-selected.
         className={`row-tint flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:text-ink ${
           pinned ? "row-selected text-ink" : "text-ink-faint"
         }`}

@@ -7,10 +7,8 @@ export type Frontmatter = { title: string; tags: string[] };
 export type ParsedFrontmatter = {
   title: string;
   /**
-   * `null` when the note has no tag record at all — written before tags moved
-   * out of the body. An empty array is a different statement: this note has
-   * been through the tag bar and carries no tags. See [resolveNoteTags], which
-   * is the only place allowed to tell those two apart.
+   * `null` = no tag record (a pre-frontmatter note); `[]` = been through the
+   * tag bar, carries none. Only [resolveNoteTags] tells them apart.
    */
   tags: string[] | null;
 };
@@ -34,28 +32,12 @@ export function stringifyContentMd(data: Frontmatter, body: string): string {
 }
 
 /**
- * The frontmatter an *exported* file carries, which is more than a stored one.
- *
- * **These keys exist only in the archive.** Every save rewrites a note's
- * frontmatter from `{title, tags}` (see [stringifyContentMd]), so a `created:`
- * living in `content_md` would be a copy of a column — correct on the day it
- * was written and stale from the next keystroke onward. The columns stay the
- * record; the export enriches on the way out and the import reads back on the
- * way in, and neither leaves anything behind for a save to contradict.
- *
- * Why they are worth carrying at all: a restore without dates is a collection
- * where everything was created the day it was restored. The index sorts by
- * `updated`, the rail counts by it, and the day-titles of untitled notes are
- * anchored to `created` — a backup that loses all three gives back the text and
- * none of the shape.
- *
- * `slug` is here so URLs survive a restore into an empty collection; `pinned`
- * so the rail comes back the way it was left. Both are omitted when there is
- * nothing to say, which is what keeps the common file down to four lines.
- *
- * Dates are ISO strings rather than YAML timestamps, deliberately. A bare
- * `2026-03-04 09:12:44` in YAML is parsed as local time by some readers and as
- * UTC by others, and a backup is exactly the wrong place to find that out.
+ * The frontmatter an exported file carries — more than a stored one. `created`,
+ * `updated`, `slug` and `pinned` exist only in the archive (a save would make
+ * them stale copies of columns); they're carried so a restore keeps the
+ * collection's shape, not just its text. `slug`/`pinned` are omitted when
+ * empty. Dates are ISO strings, not YAML timestamps, to avoid the local/UTC
+ * ambiguity.
  */
 export type ExportFrontmatter = {
   title: string;
@@ -73,17 +55,8 @@ export function stringifyExportMd(
   return matter.stringify(body, data);
 }
 
-/**
- * How much of a file may be frontmatter before it stops being frontmatter.
- *
- * The parser is YAML, and YAML is a language with anchors — a small document
- * can expand into a very large object, which is a denial of service against
- * whatever holds the result. This is not a defence against that on its own; the
- * shape check in [readArchiveFrontmatter] is, because it keeps six scalars and
- * discards the rest. It is the cheap half: sixteen kilobytes is already an
- * absurd header for a note, and refusing past it means the expensive half is
- * never asked to run on something enormous.
- */
+// The cheap half of the YAML-anchor-bomb defence — refuse an absurd header
+// before parsing it. The shape check in [readArchiveFrontmatter] is the rest.
 const MAX_FRONTMATTER_BYTES = 16 * 1024;
 
 export type ArchiveFrontmatter = {
@@ -105,17 +78,12 @@ const EMPTY_ARCHIVE_FRONTMATTER: ArchiveFrontmatter = {
 };
 
 /**
- * A date from a file, or null.
- *
- * Clamped forward as well as parsed. A note claiming to have been updated in
- * 2099 sits at the top of the index forever and cannot be dislodged by writing
- * anything, which makes a hand-edited — or hostile — archive a way to pin
- * content permanently. The far past is left alone: a note dated 1993 is
- * someone's imported journal, and it sorts to the bottom where it belongs.
+ * A date from a file, or null. Clamped to `now` on the future side — a note
+ * dated 2099 would pin itself to the top of the index forever. The past is
+ * left alone.
  */
 function readDate(value: unknown, now: Date): Date | null {
-  // gray-matter's YAML engine resolves unquoted timestamps to Date objects and
-  // quoted ones to strings, and this has to take either.
+  // gray-matter resolves unquoted timestamps to Date, quoted to string.
   const date =
     value instanceof Date
       ? value
@@ -127,16 +95,9 @@ function readDate(value: unknown, now: Date): Date | null {
 }
 
 /**
- * The six fields an archived note may declare, validated down to scalars.
- *
- * Everything else in the block is discarded rather than repaired — this is
- * reading a file that arrived from outside, and the safe shape of that is a
- * fixed set of fields with fixed types, not an object graph that gets passed
- * along to see what happens.
- *
- * Returns nulls throughout when the file has no frontmatter, when it is too
- * large to be one, or when the YAML doesn't parse. All three mean the same
- * thing to the caller: this file has no record about itself, read it as prose.
+ * The six fields an archived note may declare, validated down to scalars;
+ * everything else is discarded. Returns all nulls when there's no frontmatter,
+ * it's too large, or the YAML doesn't parse — all "read this as prose".
  */
 export function readArchiveFrontmatter(
   text: string,
@@ -153,9 +114,7 @@ export function readArchiveFrontmatter(
 
   let parsed: matter.GrayMatterFile<string>;
   try {
-    // `language` pins the default engine to YAML. A file that names another
-    // one after the fence (`---toml`) reaches an unregistered parser and
-    // throws, which is the same outcome as malformed YAML and handled here.
+    // Pin the engine to YAML — a `---toml` fence throws, same as malformed YAML.
     parsed = matter(text, { language: "yaml" });
   } catch {
     return { data: EMPTY_ARCHIVE_FRONTMATTER, body: text };

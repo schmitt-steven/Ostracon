@@ -13,15 +13,8 @@ type Props = {
 };
 
 /**
- * What's left of the save chrome.
- *
- * The "Saved" confirmation is gone: the metadata line under the title already
- * reads "Edited just now" the moment a save lands, which says the same thing
- * in the place the reader is already looking, and a green pill flying in every
- * few seconds while typing was the loudest thing in the editor.
- *
- * What remains is the case that genuinely needs interrupting — a save that
- * failed — plus a one-off answer for anyone who reaches for ⌘S out of habit.
+ * The save chrome: only a failed-save notice (the metadata line covers
+ * success) and a one-off hint for anyone who reaches for ⌘S.
  */
 export function SaveToast({ status, onSave }: Props) {
   const [showHint, setShowHint] = useState(false);
@@ -37,8 +30,7 @@ export function SaveToast({ status, onSave }: Props) {
     function onKeyDown(event: KeyboardEvent) {
       const save = event.key === "s" && (event.metaKey || event.ctrlKey);
       if (!save || event.altKey) return;
-      // Swallow the browser's "save page" dialog and honour the intent anyway
-      // — pressing it shouldn't be a no-op just because it's unnecessary.
+      // Swallow the browser's "save page" dialog and flush anyway.
       event.preventDefault();
       onSaveRef.current();
       setShowHint(true);
@@ -53,8 +45,7 @@ export function SaveToast({ status, onSave }: Props) {
     };
   }, []);
 
-  // No dismiss on the failure notice, deliberately: an unsaved note shouldn't
-  // be dismissible into looking fine. It goes when a save actually succeeds.
+  // No dismiss on the failure notice — it goes when a save succeeds.
   const failed = status === "error";
   if (!failed && !showHint) return null;
 

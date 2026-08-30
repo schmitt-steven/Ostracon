@@ -30,36 +30,21 @@ type Props = {
 
 /**
  * The shell both views share: a fixed rail and a flexing main pane, 14px
- * apart, with no line between them. What separates them is the gap itself and
- * the fact that both are lifted off --paper, which shows through it.
+ * apart, separated only by the gap (both are lifted off --paper).
  *
- * The rail is a flat --paper panel and stays one. It is the quietest surface
- * in the app — a column of names you read past on the way to the thing you
- * actually want — and every treatment that would make it interesting (a veil,
- * a blur, a grain) makes it compete with the pane it exists to get you to.
- * What it shares with everything else is the *hover*: see THE GLASS FINISH in
- * globals.css, which is where this app's glass lives.
+ * The rail stays a flat --paper panel — it's the quietest surface in the app.
+ * No `backdrop-filter` here: it would make the rail the containing block for
+ * its three fixed descendants (two row menus, the rename dialog), which its
+ * `overflow-hidden` would clip.
  *
- * A blur here would also be a bug rather than a style. A `backdrop-filter`
- * other than `none` makes an element the containing block for every
- * fixed-position descendant, and the rail hosts three — its two row menus and
- * the rename dialog — which its own `overflow-hidden` would then clip away.
- *
- * Below 1000px the rail becomes an overlay drawer and the shell-level controls
- * move to a bottom bar. That breakpoint is where the spacing ratio has to
- * carry the grouping entirely on its own: there is no hover on touch, so every
- * cue that depended on the pointer is simply absent there.
- *
- * On a wide screen the rail can also be folded away to a strip. It narrows
- * rather than disappearing, because the control that brings it back has to
- * stay where the control that sent it away was — a rail that vanished
- * completely would need its reopen button floating over the reading pane, in
- * the one column of the layout that is deliberately kept clear.
+ * Below 1000px the rail is an overlay drawer and the controls move to a bottom
+ * bar; the spacing ratio carries the grouping alone there (no hover on touch).
+ * On a wide screen it can also fold to a strip rather than vanishing, so the
+ * reopen control stays where the close control was.
  */
 export function AppShell({ rail, tagNames, children }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  // Held outside React so the header hints and the bottom bar can open it
-  // without a path down from here — see lib/command/palette-state.
+  // Outside React so scattered triggers can open it — see lib/command/palette-state.
   const paletteOpen = useSyncExternalStore(
     subscribePaletteOpen,
     getPaletteOpen,

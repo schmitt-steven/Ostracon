@@ -2,8 +2,7 @@
 
 import { createStore, get, set } from "idb-keyval";
 
-// Dedicated store, separate from the default idb-keyval store the autosave
-// draft cache uses, so the two mechanisms' keys don't share a namespace.
+// Dedicated store, separate from the autosave draft cache's default one.
 const store = createStore("skb", "search-cache");
 
 const INDEX_KEY = "index-json";

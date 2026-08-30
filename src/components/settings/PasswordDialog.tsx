@@ -18,24 +18,11 @@ import { formatCountdown, useCountdown } from "@/lib/ui/cooldown";
 type Props = { onClose: () => void };
 
 /**
- * Changing the password, which is three fields and one warning.
- *
- * **The current password is asked for even though you are already signed in.**
- * The session is a month-old cookie on a machine that may have been left
- * unlocked; the password is the thing its owner knows. Of everything reachable
- * from an open tab, this is the action that would lock the real owner out, so
- * it is the one worth proving yourself for. The server enforces it — see
- * [changePasswordAction] — and puts a failed attempt through the same throttle
- * a failed sign-in goes through, which is why this dialog can be told to wait.
- *
- * **The confirmation field is not ceremony.** Every character in the other two
- * is a dot, and a password typed once and stored wrong is one you discover at
- * the next sign-in, from the other side of the door. Typing it twice is the
- * only check available when nothing can be read back.
- *
- * The dialog does not close itself on success. The change signs the other
- * devices out, and how many is a fact the reader gets exactly one chance to
- * see; a dialog that vanished on its own would take the answer with it.
+ * Changing the password: three fields and one warning. The current password is
+ * required (the server enforces it — [changePasswordAction] — through the
+ * login throttle, hence the cooldown). The confirm field catches a mistyped
+ * password before the next sign-in. The dialog stays open on success so the
+ * "signed out N devices" count can be read.
  */
 export function PasswordDialog({ onClose }: Props) {
   const [current, setCurrent] = useState("");
@@ -53,9 +40,8 @@ export function PasswordDialog({ onClose }: Props) {
   const shortId = useId();
   const mismatchId = useId();
 
-  // Long enough, typed twice the same, and actually a change of something —
-  // whether it is a change of the *password* is the server's to say, since only
-  // it knows the current one.
+  // Long enough and typed twice the same; whether it's really a change is the
+  // server's to say.
   const tooShort = next.length > 0 && next.length < MIN_PASSWORD_LENGTH;
   const mismatch = confirm.length > 0 && confirm !== next;
   const ready =
@@ -90,9 +76,8 @@ export function PasswordDialog({ onClose }: Props) {
     });
   }
 
-  // Into <body>, as the tag dialogs are: `fixed` is a utility and `.pane > *`
-  // sets `position` on its children unlayered, so a dialog rendered inside a
-  // pane would lay out in flow rather than over the viewport.
+  // Into <body>, like the tag dialogs — `.pane > *` sets `position`, so a
+  // dialog inside a pane would lay out in flow.
   return createPortal(
     <div
       role="dialog"
@@ -128,21 +113,13 @@ export function PasswordDialog({ onClose }: Props) {
         ) : (
           <>
             <p className="text-base text-ink">Change password</p>
-            {/* Said before the press, not discovered after it. Signing the
-                other devices out is the point of changing a password — a
-                change that left every existing cookie working for another
-                month would be a change in name only — but it is also the part
-                nobody expects, and the part that has consequences on a phone
-                in another room. */}
+            {/* Said before the press, since it's the unexpected part. */}
             <p className="mt-1 text-[13px] text-ink-muted">
               Your other devices will be signed out. This one stays signed in.
             </p>
 
-            {/* A real form, so a password manager sees three fields it
-                recognises and offers to update the entry it already has.
-                `current-password` then `new-password` twice is the exact shape
-                they look for; unlabelled boxes get filled with the wrong thing
-                or not at all. */}
+            {/* A real form with autocomplete tokens, so a password manager
+                offers to update its entry. */}
             <form
               onSubmit={(event) => {
                 event.preventDefault();
@@ -165,10 +142,7 @@ export function PasswordDialog({ onClose }: Props) {
                 autoComplete="new-password"
                 disabled={locked}
                 describedBy={tooShort ? shortId : undefined}
-                // Under the field it belongs to rather than pooled at the
-                // bottom with the errors: this one is a rule being explained
-                // while it is being broken, and it stops mattering the moment
-                // the tenth character lands.
+                // Under its own field — a rule being explained as it's broken.
                 note={
                   tooShort ? (
                     <span id={shortId} className="text-[12px] text-ink-faint">
@@ -193,9 +167,7 @@ export function PasswordDialog({ onClose }: Props) {
                 }
               />
 
-              {/* --danger rather than the login form's accent wash: in a dialog
-                  with three filled fields above it, this is the sentence that
-                  says the press didn't take. */}
+              {/* --danger: this says the press didn't take. */}
               {failure && (
                 <p role="alert" className="text-[13px] text-danger">
                   {failure.error}
@@ -203,8 +175,7 @@ export function PasswordDialog({ onClose }: Props) {
                 </p>
               )}
 
-              {/* Cancel first, confirm at the right-hand end — the order every
-                  dialog in this app uses. */}
+              {/* Cancel first, confirm at the right end — every dialog's order. */}
               <div className="mt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
@@ -216,9 +187,7 @@ export function PasswordDialog({ onClose }: Props) {
                 <button
                   type="submit"
                   disabled={!ready}
-                  // Seated only while it can be pressed: a lit button over
-                  // three fields that aren't ready yet is the interface
-                  // promising something it will refuse.
+                  // Seated only while it can be pressed.
                   className={`row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] ${
                     ready ? "row-selected text-ink" : "text-ink-faint"
                   }`}
@@ -235,14 +204,7 @@ export function PasswordDialog({ onClose }: Props) {
   );
 }
 
-/**
- * One labelled password box.
- *
- * The label is a real `<label>` above the field rather than a placeholder
- * inside it: three identical boxes of dots are unreadable without standing
- * names, and a placeholder disappears exactly when the reader looks up to check
- * which one they are in.
- */
+/** One labelled password box — a real `<label>` above it, not a placeholder. */
 function Field({
   label,
   value,
@@ -266,8 +228,7 @@ function Field({
   return (
     <label className="flex flex-col gap-1.5">
       <span className="text-[13px] text-ink-muted">{label}</span>
-      {/* The well is the field's edge; the input inside draws nothing of its
-          own — the same construction the tag rename field uses. */}
+      {/* `.well` is the field's edge — same construction as the tag rename field. */}
       <input
         type="password"
         value={value}

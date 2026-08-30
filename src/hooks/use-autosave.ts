@@ -13,9 +13,7 @@ const DEBOUNCE_MS = 800;
 
 export type SaveStatus = "idle" | "saving" | "saved" | "conflict" | "error";
 
-// `tags` rides along with the text rather than being read back out of it: the
-// tag bar is the note's filing, and a body hashtag is only a reference to a
-// tag that already exists (see notes/actions).
+// `tags` rides along with the text — the tag bar is the filing (see notes/actions).
 export type NoteDraft = {
   title: string;
   bodyMd: string;
@@ -34,22 +32,10 @@ function draftKey(noteId: string | null) {
   return `skb:draft:${noteId ?? "new"}`;
 }
 
-/**
- * The newest version this tab has written, per note.
- *
- * Module state on purpose: it has to outlive any single mount of the editor.
- * `initialVersion` is whatever a server render said, and a remount hands the
- * fresh instance that number — which, for a note this tab has been saving
- * since, is behind. The next save then arrives with an expectedVersion the row
- * has already moved past, the update matches nothing, and the editor accuses
- * the user of having the note open in another tab when they have it open in
- * one. A remount is no longer supposed to happen mid-edit at all, but "my own
- * saves are invisible to me" is not a thing worth leaving one reload away.
- *
- * Only ever read as a floor, never as the truth: a version this tab did not
- * write can only have come from somewhere that did, and that is exactly the
- * conflict the check exists to catch.
- */
+// The newest version this tab has written, per note. Module state so it
+// outlives an editor remount, which would otherwise hand a stale
+// `initialVersion` to the next save and trigger a false conflict. Read only as
+// a floor — a version this tab didn't write is a real conflict.
 const lastWritten = new Map<string, number>();
 
 export function useAutosave({
@@ -64,28 +50,21 @@ export function useAutosave({
   const creatingRef = useRef<Promise<CreateNoteResult> | null>(null);
   const draftRef = useRef<NoteDraft>({ title: "", bodyMd: "", tags: [] });
 
-  // Read through a ref so `flush` — and `scheduleSave` with it — can be
-  // stable across renders. The caller's callback is an inline closure over
-  // its own state, so depending on it directly would rebuild both on every
-  // keystroke, and would make the unmount effect below tear down and re-run
-  // its cleanup on every render (saving, constantly, instead of once on the
-  // way out).
+  // Through a ref so `flush` stays stable — the caller's callback is an inline
+  // closure, and depending on it directly would re-run the unmount effect's
+  // cleanup every render.
   const onCreatedRef = useRef(onCreated);
   useEffect(() => {
     onCreatedRef.current = onCreated;
   });
 
-  // Set while the editor is gone. The save still has to finish — it's the
-  // user's text — but `onCreated` swaps the URL for the note it just made,
-  // and doing that to a page the user has already navigated away from would
-  // leave them looking at the index under a note's address.
+  // Editor gone — the save still finishes, but `onCreated`'s URL swap is
+  // skipped so the user isn't left at the index under a note's address.
   const unmountedRef = useRef(false);
 
-  // Set once this mount has created a note and handed its URL to `onCreated`,
-  // which swaps it in place rather than navigating. From then on the address
-  // bar and the rendered tree belong to different routes, and the server must
-  // not refresh the client router until a real navigation reconciles them —
-  // see `canRefreshShell` in notes/actions.
+  // This mount created a note and swapped its URL in place. From here the
+  // address and the rendered tree are different routes, so the server must not
+  // refresh the router — see `canRefreshShell` in notes/actions.
   const swappedUrlRef = useRef(false);
 
   const [status, setStatus] = useState<SaveStatus>(
@@ -104,11 +83,8 @@ export function useAutosave({
       return;
     }
 
-    // Loop instead of recursing into flush() again from the finally block
-    // below: a save that raced in while this one was in flight sets
-    // pendingFlushRef, and this retries in place rather than calling
-    // itself (self-referential calls block the React Compiler from
-    // verifying this callback's memoization).
+    // Loop, not self-recursion, to pick up a save that raced in (the React
+    // Compiler can't verify a self-referential callback).
     for (;;) {
       if (!dirtyRef.current) return;
       dirtyRef.current = false;
@@ -154,9 +130,7 @@ export function useAutosave({
           }
         }
       } catch {
-        // Keep the local draft and let the next scheduled save (or an
-        // explicit retry) pick it back up — nothing typed is lost, it
-        // just hasn't reached the server yet.
+        // Keep the draft dirty so the next save retries it — nothing is lost.
         dirtyRef.current = true;
         setStatus("error");
       } finally {
@@ -194,10 +168,8 @@ export function useAutosave({
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [flush]);
 
-  // Leaving mid-debounce used to lose the last edit: the timer was cleared
-  // and nothing took its place, so up to DEBOUNCE_MS of typing went with the
-  // page. Send it instead — the action outlives the component, and a save
-  // already in flight is picked up by pendingFlushRef.
+  // Flush on unmount so leaving mid-debounce doesn't lose the last edit — the
+  // action outlives the component.
   useEffect(() => {
     unmountedRef.current = false;
     return () => {

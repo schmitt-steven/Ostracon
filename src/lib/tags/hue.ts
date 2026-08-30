@@ -1,19 +1,7 @@
 /**
- * Every tag has a hue, and the user never picks one.
- *
- * The hue is *derived* from the name, which is what makes it free: a tag comes
- * into existence by being typed into a note body, and stopping to ask for a
- * colour at that moment would turn writing into configuring.
- *
- * Sixteen fixed slots rather than `hash % 360`. With a continuous hue two tags
- * can land 4° apart, which doesn't read as "two colours" — it reads as a
- * rendering bug. Snapping to 22.5° steps means any two tags either share a slot
- * outright or sit far enough apart to tell apart at a glance. Collisions are
- * the acceptable failure here; near-misses are not.
- *
- * Sixteen and not more: the step is what buys legibility, and every slot added
- * spends some of it. 22.5° is about the floor for two locked-lightness swatches
- * to still read as different colours side by side.
+ * Every tag has a hue, derived from its name so the user never has to pick one.
+ * Sixteen fixed 22.5° slots rather than `hash % 360`: two tags either share a
+ * slot or sit far enough apart to tell apart — a near-miss reads as a bug.
  */
 
 /** The sixteen slots, evenly spaced around the wheel. */
@@ -23,16 +11,14 @@ export const HUE_SLOTS: readonly number[] = Array.from(
 );
 
 /**
- * FNV-1a, 32-bit. Any stable hash would do — what matters is that it's pure
- * and identical on both sides of the wire, so the server-rendered rail and the
- * client-rendered palette agree without shipping a colour table.
+ * FNV-1a, 32-bit. Pure and identical on both sides of the wire, so the
+ * server-rendered rail and client-rendered palette agree without a colour table.
  */
 function hash(value: string): number {
   let h = 0x811c9dc5;
   for (let i = 0; i < value.length; i++) {
     h ^= value.charCodeAt(i);
-    // >>> 0 after the multiply keeps this in unsigned 32-bit range; the
-    // shifts are the standard×16777619 decomposition.
+    // `* 16777619` decomposed into shifts; `>>> 0` keeps it unsigned 32-bit.
     h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
   }
   return h >>> 0;
@@ -51,12 +37,8 @@ export function tagLeaf(name: string): string {
 }
 
 /**
- * The hue for a tag, in degrees.
- *
- * Children hash their *root*, so `#infra/ci` comes out the same hue as
- * `#infra`. That shared hue is what makes nesting legible without indent
- * guides — the child is the parent's colour, just quieter (see the `/ 0.6`
- * alpha and the smaller dot in globals.css).
+ * The hue for a tag, in degrees. Children hash their *root*, so `#infra/ci`
+ * shares a hue with `#infra` (drawn quieter — see globals.css).
  */
 export function tagHue(name: string): number {
   return HUE_SLOTS[hash(tagRoot(name)) % HUE_SLOTS.length]!;

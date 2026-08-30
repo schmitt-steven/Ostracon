@@ -18,10 +18,8 @@ export default async function NotePage({
 }: PageProps<"/notes/[slug]">) {
   await requireAuth();
   const { slug } = await params;
-  // Which index this was opened from — see [resolveContextTag]. Passed on raw
-  // and resolved in the editor, against the tag list as it stands there: the
-  // tags are editable on this very screen, and a breadcrumb validated once on
-  // the server would go on naming a tag the user has just taken off the note.
+  // Which index this was opened from — passed raw, resolved in the editor
+  // (see [resolveContextTag]), since the tags are editable on this screen.
   const { from } = await searchParams;
   const note = await getNoteBySlug(slug);
   if (!note) notFound();
@@ -29,13 +27,10 @@ export default async function NotePage({
   const { data, body } = parseContentMd(note.contentMd);
   const tags = resolveNoteTags(data.tags, body);
   const [previewHtml, backlinks, overview] = await Promise.all([
-    // Rendered here so the preview pane has content on first paint; the editor
-    // re-renders it through the same pipeline as you type.
+    // For the preview pane's first paint.
     renderNoteHtml(body, tags),
     getBacklinks(note.id),
-    // Every tag in the collection, not just this note's: the bar suggests from
-    // it and the body's `#` references resolve against it. The whole point is
-    // to reuse a tag you already have rather than coin a near-duplicate.
+    // Every tag in the collection — the bar suggests from it.
     listNotesOverview(),
   ]);
 
@@ -44,8 +39,7 @@ export default async function NotePage({
       noteId={note.id}
       version={note.version}
       initialTitle={note.title}
-      // The note's own day, not today's — emptying the title on an old note
-      // restores the day it was started, which is what the save will write.
+      // The note's own day — emptying the title restores the day it was started.
       defaultTitle={defaultNoteTitle(note.createdAt)}
       initialBodyMd={body}
       initialTags={tags}

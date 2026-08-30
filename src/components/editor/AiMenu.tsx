@@ -14,10 +14,7 @@ const MENU_WIDTH = 232;
 type Props = {
   x: number;
   y: number;
-  /**
-   * False when opened from the cursor with nothing selected: the three
-   * transform actions have no input, so only the question box is offered.
-   */
+  /** False when opened at the bare cursor — only the question box is offered. */
   hasSelection: boolean;
   /** null while the provider list is still being fetched. */
   providers: ProviderInfo[] | null;
@@ -38,8 +35,7 @@ export function AiMenu({
   onPick,
   onClose,
 }: Props) {
-  // With no selection there's nothing to list, so the box is the whole menu
-  // and the shortcut lands the user straight in it, typing.
+  // No selection ⇒ the question box is the whole menu.
   const [asking, setAsking] = useState(!hasSelection);
   const [question, setQuestion] = useState("");
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -59,8 +55,7 @@ export function AiMenu({
     };
   }, [onClose]);
 
-  // Flip the menu back inside the viewport when the click lands near an edge —
-  // fixed positioning would otherwise let it hang off-screen.
+  // Keep the fixed-positioned menu inside the viewport.
   const left = Math.min(x, window.innerWidth - MENU_WIDTH - 12);
   const top = Math.min(y, window.innerHeight - 220);
 
@@ -77,8 +72,7 @@ export function AiMenu({
       {providers === null ? (
         <p className="px-4 py-3 text-sm text-ink-faint">Loading providers…</p>
       ) : usable.length === 0 ? (
-        // Every provider is unusable — show why for the first one, which is
-        // the actionable case (an unset key) rather than a silent empty menu.
+        // Every provider unusable — show the first one's reason.
         <p className="px-4 py-3 text-sm text-ink-muted">
           No AI provider available. {providers[0]?.unavailableReason ?? ""}
         </p>

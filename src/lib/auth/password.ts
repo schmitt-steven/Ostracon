@@ -11,42 +11,25 @@ import { db } from "@/db/client";
 import { appPassword } from "@/db/schema";
 
 /**
- * The one password this app has, wherever it currently lives.
+ * The one password this app has. It lives in one of two places, and this file
+ * arbitrates which is in force:
  *
- * There are two places it can be, and which one is in force is the whole of
- * what this file arbitrates:
+ *   - APP_PASSWORD in the environment, compared verbatim — how every
+ *     deployment starts, and unchangeable from inside the app.
+ *   - A scrypt hash in [appPassword], written the first time the owner changes
+ *     their password. Once present it's the only thing consulted.
  *
- *   - **The environment.** APP_PASSWORD, compared verbatim, which is how every
- *     deployment starts. It is a variable set by hand on the platform, so it
- *     cannot be changed from inside the app — which is exactly why it can't be
- *     the only answer.
- *   - **The database.** A scrypt hash in [appPassword], written the first time
- *     the owner changes their password from settings. From then on it is the
- *     only thing consulted, and APP_PASSWORD is dead weight the deployment can
- *     drop.
- *
- * A hash rather than the plaintext, even though the environment holds the
- * plaintext today, because the two are not equally exposed: DATABASE_URL is
- * held by the build, by drizzle-kit, by the Neon console and by every backup,
- * and a shared password is exactly the kind of string that also unlocks
- * something else.
- *
- * Everything is read through [loadCredential] rather than looked up per call,
- * so a login costs one query no matter how many questions are asked of it.
+ * A hash and not the plaintext because DATABASE_URL is far more widely exposed
+ * than APP_PASSWORD. All reads go through [loadCredential] so a login is one
+ * query.
  */
 
 // The singleton row's key. Nothing reads it but this file.
 const ROW_ID = "current";
 
 /**
- * scrypt at the parameters recommended for interactive logins: ~16MB of memory
- * and a few hundred milliseconds per derivation, which is unnoticeable once per
- * sign-in and ruinous a few billion times over.
- *
- * Written into every hash, so raising them later leaves existing rows
- * verifiable at the values they were made with — a password that could only be
- * checked by the parameters currently in fashion would lock its owner out on
- * the deploy that changed them.
+ * scrypt parameters for interactive logins (~16MB, a few hundred ms). Written
+ * into every hash, so raising them later still leaves old rows verifiable.
  */
 const SCRYPT = { N: 16384, r: 8, p: 1, keyLength: 64 } as const;
 const SALT_BYTES = 16;
@@ -67,9 +50,7 @@ function derive(
     N: params.N,
     r: params.r,
     p: params.p,
-    // Node's default ceiling is 32MB, which N=16384/r=8 sits just under and any
-    // raise would breach — stated in terms of the parameters so the two can't
-    // drift apart into a runtime error on a deploy.
+    // Derived from the parameters so a raise can't hit Node's 32MB default.
     maxmem: Math.max(32 * 1024 * 1024, 256 * params.N * params.r),
   });
 }
@@ -88,10 +69,8 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 /**
- * Whether `password` produces `stored`, at whatever parameters `stored` was
- * made with. A hash this doesn't understand fails closed rather than throwing:
- * the caller is a login, and an unreadable row is a wrong password as far as
- * the door is concerned.
+ * Whether `password` produces `stored`, at the parameters `stored` records. A
+ * hash this can't parse fails closed rather than throwing.
  */
 async function matchesHash(password: string, stored: string): Promise<boolean> {
   const parts = stored.split("$");
@@ -130,10 +109,9 @@ async function matchesHash(password: string, stored: string): Promise<boolean> {
 }
 
 /**
- * The environment's password, compared through equal-length digests so the
- * comparison doesn't leak the prefix a guess got right. Unset APP_PASSWORD is
- * not "everything matches" — it is a deployment nobody can sign in to, which is
- * the safe way for that mistake to show up.
+ * The environment's password, compared through equal-length SHA-256 digests so
+ * timing doesn't leak a matched prefix. (Unset APP_PASSWORD is handled in
+ * [loadCredential] as "missing", not here.)
  */
 function matchesEnvPassword(submitted: string, expected: string): boolean {
   const a = createHash("sha256").update(submitted).digest();
@@ -142,12 +120,8 @@ function matchesEnvPassword(submitted: string, expected: string): boolean {
 }
 
 /**
- * Which password is in force, read once and passed to everything that needs an
- * answer about it.
- *
- * `env` carries the plaintext because at that point the plaintext is what the
- * password *is*; `stored` deliberately cannot. Server-only, and never returned
- * to a caller across the wire.
+ * Which password is in force, read once per login. Server-only — never crosses
+ * the wire. `env` carries the plaintext; `stored` carries only the hash.
  */
 export type Credential =
   | { kind: "stored"; hash: string; changedAt: Date }
@@ -181,11 +155,7 @@ export async function verifyPassword(
   }
 }
 
-/**
- * Replaces the password with `password`, hashed. Idempotent in shape rather
- * than in effect: every call rewrites the row, and `changedAt` is what the
- * settings page reports.
- */
+/** Replaces the password with `password`, hashed, stamping `changedAt`. */
 export async function setPassword(password: string): Promise<void> {
   const hash = await hashPassword(password);
   const changedAt = new Date();
@@ -199,12 +169,8 @@ export async function setPassword(password: string): Promise<void> {
 }
 
 /**
- * When the password was last set from inside the app, or null if it never has
- * been — the deployment is still running on APP_PASSWORD.
- *
- * Null does not distinguish "still the original" from "APP_PASSWORD is unset
- * and nobody can sign in at all", because the page that shows it is behind a
- * sign-in: reaching it proves the second case isn't the one you're in.
+ * When the password was last set from inside the app, or null if it's still
+ * the deployment's APP_PASSWORD.
  */
 export async function passwordChangedAt(): Promise<Date | null> {
   const credential = await loadCredential();

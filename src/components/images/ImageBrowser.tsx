@@ -7,17 +7,10 @@ import { ImageGallery } from "./ImageGallery";
 import { ImageSortControl } from "./ImageSortControl";
 
 /**
- * Every image in the collection, in whatever order the page was asked for.
- *
- * The filter bar this used to carry is gone with the rest of the list chrome:
- * an image has no text of its own, so filtering it always meant filtering the
- * note it came from — and finding a note is what ⌘K is for now. What's left
- * here is the thing you actually come to this view for, which is to look, plus
- * the one control that changes what you're looking at first.
- *
- * Server-rendered, sort included: only [ImageSortControl] is client code, and
- * it changes the order by changing the URL. Nothing on this page needs the
- * image list in the browser.
+ * Every image in the collection, in the requested order. No filter — an image
+ * has no text of its own, so filtering meant filtering its note, which is
+ * ⌘K's job. Server-rendered; only [ImageSortControl] is client code, changing
+ * the order via the URL.
  */
 export function ImageBrowser({
   images,
@@ -27,21 +20,14 @@ export function ImageBrowser({
   sort: ImageSortMode;
 }) {
   return (
-    // No wash vars: the gallery has no tag of its own, so `.pane` falls back
-    // to the registered initial values, which are exactly the neutral palette
-    // lib/tags/wash gives an untagged note.
+    // No wash vars — the gallery has no tag, so `.pane` is neutral.
     <div className="pane h-full">
       <PaneScroller
         head={
           <header className="pane-head">
-            {/* --head-h: the height [PaneScroller] reserves above its content.
-                The sort sets this row's height on its own, as it does in the
-                index — the minimum is what keeps the empty gallery's header,
-                which has nothing else in it, the same height as the others. */}
+            {/* min-h-[--head-h] so the empty gallery's header matches the others. */}
             <div className="mx-auto flex min-h-[var(--head-h)] max-w-[680px] items-center gap-4 px-6 py-4">
-              {/* -ml-1.5 cancels the first pill's own px-1.5, so "All notes"
-                sits over the Images heading below rather than 6px right of
-                it. */}
+              {/* -ml-1.5 cancels the pill's padding so "All notes" lines up. */}
               <nav
                 aria-label="Breadcrumb"
                 className="-ml-1.5 min-w-0 flex-1 text-[13px]"
@@ -57,8 +43,7 @@ export function ImageBrowser({
                 </span>
                 <span className="px-1.5 text-ink">Images</span>
               </nav>
-              {/* Nothing to order when there's nothing there, and a control
-                  offering to reorder an empty grid is a dead end. */}
+              {/* Nothing to order when the grid is empty. */}
               {images.length > 0 && <ImageSortControl value={sort} />}
             </div>
           </header>
@@ -86,8 +71,7 @@ export function ImageBrowser({
           )}
         </div>
 
-        {/* Announced, not drawn: the sort has no visible label, so reordering
-            the whole grid is otherwise a silent change. */}
+        {/* Announced — the sort has no visible label. */}
         <p className="sr-only" role="status">
           Sorted by {IMAGE_SORT_LABEL[sort]}
         </p>

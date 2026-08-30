@@ -1,19 +1,12 @@
 "use client";
 
-// The two things about a tag the user *can* decide: whether it's pinned to the
-// top of the rail, and — for anyone who cares enough to go looking — what hue
-// it gets instead of its derived one.
+// The two things about a tag the user can decide: whether it's pinned to the
+// top of the rail, and what hue it gets instead of its derived one.
 //
-// localStorage rather than the sessionStorage the list state uses: a pinned
-// tag is a standing arrangement of the workspace, not a thing you're doing
-// right now. And client-side rather than a column, because neither answer is
-// part of what a note *is* — the notes stay the whole content model.
-//
-// Exposed as an external store (see `useSyncExternalStore`) for the same
-// reason the AI provider choice is: the server has no way to know any of this,
-// so the
-// server snapshot is empty and the stored value swaps in right after
-// hydration, which keeps the two renders in agreement.
+// localStorage (a standing arrangement, not a session thing) and client-side
+// (neither answer is part of what a note is). An external store, like the AI
+// provider choice — empty server snapshot, stored value swaps in after
+// hydration.
 
 import { HUE_SLOTS, tagRoot } from "./hue";
 
@@ -23,24 +16,11 @@ export type TagPreferences = {
   /** Tag name → hue in degrees. Absent means "use the derived one". */
   hues: Record<string, number>;
   /**
-   * The pinned rows' order, as [notePinKey]/[tagPinKey] strings.
-   *
-   * One list for both of the rail's pinned sections, not because they are one
-   * list on screen — they aren't — but because the keys already say which kind
-   * each row is, so each section can read this and take the positions of the
-   * rows it contains. A row is only ever moved within its own section.
-   *
-   * Newest pin first: every pin writes its key to the front (see [recordPin]),
-   * so the top of the section is what you last decided to keep, and moving a
-   * row afterwards overwrites that with wherever you put it.
-   *
-   * Not a complete list of what's pinned and not required to be: keys for
-   * things no longer pinned are ignored, and anything pinned that isn't named
-   * here sorts to the end. So an empty order is the same as never having
-   * reordered anything, which is what every existing install has stored.
-   *
-   * The *notes* half of this order is the one thing about a pin that lives in
-   * the browser rather than the database — see [setPinnedOrder].
+   * The pinned rows' order, as [notePinKey]/[tagPinKey] strings — one list for
+   * both rail sections, each reading the keys of its own kind. Newest pin
+   * first (see [recordPin]); advisory, so unknown keys are ignored and
+   * unnamed-but-pinned rows sort to the end. The notes half lives only in the
+   * browser — see [setPinnedOrder].
    */
   order: string[];
 };
@@ -55,26 +35,13 @@ export function tagPinKey(tag: string): string {
   return `t:${tag}`;
 }
 
-/**
- * Which of the two the key names. The rail draws the notes and the tags as
- * separate sections and moves a row only within its own, so it has to ask —
- * and asks here rather than matching the prefix itself, which would be a
- * second place that knows how these strings are spelled.
- */
+/** Whether the key names a note (vs. a tag) — asked here, not by prefix-match. */
 export function isNotePinKey(key: string): boolean {
   return key.startsWith("n:");
 }
 
-/**
- * Five, the same as [MAX_PINNED_NOTES] — the two are separate sections in the
- * rail, stacked, so together they decide how far down the panel everything
- * under them sits. Five and five is ten rows at the very worst, which is still
- * a list you find a row in by shape rather than by reading.
- *
- * A pinned list long enough to need scanning is just the tag list again, one
- * section higher up, and the section below it already sorts by recent use —
- * which is the better answer for everything that isn't a deliberate favourite.
- */
+/** Five, matching [MAX_PINNED_NOTES] — ten stacked rows at worst, still
+ * scannable by shape. */
 export const MAX_PINNED_TAGS = 5;
 
 const STORAGE_KEY = "skb:tag-prefs";
@@ -85,10 +52,7 @@ const EMPTY: TagPreferences = Object.freeze({
   order: Object.freeze([]) as unknown as string[],
 });
 
-/**
- * The slot closest to a stored hue, going the short way round the wheel so 350°
- * lands on 0 rather than on the last slot below it.
- */
+/** The slot closest to a stored hue, the short way round the wheel. */
 function nearestSlot(hue: number): number {
   const wrapped = ((hue % 360) + 360) % 360;
   let best = HUE_SLOTS[0]!;
@@ -104,10 +68,8 @@ function nearestSlot(hue: number): number {
   return best;
 }
 
-// Validated field by field: this is parsed from storage, which an older
-// version of this code (or a user with the console open) could have written
-// anything into, and a non-numeric hue would reach the CSS as `--h:undefined`
-// and silently drop the colour rather than throwing anywhere visible.
+// Validated field by field — parsed from storage, which an older build or a
+// console user could have written anything into.
 function read(): TagPreferences {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -119,14 +81,8 @@ function read(): TagPreferences {
     const cleanHues: Record<string, number> = {};
     if (hues && typeof hues === "object") {
       for (const [name, hue] of Object.entries(hues)) {
-        // Only the sixteen slots are accepted back. An override is a choice
-        // between the palette's own colours, not an escape from it.
-        //
-        // Snapped rather than dropped, because the palette has been a different
-        // number of slots before: an override written against the old twelve
-        // (30° steps) is a real choice the user made, and rejecting it would
-        // silently hand the tag back its derived hue. Nearest slot keeps the
-        // colour they picked as nearly as the current palette can say it.
+        // Snapped to a current slot, not dropped — an override written against
+        // an older palette (12 slots, 30° steps) is still a real choice.
         if (typeof hue === "number" && Number.isFinite(hue)) {
           cleanHues[name] = nearestSlot(hue);
         }
@@ -172,8 +128,7 @@ function commit(next: TagPreferences): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
-    // Storage full or blocked — the in-memory snapshot still holds for this
-    // session; only a reload forgets it.
+    // Storage full or blocked — the in-memory snapshot holds until reload.
   }
   for (const onChange of listeners) onChange();
 }
@@ -185,22 +140,17 @@ export function togglePinned(tag: string): void {
     commit({
       ...current,
       pinned: current.pinned.filter((t) => t !== tag),
-      // The key goes with it, so the order doesn't accumulate names of things
-      // that aren't there.
+      // The key goes with it, so the order doesn't accumulate dead names.
       order: current.order.filter((k) => k !== key),
     });
     return;
   }
 
-  // Past the cap the press does nothing at all, rather than pushing the oldest
-  // pin out to make room: the callers check [MAX_PINNED_TAGS] first and say
-  // "unpin one to make room", and a store that quietly evicted instead would
-  // make that message a lie.
+  // Past the cap the press does nothing — callers check first and tell the
+  // user to unpin one.
   if (current.pinned.length >= MAX_PINNED_TAGS) return;
 
-  // One commit, so the section doesn't render between the tag arriving and its
-  // place being known. Any key still here is stale — unpinning removes it — so
-  // this is [recordPin]'s prepend with nothing to preserve.
+  // One commit, so the section doesn't render mid-update.
   commit({
     ...current,
     pinned: [tag, ...current.pinned],
@@ -209,17 +159,9 @@ export function togglePinned(tag: string): void {
 }
 
 /**
- * Puts a key at the top of the pinned order, which is where a thing just
- * pinned belongs — see [TagPreferences.order].
- *
- * Exported for the note pin, whose membership is a column in the database:
- * only the browser holds the order over both halves of the section, so the
- * button that writes the column tells this store where the new row goes.
- *
- * A key that is already named keeps its position rather than being moved back
- * up. Unpinning drops the key, so a key present here means the row is already
- * in the section — and pressing pin on something already pinned should no more
- * move it than the server's own no-op re-pin does.
+ * Puts a newly pinned key at the top of the order (see [TagPreferences.order]).
+ * Exported for the note pin, whose membership lives in the database but whose
+ * order lives here. A key already present keeps its position.
  */
 export function recordPin(key: string): void {
   const current = getTagPreferences();
@@ -235,31 +177,17 @@ export function forgetPin(key: string): void {
 }
 
 /**
- * Replaces the pinned order outright — both sections' keys, in one call.
- *
- * The caller passes the whole sequence rather than "move this one up", because
- * the rail is the only thing that knows what the sections actually contain: a
- * pinned note's *membership* is a column in the database and a pinned tag's is
- * this file, and neither half can see the other. Writing the full list also
- * drops any key for something no longer pinned, so the stored order stays the
- * size of the sections rather than the size of their history. A caller moving
- * a row in one section still passes the other section's keys along, or their
- * positions would be dropped with them.
- *
- * Which makes the note order device-local, unlike the pin itself: the notes'
- * membership is on the server but their arrangement is only ever decided here.
- * Pinning a note on a second machine still shows it there — at the end of the
- * notes section rather than wherever it was moved to here.
+ * Replaces the pinned order outright — both sections' keys in one call, since
+ * the rail is the only thing that can see both. Keys for unpinned things are
+ * dropped. Makes note order device-local, unlike the pin itself.
  */
 export function setPinnedOrder(order: string[]): void {
   commit({ ...getTagPreferences(), order });
 }
 
 /**
- * Keyed on the *root* segment, because that's where the hue is read from (see
- * use-tag-hues): children inherit their parent's colour, so an entry under
- * `infra/ci` would be written, stored, and then never looked at again —
- * recolouring a nested tag would silently do nothing.
+ * Keyed on the root segment — where the hue is read from (see use-tag-hues).
+ * An entry under a nested name would never be looked at.
  */
 export function setTagHue(tag: string, hue: number | null): void {
   const current = getTagPreferences();

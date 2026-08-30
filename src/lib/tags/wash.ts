@@ -1,18 +1,8 @@
 /**
- * The four lights of the editor pane's colour wash.
- *
- * The pane used to be a single flat tint of the context tag's hue. This is the
- * same idea with more air in it: four soft radial lights pushed out to the
- * corners, with a damper in the middle so the calmest region of the pane is
- * exactly where the text column sits. The gradients and the strengths live in
- * globals.css (`.pane`); what this file decides is only *which colours*
- * the four lights are.
- *
- * They come from the note's own tags, so a note carries the colour of what it
- * is about rather than the colour of the list it was opened from. A note with
- * four or more tags is lit entirely by them; one with fewer gets the rest of
- * the wheel filled in; one with none gets a near-neutral palette that reads as
- * paper rather than as a colour choice nobody made.
+ * Which colours the four radial lights of the editor pane's wash are. The
+ * gradients and strengths live in globals.css (`.pane`); this file only picks
+ * hues. They come from the note's own tags — four-plus tags light it entirely,
+ * fewer get the wheel filled in, none gets a near-neutral palette.
  */
 
 /** How many lights the wash has. Four is what the gradient stack draws. */
@@ -21,31 +11,19 @@ const WASH_LIGHTS = 4;
 export type WashLight = {
   /** Hue in degrees. */
   hue: number;
-  /**
-   * Chroma, as a multiple of the tag palette's `--tag-c` — so the theme still
-   * owns how saturated colour gets, and this only says how much of that a
-   * given light is allowed.
-   */
+  /** Chroma, as a multiple of the tag palette's `--tag-c`. */
   chroma: number;
 };
 
-/**
- * A light whose hue the note actually chose, by wearing the tag, gets the
- * palette's full chroma. One this file invented to fill a gap is stated at
- * roughly half: a derived colour is a supporting tone, and letting it shout as
- * loudly as a real tag would make the wash claim more than the note said.
- */
+// A light from a real tag gets full chroma; one this file invented to fill a
+// gap is stated at roughly half.
 const TAG_CHROMA = 1;
 const DERIVED_CHROMA = 0.55;
 
 /**
- * The untagged pane: silver, a cool grey, and two very quiet violet-blues.
- *
- * Not literally neutral — a wash with zero chroma over a grey surface is just
- * a vignette, and reads as a rendering artefact rather than a surface. These
- * sit low enough (a tenth to a third of the tag palette's chroma) that you'd
- * only name a colour if asked to, which is the right amount of presence for a
- * note that hasn't been filed yet.
+ * The untagged pane: silver, a cool grey, two quiet violet-blues. Not zero
+ * chroma — that reads as a vignette rather than a surface — just low enough to
+ * barely register.
  */
 const NEUTRAL: readonly WashLight[] = Object.freeze([
   { hue: 275, chroma: 0.3 }, // violet, the one you might notice
@@ -60,15 +38,9 @@ function wrap(degrees: number): number {
 }
 
 /**
- * Fills a short list of hues out to [WASH_LIGHTS] by repeatedly halving the
- * widest unused arc of the wheel.
- *
- * One tag therefore becomes an even tetrad (h, h+180, h+90, h+270), two tags
- * get the two arcs between them bisected, three get their widest gap filled.
- * The rule is "sit as far from every colour already here as possible", which
- * is the only thing that reliably keeps four soft lights from muddying into
- * one — and being deterministic, a note's wash is the same on every machine
- * and on every render.
+ * Fills a short list of hues out to [WASH_LIGHTS] by repeatedly bisecting the
+ * widest unused arc of the wheel — so added lights sit as far from the
+ * existing ones as possible, deterministically.
  */
 function fillWheel(hues: number[]): number[] {
   const out = [...hues];
@@ -92,12 +64,9 @@ function fillWheel(hues: number[]): number[] {
 }
 
 /**
- * The wash for a note, brightest light first — and the first light is the
- * top-left corner of the pane, so `tags[0]` is the colour the pane leads with.
- *
- * Take them in the order they were filed. Duplicate hues are dropped rather
- * than spent twice: two tags can hash to the same one of the sixteen slots, and
- * a light doubled is a light wasted.
+ * The wash for a note, in filed order — `tags[0]` is the top-left corner, the
+ * colour the pane leads with. Duplicate hues are dropped rather than spent
+ * twice.
  */
 export function washLights(
   tags: readonly string[],
@@ -119,12 +88,9 @@ export function washLights(
 }
 
 /**
- * The lights as the custom properties `.pane` reads.
- *
- * Numbers rather than finished colours: lightness, chroma and every alpha stay
- * in CSS, where the theme can have an opinion about them. Both properties are
- * registered (see globals.css) so a change to either interpolates — navigating
- * between two notes cross-fades the wash instead of cutting to it.
+ * The lights as the custom properties `.pane` reads — raw numbers, not
+ * finished colours, so lightness/chroma/alpha stay in CSS. Both properties are
+ * registered (globals.css) so navigating between notes cross-fades the wash.
  */
 export function washVars(lights: readonly WashLight[]): Record<string, string> {
   const vars: Record<string, string> = {};

@@ -32,33 +32,14 @@ type Status =
   | { kind: "failed" };
 
 /**
- * Getting notes in from outside: `.md` and `.txt` files become notes, one
- * note per file, titled after the file and holding whatever was in it.
+ * Getting notes in from outside — `.md`/`.txt` files become notes, one per
+ * file. Two ways in (window drop, ⌘K "Import files"), both landing in
+ * [runImport]. Mounted in the shell because the drop target is the whole
+ * window.
  *
- * Two ways in, and they are the same way twice. Dropping files anywhere on the
- * window is the one you reach for with a folder already open; ⌘K's "Import
- * files" is the one you reach for when the files are somewhere you'd have to
- * go and find. Both land in [runImport] below, so there is one set of rules
- * about what may be imported (lib/notes/import-files) and one sentence about
- * what happened.
- *
- * Mounted in the shell, beside the palette, for the same reason it is:
- * the drop target is the whole window rather than any one view, and no route
- * should have to remember to offer this.
- *
- * **Images are somebody else's.** This is the only handler listening for file
- * drops, so it is also where an image dropped onto an open note arrives — and
- * an image is not a note, it belongs *in* one. Those are handed to whichever
- * editor is on screen (lib/images/insert-target) at the exact spot they were
- * dropped, and a mixed drop splits: the markdown becomes notes, the pictures
- * go into the one you're looking at. With no note open there is nowhere for an
- * image to go, and it says so.
- *
- * The drop is claimed either way, even when nothing in it can be used. A file
- * dropped onto a browser that isn't listening is a *navigation* — the page is
- * replaced by the file, and whatever was being typed goes with it. Catching it
- * and refusing it in a sentence is the difference between a refusal and an
- * accident.
+ * Images in a drop go to the open editor (lib/images/insert-target) at the
+ * drop point; a mixed drop splits. The drop is always claimed — an unclaimed
+ * file drop is a navigation that replaces the page.
  */
 export function NoteImport() {
   const router = useRouter();
@@ -69,22 +50,15 @@ export function NoteImport() {
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [, startTransition] = useTransition();
 
-  // Whether an import is already in flight. A ref rather than the
-  // transition's `pending`, because the window's drop handler is attached
-  // once and reads this at drop time — state would have it reading whatever
-  // was true when the listener was created.
+  // Whether an import is in flight — a ref, since the once-attached drop
+  // handler reads it at drop time.
   const busyRef = useRef(false);
 
   const runImport = useCallback(
-    /**
-     * `refused` carries files this component never tried to read — images
-     * dropped with no note open, today. They travel with the import so one
-     * drop produces one sentence rather than two notices arriving separately.
-     */
+    // `refused` carries files never read (images dropped with no note open),
+    // travelling with the import so one drop is one sentence.
     (files: File[], refused: SkippedFile[] = []) => {
-      // A second drop while the first is still going would overwrite the
-      // status of an import that hasn't finished. The toast on screen already
-      // says one is in flight.
+      // Ignore a second drop while the first is going.
       if (busyRef.current) return;
       busyRef.current = true;
 
@@ -100,17 +74,13 @@ export function NoteImport() {
 
           setStatus({ kind: "working", count: accepted.length });
           const created: ImportedNote[] = [];
-          // Sequentially, and in batches: Server Actions are dispatched one at
-          // a time per client anyway, and the payload has a size limit the
-          // batching respects (see [batchImportFiles]).
+          // Sequentially, in batches (see [batchImportFiles]).
           for (const batch of batchImportFiles(accepted)) {
             created.push(...(await importNotes(batch)));
           }
           setStatus({ kind: "done", notes: created, skipped });
 
-          // One file opens the note it made — that is the whole point of
-          // dropping a single file. Several go to the index, which is the only
-          // screen that can show you that they all landed.
+          // One file opens its note; several go to the index.
           const first = created[0];
           const destination =
             created.length === 1 && first
@@ -118,15 +88,13 @@ export function NoteImport() {
               : ALL_NOTES_HREF;
           if (created.length === 0) return;
           if (destination === pathname) {
-            // Already looking at where the notes went: a push to the current
-            // URL is not guaranteed to re-render, and this view is now wrong.
+            // Already here — a push wouldn't re-render.
             router.refresh();
           } else {
             router.push(destination);
           }
         } catch {
-          // The action throws on a bad payload, and redirects to /login on an
-          // expired session — which arrives here as a rejected promise too.
+          // Bad payload, or an expired session.
           setStatus({ kind: "failed" });
         } finally {
           busyRef.current = false;
@@ -136,28 +104,20 @@ export function NoteImport() {
     [pathname, router],
   );
 
-  // ⌘K's row. The click has to be synchronous inside the gesture that asked
-  // for it, or the browser refuses to open the dialog.
+  // ⌘K's row — synchronous inside the gesture, or the dialog won't open.
   useEffect(() => subscribeNoteImport(() => inputRef.current?.click()), []);
 
   useEffect(() => {
-    // Nested elements fire dragleave as the pointer crosses each boundary, so
-    // "the drag has left the window" is a count reaching zero rather than any
-    // single event.
+    // "left the window" = the dragenter/dragleave depth count reaching zero.
     let depth = 0;
 
-    // Only file drags. A drag of text inside the editor is CodeMirror's, and
-    // preventing its default would break dropping a selection somewhere else
-    // in the same note.
+    // File drags only — a text drag is CodeMirror's.
     function carriesFiles(event: DragEvent): boolean {
       return event.dataTransfer?.types.includes("Files") ?? false;
     }
 
-    // What this drag would do if it were let go now. Mid-drag a browser will
-    // name each item's type but not let anything read it, which is exactly
-    // enough to tell a picture from a file: the overlay can then say where the
-    // drop goes instead of guessing, and the guess is only ever wrong in the
-    // harmless direction (an SVG says "images" here and is refused on drop).
+    // What the drop would do — only the item types are readable mid-drag,
+    // enough to tell an image from a file (wrong only harmlessly, e.g. SVG).
     function kindOf(event: DragEvent): DragKind {
       const items = event.dataTransfer ? [...event.dataTransfer.items] : [];
       const images = items.some(
@@ -176,7 +136,7 @@ export function NoteImport() {
 
     function onDragOver(event: DragEvent) {
       if (!carriesFiles(event)) return;
-      // Without this the browser refuses the drop and opens the file instead.
+      // Or the browser opens the file instead of dropping it.
       event.preventDefault();
       if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
     }
@@ -196,20 +156,17 @@ export function NoteImport() {
       const files = [...(event.dataTransfer?.files ?? [])];
       if (files.length === 0) return;
 
-      // Split by what each file *is*, not by what the drop looked like: a drag
-      // holding a screenshot and a `notes.md` does both things at once.
+      // Split by what each file is — a mixed drop does both.
       const images = files.filter((file) => looksLikeImageType(file.type));
       const rest = files.filter((file) => !looksLikeImageType(file.type));
       const target = getImageTarget();
 
       if (images.length > 0 && target) {
-        // Where the pointer let go, so the image lands in the paragraph it was
-        // aimed at rather than wherever the caret was left.
+        // At the drop point.
         target(images, { x: event.clientX, y: event.clientY });
       }
 
-      // With no note open an image has nowhere to go, and "only .md and .txt"
-      // would be answering a question nobody asked.
+      // No note open ⇒ nowhere for an image to go.
       const homeless: SkippedFile[] = target
         ? []
         : images.map((file) => ({ name: file.name, reason: "no-note" }));
@@ -229,9 +186,7 @@ export function NoteImport() {
     };
   }, [runImport]);
 
-  // The result clears itself; a failure doesn't, for the same reason the save
-  // toast's doesn't — an import that didn't happen shouldn't tidy itself away
-  // into looking like one that did.
+  // The result auto-clears; a failure doesn't.
   useEffect(() => {
     if (status.kind !== "done") return;
     const timer = setTimeout(() => setStatus({ kind: "idle" }), DONE_VISIBLE_MS);
@@ -240,8 +195,7 @@ export function NoteImport() {
 
   return (
     <>
-      {/* Hidden rather than styled away: it is never tabbed to, never read out
-          and only ever opened by [requestNoteImport]. */}
+      {/* Hidden — opened only by [requestNoteImport]. */}
       <input
         ref={inputRef}
         type="file"
@@ -250,7 +204,7 @@ export function NoteImport() {
         className="hidden"
         onChange={(event) => {
           const files = [...(event.target.files ?? [])];
-          // Cleared so picking the same file twice in a row still fires.
+          // Cleared so picking the same file twice still fires.
           event.target.value = "";
           if (files.length > 0) runImport(files);
         }}
@@ -267,29 +221,12 @@ export function NoteImport() {
 }
 
 /**
- * What a drag in flight is about to do.
- *
- * Two states, and they are shaped differently on purpose.
- *
- * Files that would *become notes* replace what you're looking at, so the whole
- * window dims behind a card in the middle: the page underneath stops being the
- * subject the moment the drop is about making new ones.
- *
- * Images go *into the note on screen*, and that note is the thing being aimed
- * at — so nothing dims and nothing sits in the middle of the text. The hint
- * moves to the bottom edge, out of the way of the paragraph the pointer is
- * heading for.
- *
- * pointer-events-none on both: an element appearing under the pointer mid-drag
- * fires dragleave on whatever it was over, and the depth count would come
- * apart.
+ * What a drop would do. Notes: a centred card over a dimmed window. Images: a
+ * hint at the bottom edge, nothing dimmed (the note is the target). Both
+ * pointer-events-none so the drag depth count doesn't come apart.
  */
 function DropOverlay({ kind }: { kind: DragKind }) {
-  // Dashed, and not glass. Every other floating surface in the app is a
-  // finished thing you read or act on; this one is an outline around a space
-  // waiting to be filled, which is what the dashes say and what the plus
-  // repeats. No lift for the same reason — it isn't hovering over the page,
-  // it's marking a place on it.
+  // Dashed, not glass — an outline around a space to be filled, not a surface.
   const card =
     "bg-paper flex flex-col items-center rounded-[var(--radius-zone)] border-2 border-dashed border-[color-mix(in_srgb,var(--ink)_25%,transparent)] text-center";
 
@@ -330,11 +267,7 @@ function DropOverlay({ kind }: { kind: DragKind }) {
   );
 }
 
-/**
- * What happened, bottom-right, in the same frame the save toast uses — there
- * is one place in this app where the interface talks back, and an import is
- * not a special enough event to invent a second.
- */
+/** What happened, bottom-right, in the save toast's frame. */
 function ImportToast({
   status,
   onDismiss,
@@ -343,7 +276,7 @@ function ImportToast({
   onDismiss: () => void;
 }) {
   if (status.kind === "idle") return null;
-  // A finished import with nothing to report is not a thing to put on screen.
+  // Nothing to report.
   if (
     status.kind === "done" &&
     status.notes.length === 0 &&
@@ -390,24 +323,14 @@ function fileCount(count: number): string {
   return `${count} file${count === 1 ? "" : "s"}`;
 }
 
-/**
- * The headline: what landed, named when it's one thing.
- *
- * Null when nothing did, so a drop that produced no notes is reported by the
- * line that explains why rather than by "Nothing imported" standing above it
- * saying the same thing in fewer words.
- */
+/** The headline — what landed, named when it's one; null when nothing did. */
 function importedLine(notes: ImportedNote[]): string | null {
   if (notes.length === 0) return null;
   if (notes.length === 1) return `Imported “${notes[0]!.title}”.`;
   return `Imported ${notes.length} notes.`;
 }
 
-/**
- * What didn't, grouped by why. Counts rather than a list of names: a folder
- * dropped whole is thirty refusals with one cause, and thirty filenames in a
- * toast is a wall nobody reads.
- */
+/** What didn't, grouped by cause and counted, not listed by name. */
 function skipLine(skipped: SkippedFile[]): string | null {
   if (skipped.length === 0) return null;
 

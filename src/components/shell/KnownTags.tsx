@@ -3,19 +3,9 @@
 import { createContext, useContext, type ReactNode } from "react";
 
 /**
- * Every tag name in use, shared with whatever needs to know what already
- * exists.
- *
- * The layout already flattens the tag tree for the palette, so the list costs
- * nothing extra — what it doesn't have is a way down to the pane, since the
- * pages render as `children` rather than as descendants the shell can pass
- * props to. A context is the one path that reaches both sides of the shell:
- * the rail, which has the tree already, and the index view, which has only the
- * notes of the tag it is showing.
- *
- * Empty outside the shell (the login page renders without one), which is the
- * honest answer there rather than a crash: nothing that consumes this can ask
- * about tags on a page that has none.
+ * Every tag name in use, via context — the one path from the shell (which has
+ * the flattened tree) down to pages rendered as `children`. Empty outside the
+ * shell (the login page).
  */
 const KnownTagsContext = createContext<string[]>([]);
 

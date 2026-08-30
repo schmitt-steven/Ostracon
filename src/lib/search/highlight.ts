@@ -1,10 +1,7 @@
 /**
- * Turning "this note matched" into "here is the word that matched".
- *
- * Everything here returns *spans* — an array of `{ text, hit }` — rather than
- * a string with markup in it. The palette renders them as sibling elements in
- * JSX, so a note titled `<img onerror=…>` is text on the way in and text on
- * the way out. There is no HTML in this pipeline to inject into.
+ * Turning "this note matched" into "here is the word that matched". Returns
+ * spans (`{ text, hit }[]`), not marked-up strings — the palette renders them
+ * as JSX siblings, so there's no HTML to inject into.
  */
 
 export type Span = {
@@ -19,17 +16,9 @@ function escape(term: string): string {
 }
 
 /**
- * One case-insensitive pattern over every matched term, longest first.
- *
- * Order matters: MiniSearch's prefix search reports both `deploy` and
- * `deployments` as matched terms for the query `deploy`, and alternation takes
- * the first branch that matches rather than the longest, so the short one
- * would win and leave `ments` unhighlighted beside it.
- *
- * `\p{L}`-bounded on the left only. Anchoring the right would undo prefix
- * search — the point of matching `deploy` is that it lights up inside
- * `deployments` — while the left edge stops `ploy` from marking the middle of
- * a word nobody searched for.
+ * One case-insensitive pattern over every matched term, longest first
+ * (alternation takes the first branch, not the longest). Left-bounded only, so
+ * `deploy` still lights up inside `deployments`.
  */
 function pattern(terms: string[]): RegExp | null {
   const usable = [...new Set(terms.filter(Boolean))].sort(
@@ -70,43 +59,27 @@ export function countMatches(text: string, terms: string[]): number {
   return re ? [...text.matchAll(re)].length : 0;
 }
 
-/**
- * A window of `text` centred on the first match, highlighted.
- *
- * The row has one line to explain itself with, and the matched word is the
- * only part of the note that earned the row its place — so the window follows
- * the match rather than starting at the top of the note. `…` marks each end
- * that was cut, which is why the ellipses in the list are usually leading.
- */
+/** A window of `text` centred on the first match, highlighted. */
 export function excerpt(text: string, terms: string[], limit = 110): Span[] {
   return around(text, terms, limit) ?? head(text, limit);
 }
 
 /**
- * The window, or `null` when no term is in this text.
- *
- * Split out from [excerpt] so [snippet] can tell "no match here" from "no
- * match anywhere" — the first is worth trying a second source for, the second
- * is worth admitting to.
+ * The window, or `null` when no term is in this text — split from [excerpt] so
+ * [snippet] can tell "no match here" from "no match anywhere".
  */
 function around(text: string, terms: string[], limit: number): Span[] | null {
   const re = pattern(terms);
-  // `exec`, not `match`. [pattern] is global — it has to be, for [highlight]'s
-  // `matchAll` — and `String.match` against a global regex returns the list of
-  // matched *strings* with no `index` on it. Reading `.index` off that is
-  // always `undefined`, which silently turned every excerpt into the note's
-  // opening line: the exact "why is this row here, nothing is highlighted"
-  // bug this window exists to prevent. `exec` on a freshly built regex starts
-  // at 0 and reports the offset.
+  // `exec`, not `match` — [pattern] is global, and `String.match` on a global
+  // regex drops `.index`.
   const first = re ? re.exec(text) : null;
   if (!first) return null;
 
-  // A third of the window ahead of the match, the rest after it: the words
-  // *following* a hit are what tell you which sense of it this note meant.
+  // A third of the window before the match, the rest after — the words after a
+  // hit are what disambiguate its sense.
   const lead = Math.floor(limit / 3);
   let from = Math.max(0, first.index - lead);
-  // Never cut mid-word at the front; the space search is bounded so a long
-  // unbroken run can't push the window past the match itself.
+  // Don't cut mid-word at the front; the space search is bounded.
   if (from > 0) {
     const space = text.indexOf(" ", from);
     if (space !== -1 && space < first.index) from = space + 1;
@@ -127,32 +100,18 @@ function head(text: string, limit: number): Span[] {
 }
 
 /**
- * Where the spans came from, so a caller can say so.
- *
- * - `text` — the note's prose. The ordinary case, and the only one that needs
- *   no explanation.
- * - `raw` — the markdown behind it. The term is real but [plainText] strips
- *   whatever holds it: a link's URL, a fenced block, an image's alt text.
- * - `none` — nothing to show. A prefix-and-fuzzy index can match a term the
- *   note never spells, and a row that answers that by printing its opening
- *   line is the one that reads as a broken search.
+ * Where a snippet's spans came from: `text` (the prose), `raw` (the markdown,
+ * when [plainText] stripped whatever held the term), or `none` (the index
+ * matched a term the note never spells).
  */
 export type SnippetSource = "text" | "raw" | "none";
 
 export type Snippet = { spans: Span[]; source: SnippetSource };
 
 /**
- * The one line a result row gets, aimed at whatever actually matched.
- *
- * Two sources because the index and the display disagree by design: the search
- * runs over the raw markdown, so `vercel` inside `](https://vercel.com)` is a
- * true hit, while the row renders prose with the markup taken off — and there
- * the word is gone. Falling through to the raw body keeps the highlight on
- * screen; failing that, `none` lets the row explain itself in words instead of
- * showing an opening line with nothing marked in it.
- *
- * With no terms at all (the query-less list) there is nothing to aim at and
- * nothing to excuse, so the opening line is the answer.
+ * The one line a result row gets, aimed at whatever matched. Search runs over
+ * raw markdown but the row renders stripped prose, so a hit inside a URL falls
+ * through to `raw`, then to `none`. No terms (query-less list) → the opening line.
  */
 export function snippet(
   text: string,

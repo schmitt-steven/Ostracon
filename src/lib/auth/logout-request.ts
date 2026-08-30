@@ -1,13 +1,8 @@
 "use client";
 
-// "Ask to log out", held outside React — the same arrangement as the palette's
-// own open state (lib/command/palette-state) and the import picker
-// (lib/notes/import-request), and for the same reason: the row that asks is in
-// ⌘K, mounted in the shell above the router, and the dialog that answers is
-// [LogOutPrompt] beside it. Neither has a path to the other.
-//
-// An event rather than a value, so there is nothing to read and nothing to
-// reset: subscribers are called, and a prompt already on screen stays on it.
+// "Ask to log out", held outside React (like lib/command/palette-state) so the
+// ⌘K row and [LogOutPrompt] can talk without a path between them. An event,
+// not a value — subscribers are called, there's nothing to read or reset.
 
 const listeners = new Set<() => void>();
 

@@ -16,32 +16,12 @@ type Props<M extends string> = {
 };
 
 /**
- * A pane header's sort. Every view that has one puts it at the right end of the
- * header row, and the default is always the first mode listed — which is also
- * why there's no separate "Recent" section anywhere: the default view of
- * everything, sorted this way, already *is* that section.
- *
- * A bare trigger with no chrome — no fill, no outline. It sits at the right end
- * of a header that has no border under it, and a drawn control there would be
- * the loudest thing on screen for something read once a week.
- *
- * The chevron is the one mark it does get, and it is not decoration: without
- * it, "Recently edited" sitting alone in the corner reads as a status line
- * describing the list rather than as a control that changes it. Everything else
- * here is revealed on reach; this has to be legible before anyone reaches for
- * it, because nothing else on the screen says the sort can be changed at all.
- *
- * What drops out of it is [ContextMenu] — the same panel the rail rows open on
- * right-click. It used to be a native `<select>`, which meant the one menu the
- * app opens by itself was the one menu drawn by the OS: system font, system
- * corners, an opaque white slab over glass. The list is a handful of fixed
- * choices, so nothing was gained for the mismatch.
- *
- * The modes are handed in rather than fixed here because the two lists sort by
- * different things — notes by when they were edited and how long they are,
- * images by when they were added and how big they are. What both views want is
- * the same object in the same corner behaving the same way, which is all this
- * file is.
+ * A pane header's sort, at the right end of the header row; the default is the
+ * first mode listed. A bare trigger — no fill, no outline — with a chevron,
+ * which is the one cue that it's a control and not a status line. Opens a
+ * [ContextMenu] (not a native `<select>`, whose OS styling clashed over
+ * glass). Modes are passed in because notes and images sort by different
+ * things.
  */
 export function SortControl<M extends string>({
   value,

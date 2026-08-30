@@ -23,33 +23,12 @@ type Props<V extends string> = {
 };
 
 /**
- * A segmented track: one seated object with a marker that slides between its
- * segments, rather than a row of loose buttons.
- *
- * Separate hit targets sitting in a line ask the eye to work out that they
- * belong together; a track says it outright, and the marker moving from one
- * segment to the next shows the switch as one state changing instead of two
- * independent buttons lighting up. That is worth having wherever a handful of
- * fixed choices are all worth showing at once — the note's write/preview/split,
- * and the theme.
- *
- * It is made of parts the rest of the app is already made of. The track is a
- * `.well` — the same hole-in-a-panel the search field and the filter field are
- * cut as — and the marker is `.row-selected`, the neutral "you are here" the
- * rail paints under All notes. A segmented control drawn in tones of its own
- * would have been a fourth idea of what "recessed" and "selected" look like;
- * there are supposed to be one of each.
- *
- * The well is filled in translucent ink rather than --sunk, unlike those two
- * fields: they sit on the rail, which is a flat surface, and these sit over a
- * pane's coloured wash or in a sunk panel, where a flat grey box reads as a
- * grey box dropped on top instead of a step down into what's behind it. Both
- * lips are taken down the way the search trigger takes them down — see
- * `.well-shallow`: the defaults are set for a field you type into, and at this
- * height they read as two lines ruled across the control rather than as depth.
- *
- * Nothing here is coloured: colour in this design means "this is a tag", and
- * spending it on a switch would dilute the one thing hue is for.
+ * A segmented track — one seated object with a marker sliding between segments,
+ * not a row of loose buttons. Built from parts the app already has: the track
+ * is a `.well`, the marker is `.row-selected`. The well is filled in
+ * translucent ink (not --sunk) and uses `.well-shallow` lips, because it sits
+ * over a pane's wash rather than the flat rail. Nothing here is coloured —
+ * hue means "tag".
  */
 export function Segmented<V extends string>({
   value,

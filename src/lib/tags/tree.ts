@@ -6,11 +6,8 @@ export type TagNode = {
   name: string;
   /** Last segment — what the row prints, since the parent is the row above. */
   leaf: string;
-  /**
-   * Notes carrying this tag *or any tag beneath it*. `#infra` counting only
-   * the notes tagged exactly `#infra` would show a number that shrinks the
-   * moment you click it, because the route it opens matches the children too.
-   */
+  /** Notes carrying this tag or any tag beneath it — matching the route it
+   * opens. */
   count: number;
   /** Most recent `updatedAt` among those notes — what the rail sorts on. */
   lastUsed: string;
@@ -21,25 +18,16 @@ type Counted = { count: number; lastUsed: string };
 
 export type TaggedNote = { tags: string[]; updatedAt: string };
 
-/**
- * The rail's tag tree.
- *
- * Sorted by recent use at every level, never alphabetically. Alphabetical
- * order only helps someone who already knows the tag's name — and someone who
- * knows the name types it into the filter instead of hunting the list. What a
- * rail full of tags is actually for is finding the thing you were just in.
- */
+/** The rail's tag tree, sorted by recent use at every level (not alphabetical). */
 export function buildTagTree(notes: TaggedNote[]): TagNode[] {
-  // Every ancestor is counted, not just the tags as written: a note tagged
-  // only `#infra/ci` still has to make `#infra` exist as a row to nest under.
+  // Every ancestor is counted — `#infra/ci` alone still creates an `#infra` row.
   const stats = new Map<string, Counted>();
   for (const note of notes) {
     const reached = new Set<string>();
     for (const tag of note.tags) {
       for (const ancestor of tagAncestry(tag)) reached.add(ancestor);
     }
-    // Per note, so a note tagged `#infra/ci` and `#infra/deploys` counts once
-    // against `#infra` rather than twice.
+    // Per note — `#infra/ci` + `#infra/deploys` counts once against `#infra`.
     for (const name of reached) {
       const current = stats.get(name);
       if (!current) {
@@ -72,8 +60,7 @@ export function buildTagTree(notes: TaggedNote[]): TagNode[] {
     else roots.push(node);
   }
 
-  // Most recently used first; ties broken by count, then name, so the order is
-  // total and a re-render can't shuffle two equal rows past each other.
+  // Most recent first; ties broken by count then name for a total order.
   const byRecency = (a: TagNode, b: TagNode) =>
     b.lastUsed.localeCompare(a.lastUsed) ||
     b.count - a.count ||

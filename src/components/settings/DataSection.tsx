@@ -4,24 +4,10 @@ import { ImportSetting } from "./ImportSetting";
 import { SettingRow } from "./SettingRow";
 
 /**
- * Data — the collection as files, out and back in.
- *
- * Two rows, and they are one round trip. Export writes a zip of Markdown and
- * images; Import reads one back. The order is the order you would do them in,
- * and it is also the order of risk: the first row cannot change anything and
- * the second one can only add.
- *
- * **What is in the archive is notes and images, and the section says so.** Not
- * the password, not the sessions, not any AI key —
- * a backup is a file people mail to themselves, and a backup that is also a
- * credential is a mistake you only get to make once. That is a design decision
- * rather than an omission, so it is written on the page rather than only in the
- * code.
- *
- * A server component handed to [SettingsView] as a slot, like its neighbours,
- * though for a milder reason than theirs: nothing here is secret, but counting
- * what the archive would hold means reading every note, and [archiveContents]
- * is `server-only` because the thing it reads is the whole collection.
+ * Data — the collection as files, out and back in. Export writes a zip of
+ * Markdown and images; Import reads one back. The archive holds notes and
+ * images only — no password, sessions or keys — which the section says on the
+ * page. A server component slot; [archiveContents] reads the whole collection.
  */
 export function DataSection() {
   return (
@@ -33,18 +19,9 @@ export function DataSection() {
 }
 
 /**
- * Export's row.
- *
- * The control is an anchor, not a button, and that is the feature. A link to
- * `/api/data/export` hands the download to the browser — its own progress row,
- * its own Downloads folder, its own resume — for a file this app never has to
- * hold in memory. A button posting an action would have to buffer the archive
- * in a tab and hand it back through a blob URL, which is the same download
- * done worse and with a ceiling.
- *
- * Styled as the seated control the Password row uses, because it sits in the
- * same column and does the same kind of job. `download` is there for the
- * filename; the response sets one too, which is what actually decides it.
+ * Export's row. The control is an anchor to `/api/data/export`, not a button —
+ * the browser owns the download, so this app never holds the archive in
+ * memory. Styled like the Password row's seated control.
  */
 function ExportSetting() {
   return (
@@ -68,14 +45,7 @@ function ExportSetting() {
   );
 }
 
-/**
- * What the download would contain, counted rather than estimated.
- *
- * Two sentences and they answer different questions. The first is how big the
- * thing you are about to ask for is. The second is what it deliberately
- * leaves out, which is the sentence that matters when the file ends up in a
- * mail thread.
- */
+/** What the download would contain, counted — and what it leaves out. */
 async function ExportNote() {
   const { notes, images } = await archiveContents();
 
