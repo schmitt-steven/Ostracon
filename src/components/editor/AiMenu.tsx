@@ -7,6 +7,7 @@ import {
   type AiAction,
   type ProviderInfo,
 } from "@/lib/ai/types";
+import { menuItem } from "@/components/shell/ContextMenu";
 
 const MENU_WIDTH = 232;
 
@@ -83,7 +84,7 @@ export function AiMenu({
         </p>
       ) : asking ? (
         <form
-          className="p-2"
+          className="p-1.5"
           onSubmit={(e) => {
             e.preventDefault();
             if (question.trim()) onPick("ask", question);
@@ -96,11 +97,11 @@ export function AiMenu({
             placeholder={
               hasSelection ? "Ask about the selection…" : "Ask about this note…"
             }
-            className="well w-full rounded-[var(--radius-control)] bg-sunk px-3 py-2 text-sm text-ink outline-none transition-colors focus:bg-action-wash"
+            className="well w-full rounded-[var(--radius-control)] bg-sunk px-3 py-2 text-sm text-ink outline-none focus-visible:outline-none!"
           />
         </form>
       ) : (
-        <div className="py-1">
+        <div className="p-1.5">
           {AI_ACTIONS.map((action) => (
             <button
               key={action}
@@ -110,7 +111,7 @@ export function AiMenu({
                 if (action === "ask") setAsking(true);
                 else onPick(action);
               }}
-              className="block w-full px-4 py-2 text-left text-sm text-ink transition-colors hover:bg-action-wash hover:text-action"
+              className={menuItem}
             >
               {ACTION_LABELS[action]}
             </button>

@@ -18,6 +18,7 @@ import {
   TAG_SORT_MODES,
   type TagSortMode,
 } from "./tag-sort";
+import { DotsIcon } from "@/icons";
 
 type Props = {
   tree: TagNode[];
@@ -60,9 +61,9 @@ type Props = {
  * closer together than --space-row and a family's children sit closer still.
  *
  * There is no filter field. It would be the third box on screen that looks
- * like a search and isn't one (see [TagFilterField] for the last time that was
- * tried), and ⌘K already takes a name and offers the tag as somewhere to go —
- * this view is for the case where you don't have a name to type. The heading's
+ * like a search and isn't one, and ⌘K already takes a name and offers the tag
+ * as somewhere to go — this view is for the case where you don't have a name
+ * to type. The heading's
  * [HeaderSearchButton] is the door back out of that case, and it is a door to
  * the palette rather than a field of this view's own.
  */
@@ -133,7 +134,10 @@ export function TagDirectory({
                   collection, neither inside the other, and the rail lists them
                   side by side. What's left is the name of the place, which is
                   the name the rail's row and the heading below both use. */}
-              <p className="min-w-0 flex-1 truncate px-1.5 text-[13px] text-ink">
+              {/* No left padding, unlike the breadcrumbs this stands in for:
+                  there is no pill here to hang outside the column, so the word
+                  starts where the heading below starts. */}
+              <p className="min-w-0 flex-1 truncate pr-1.5 text-[13px] text-ink">
                 All tags
               </p>
               {/* Nothing to order in an empty collection. */}
@@ -193,9 +197,7 @@ export function TagDirectory({
 
           {tagCount === 0 ? (
             <p className="pt-[var(--space-block)] text-base text-ink-muted">
-              No tags yet. Tags come from the notes themselves — type{" "}
-              <span className="font-mono text-[13px]">#something</span> in a
-              note and it will show up here.
+              No tags yet — add one to a note with its “+ tag” button.
             </p>
           ) : (
             <ul className="pt-[var(--space-block)]">
@@ -370,16 +372,7 @@ function TagRow({
           menuOpen ? "text-ink" : "text-ink-faint"
         }`}
       >
-        <svg
-          aria-hidden
-          viewBox="0 0 16 16"
-          className="size-3.5"
-          fill="currentColor"
-        >
-          <circle cx="8" cy="3.4" r="1.15" />
-          <circle cx="8" cy="8" r="1.15" />
-          <circle cx="8" cy="12.6" r="1.15" />
-        </svg>
+        <DotsIcon aria-hidden className="size-3.5" />
       </button>
     </div>
   );

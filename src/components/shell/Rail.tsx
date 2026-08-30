@@ -14,7 +14,6 @@ import {
   tagFromSegments,
   tagHref,
   TAGS_HREF,
-  UNTAGGED_HREF,
 } from "@/lib/tags/routes";
 import {
   isNotePinKey,
@@ -23,6 +22,16 @@ import {
   setPinnedOrder,
   tagPinKey,
 } from "@/lib/tags/preferences";
+import {
+  GearIcon,
+  ImagesIcon,
+  NotesIcon,
+  PanelLeftFilledIcon,
+  PanelLeftIcon,
+  PlusIcon,
+  SearchIcon,
+  TagIcon,
+} from "@/icons";
 import { useTagHues } from "@/hooks/use-tag-hues";
 import { LogOutButton } from "./LogOutButton";
 import { NoteMenu } from "./NoteMenu";
@@ -38,7 +47,6 @@ export type RailData = {
   tree: TagNode[];
   tagCount: number;
   allCount: number;
-  untaggedCount: number;
   imageCount: number;
 };
 
@@ -99,7 +107,7 @@ type Props = {
  * field-shaped controls stacked, one narrowing this list and one searching
  * everything, is a distinction no layout can draw — and the palette already
  * finds a tag by name, either as somewhere to go or, after `#`, as a scope to
- * search inside. The field itself is kept in ./TagFilterField, unmounted.
+ * search inside.
  *
  * Sections are separated by --space-group and nothing else — no rules, no
  * headings in caps, no boxes. The eye reads the groups here purely from the
@@ -262,14 +270,14 @@ export function Rail({
           aria-keyshortcuts="Meta+K Control+K"
           className="row-tint flex size-7 items-center justify-center rounded-[var(--radius-control)] text-ink-muted hover:text-ink"
         >
-          <SearchIcon />
+          <SearchIcon aria-hidden className="size-3.5 shrink-0" />
         </button>
         <Link
           href="/notes/new"
           aria-label="New note"
           className="row-tint flex size-7 items-center justify-center rounded-[var(--radius-control)] text-ink-muted hover:text-ink"
         >
-          <PlusIcon />
+          <PlusIcon aria-hidden className="size-3.5 shrink-0" />
         </Link>
 
         <div className="mt-auto flex flex-col items-start gap-[var(--space-item)]">
@@ -282,7 +290,7 @@ export function Rail({
               pathname === "/settings" ? "text-ink" : "text-ink-muted"
             }`}
           >
-            <GearIcon />
+            <GearIcon aria-hidden className="size-3.5 shrink-0" />
           </Link>
           <LogOutButton compact />
         </div>
@@ -295,11 +303,19 @@ export function Rail({
       className="flex h-full flex-col overflow-y-auto px-3 py-4"
       onClick={onNavigate}
     >
-      {/* 0 — the fold control, on its own line above everything. Left-aligned
-          with the rail's padding rather than with the rows, which is what
-          keeps it in place when the panel narrows to the strip. */}
+      {/* 0 — the wordmark on the left, the fold control pushed to the far right.
+          The name holds the rail's left padding; the button rides the opposite
+          edge here and snaps back to that same left padding once the panel
+          narrows to the strip and the name is gone.
+
+          The -mr negative margin cancels the button's own centring gutter — its
+          glyph is 6px in from a 28px hit area — so the icon itself lands flush
+          with the rail's content edge whether or not the hover tint is showing. */}
       {onToggleCollapsed && (
-        <div className="mb-[var(--space-item)]">
+        <div className="mb-[calc(var(--space-item)*2)] -mr-1.5 flex items-center justify-between">
+          <span className="select-none font-display text-[19px] font-bold leading-none text-ink">
+            Ostracon
+          </span>
           <FoldButton collapsed={false} onClick={onToggleCollapsed} />
         </div>
       )}
@@ -317,7 +333,7 @@ export function Rail({
           the eye is reading; a box is allowed to sit on it. */}
       <SearchTrigger />
 
-      {/* 2 — New note and the four places that aren't a tag: five fixed rows,
+      {/* 2 — New note and the three places that aren't a tag: four fixed rows,
           one section directly under search.
 
           They were two groups a --space-group apart, which spent the rail's
@@ -345,36 +361,36 @@ export function Rail({
           href="/notes/new"
           label="New note"
           selected={pathname === "/notes/new"}
-          icon={<PlusIcon />}
+          icon={<PlusIcon className="size-3.5 shrink-0" />}
         />
         <RailRow
           href={ALL_NOTES_HREF}
           label="All notes"
           count={data.allCount}
           selected={pathname === ALL_NOTES_HREF}
-          icon={<NotesIcon />}
+          icon={<NotesIcon className="size-3.5 shrink-0" />}
         />
         {/* Where the tag tree went. Directly under All notes because the two
             are the same kind of thing — the two ways into the whole
-            collection, one by note and one by tag — and above Untagged, which
-            is a corner of it rather than a view of all of it.
+            collection, one by note and one by tag.
 
             The count is every tag at every depth, the same number the tree's
             heading printed, so the row says how much is behind it before you
-            press it. */}
+            press it.
+
+            Untagged used to sit under this one and is now a link in the line
+            under the All notes heading, beside the one the tag directory has
+            carried for a while. It is a corner of the collection rather than a
+            view of it — this row's own reason for standing where it does — and
+            as a fixed row it was the one entry here that read `0` forever once
+            you had caught up. The line only appears while there is something
+            in it. See [IndexView]. */}
         <RailRow
           href={TAGS_HREF}
           label="All tags"
           count={data.tagCount}
           selected={pathname === TAGS_HREF}
-          icon={<TagIcon />}
-        />
-        <RailRow
-          href={UNTAGGED_HREF}
-          label="Untagged"
-          count={data.untaggedCount}
-          selected={pathname === UNTAGGED_HREF}
-          icon={<UntaggedIcon />}
+          icon={<TagIcon className="size-3.5 shrink-0" />}
         />
         {/* Counted from the note bodies, not from the bucket: listing blob
             storage is a network round trip the rail would then be making on
@@ -387,7 +403,7 @@ export function Rail({
           label="Images"
           count={data.imageCount}
           selected={pathname === "/images"}
-          icon={<ImagesIcon />}
+          icon={<ImagesIcon className="size-3.5 shrink-0" />}
         />
       </nav>
 
@@ -483,7 +499,7 @@ export function Rail({
           href="/settings"
           label="Settings"
           selected={pathname === "/settings"}
-          icon={<GearIcon />}
+          icon={<GearIcon className="size-3.5 shrink-0" />}
         />
         <LogOutButton />
       </div>
@@ -547,6 +563,7 @@ function FoldButton({
   collapsed: boolean;
   onClick: () => void;
 }) {
+  const Glyph = collapsed ? PanelLeftIcon : PanelLeftFilledIcon;
   return (
     <button
       type="button"
@@ -556,179 +573,7 @@ function FoldButton({
       title={collapsed ? "Show the sidebar" : "Hide the sidebar"}
       className="row-tint flex size-7 items-center justify-center rounded-[var(--radius-control)] text-ink-faint hover:text-ink-muted"
     >
-      <svg
-        aria-hidden
-        viewBox="0 0 16 16"
-        className="size-4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <rect x="2" y="2.75" width="12" height="10.5" rx="2" />
-        <path d="M6.25 2.75v10.5" />
-        {/* The column that stands for the rail is filled while the rail is
-            showing and empty while it isn't, so the glyph is a picture of the
-            current state rather than of what pressing it would do. */}
-        {!collapsed && (
-          <path
-            d="M6.25 2.75H4a2 2 0 0 0-2 2v6.5a2 2 0 0 0 2 2h2.25z"
-            fill="currentColor"
-            stroke="none"
-            opacity="0.35"
-          />
-        )}
-      </svg>
+      <Glyph aria-hidden className="size-4" />
     </button>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 16 16"
-      className="size-3.5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M8 3.2v9.6M3.2 8h9.6" />
-    </svg>
-  );
-}
-
-/**
- * The three fixed views, drawn at the same 1.3 stroke on the same 16 box as
- * every other glyph in the rail, so a row's mark reads as part of one set
- * rather than as three borrowed pictures.
- */
-function NotesIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 16 16"
-      className="size-3.5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M4.6 2.4h4.3L12.4 5.9v6.7a1 1 0 0 1-1 1H4.6a1 1 0 0 1-1-1V3.4a1 1 0 0 1 1-1z" />
-      <path d="M8.9 2.4v3.5h3.5" />
-    </svg>
-  );
-}
-
-/**
- * The same tag [UntaggedIcon] strikes through, unstruck — the two rows sit two
- * apart in the rail and are exact opposites, so they are one drawing with and
- * without its negation rather than two unrelated pictures.
- */
-function TagIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 16 16"
-      className="size-3.5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9 2.6h3.4a1 1 0 0 1 1 1V7a1 1 0 0 1-.3.7l-5 5a1 1 0 0 1-1.4 0L3 9a1 1 0 0 1 0-1.4l5-5a1 1 0 0 1 .7-.3z" />
-      <path d="M10.9 5.1h.01" strokeWidth="1.6" />
-    </svg>
-  );
-}
-
-function UntaggedIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 16 16"
-      className="size-3.5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      {/* A tag, struck through on the diagonal that crosses its long axis —
-          the other diagonal runs along the tag and would have read as part of
-          the shape rather than as a negation of it. */}
-      <path d="M9 2.6h3.4a1 1 0 0 1 1 1V7a1 1 0 0 1-.3.7l-5 5a1 1 0 0 1-1.4 0L3 9a1 1 0 0 1 0-1.4l5-5a1 1 0 0 1 .7-.3z" />
-      <path d="M10.9 5.1h.01" strokeWidth="1.6" />
-      <path d="M3.1 3.1 12.9 12.9" />
-    </svg>
-  );
-}
-
-function ImagesIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 16 16"
-      className="size-3.5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="2.4" y="3.2" width="11.2" height="9.6" rx="1.6" />
-      <circle cx="6" cy="6.4" r="1.05" />
-      <path d="m2.6 11.5 2.9-2.8a1.2 1.2 0 0 1 1.7 0l3.4 3.3" />
-    </svg>
-  );
-}
-
-/**
- * Settings — a cog, six-toothed rather than the usual eight.
- *
- * Eight teeth is what a gear looks like and six is what one *reads* as at
- * 14px: the notches between them are under two pixels either way, and at eight
- * the rim comes out as a fuzzy ring with a hub in it — which is the sun this
- * rail's theme toggle used to draw, standing one row away. Six leaves each
- * notch wide enough to see, on the same 16 box and the same 1.3 stroke as
- * every other glyph here.
- */
-function GearIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 16 16"
-      className="size-3.5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M6.1 4L6.5 1.9L9.5 1.9L9.9 4L10.5 4.4L12.5 3.6L14.1 6.3L12.4 7.6L12.4 8.4L14.1 9.7L12.5 12.4L10.5 11.6L9.9 12L9.5 14.1L6.5 14.1L6.1 12L5.5 11.6L3.5 12.4L1.9 9.7L3.6 8.4L3.6 7.6L1.9 6.3L3.5 3.6L5.5 4.4Z" />
-      <circle cx="8" cy="8" r="2" />
-    </svg>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      className="size-3.5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20 20-3.5-3.5" />
-    </svg>
   );
 }

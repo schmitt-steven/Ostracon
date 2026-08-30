@@ -8,52 +8,18 @@ import {
 } from "./sections";
 import { ThemeSetting } from "./ThemeSetting";
 
-/**
- * View D — the app's own settings.
- *
- * One page rather than a tab strip or a stack of dialogs. Everything here is
- * about this instance, so what the reader wants is to *see* it all — which
- * section a setting lives in is a thing you learn by scrolling past it once,
- * and tabs hide four fifths of that from you at every moment. A dialog would be
- * worse still: settings are where you go to read as much as to change, and a
- * sheet you have to dismiss to look at the app behind it is a bad reading
- * surface.
- *
- * **The overview on the left is the price of that choice.** A single scrolling
- * page loses the one thing tabs are good at — always knowing where you are —
- * so the page says it instead: the section list sticks to the top of the pane
- * and lights the section the reader is currently standing on. It is a mirror of
- * the scroll position, not a second navigation; every row it holds is somewhere
- * on the page you are already on.
- *
- * The page's own title stands at the head of that list rather than across the
- * top of both columns, on the first section's baseline. A title spanning the
- * page would make the sections look filed *under* it; beside them, sharing
- * their line, it reads as the name of the list it introduces — and it stays
- * visible with the list once the page has scrolled.
- *
- * **No header bar, and so no [PaneScroller].** Every other view floats a glass
- * bar over its pane because every other view has somewhere to say you are
- * *within* — a tag, an index, the note's own toolbar. Settings has no inside
- * and no controls that belong to the whole page, so that bar had nothing in it
- * but its own background: a 60px band of glass at the top of the pane, blurring
- * the text passing under it on behalf of nothing. What replaces it is an
- * ordinary scrolling box, and the page simply starts at the top of the pane.
- *
- * The controls arrive one section at a time; Appearance has its theme,
- * Deployment has its facts, the rest are still empty. The empty ones are drawn
- * anyway, with their names and what each is for, because the shape of the page
- * is the thing being settled here — and because a section that gains a control
- * shouldn't be the first time the reader learns it exists.
- *
- * **Deployment comes in as a slot, not as data.** It is the one section whose
- * content is read off the server — the connection string, the blob token, the
- * commit the build came from — and none of that belongs in a browser bundle.
- * A server component rendered by the page and handed down as a `ReactNode`
- * arrives here already finished; this file lays it out without ever importing
- * the code that produced it. See [SettingsPage].
- */
-export function SettingsView({ deployment }: { deployment: ReactNode }) {
+
+export function SettingsView({
+  ai,
+  access,
+  data,
+  deployment,
+}: {
+  ai: ReactNode;
+  access: ReactNode;
+  data: ReactNode;
+  deployment: ReactNode;
+}) {
   const [active, setActive] = useState<SettingsSectionId>(
     SETTINGS_SECTIONS[0]!.id,
   );
@@ -65,7 +31,7 @@ export function SettingsView({ deployment }: { deployment: ReactNode }) {
   // appearance depends on the map itself.
   const sections = useRef(new Map<SettingsSectionId, HTMLElement>());
 
-  // One stable callback for all five rather than a factory per row — the
+  // One stable callback for all six rather than a factory per row — the
   // element already carries its own id, which is the only thing the map needs
   // to file it under, and a fresh closure per render would detach and reattach
   // every ref on every keystroke of state.
@@ -80,7 +46,7 @@ export function SettingsView({ deployment }: { deployment: ReactNode }) {
    * itself on every scroll.
    *
    * Measured rather than observed: an IntersectionObserver answers "is this on
-   * screen", and with five short sections the honest answer is usually "three
+   * screen", and with six short sections the honest answer is usually "three
    * of them are". What the overview has to light is the one whose heading the
    * reader has last passed, which is a comparison against a single line — the
    * top of the box plus the clearance the page keeps there. That clearance is
@@ -190,7 +156,7 @@ export function SettingsView({ deployment }: { deployment: ReactNode }) {
                 at the head of the overview it says what it actually is, which
                 is the name of the list under it. It sticks with that list, so
                 scrolled halfway down the page you can still see what place
-                these five rows belong to. */}
+                these six rows belong to. */}
             <div
               // self-start is what makes the sticky work: a flex item stretches
               // to the row's full height by default, and an element as tall as
@@ -218,7 +184,7 @@ export function SettingsView({ deployment }: { deployment: ReactNode }) {
                 // The rail's own spacing for a heading over a list of rows —
                 // --space-item, not the --space-group that separates one
                 // section of the rail from the next. This *is* one group: a
-                // name and the five rows it names. The title's own line box
+                // name and the six rows it names. The title's own line box
                 // adds its descender space on top, so the gap reads a little
                 // wider than eight pixels, which is about right under 28px
                 // type.
@@ -257,7 +223,20 @@ export function SettingsView({ deployment }: { deployment: ReactNode }) {
               </nav>
             </div>
 
-            <div className="flex min-w-0 flex-1 flex-col gap-[var(--space-block)]">
+            {/* The top of this page's own three-step scale: 8px inside a row,
+                16px between rows, 40px between sections. Every step is at
+                least double the last, which is the least that reads as a step
+                at all.
+
+                40 rather than the --space-block the rest of the page is
+                measured in, and it is the one number here off the scale. A
+                section is not one more row: it has a display-face heading of
+                its own, and a heading needs more clear space above it than the
+                rows under it need from each other, or it reads as a label on
+                the row below rather than as the name of what follows. Doubling
+                16 gave the ratio but not that. It went to 48 once and that was
+                too far — the sections drifted apart into separate pages. */}
+            <div className="flex min-w-0 flex-1 flex-col gap-10">
               {SETTINGS_SECTIONS.map((section) => (
                 <section
                   key={section.id}
@@ -280,11 +259,25 @@ export function SettingsView({ deployment }: { deployment: ReactNode }) {
                   {/* The controls stand on the page, in no container of their
                       own. A panel around them would be drawing a box to hold
                       one row — the heading above already says where a setting
-                      belongs, and the --space-block between sections already
-                      says where one ends. */}
-                  <div className="mt-[var(--space-item)]">
+                      belongs, and the gap between sections already says where
+                      one ends.
+
+                      10px rather than the --space-item the rail uses under its
+                      headings: this heading is 22px Fraunces with a display
+                      face's descenders, and eight pixels under it left the
+                      first setting's name looking stuck to the word above it
+                      rather than filed under it. Two pixels is the whole of
+                      the correction — it is a heading over its own contents,
+                      not a divider. */}
+                  <div className="mt-2.5">
                     {section.id === "appearance" ? (
                       <ThemeSetting />
+                    ) : section.id === "ai" ? (
+                      ai
+                    ) : section.id === "access" ? (
+                      access
+                    ) : section.id === "data" ? (
+                      data
                     ) : section.id === "deployment" ? (
                       deployment
                     ) : (

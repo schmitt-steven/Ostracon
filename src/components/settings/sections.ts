@@ -17,6 +17,7 @@ export type SettingsSectionId =
   | "appearance"
   | "ai"
   | "access"
+  | "data"
   | "deployment"
   | "danger";
 
@@ -28,10 +29,14 @@ export type SettingsSection = {
 
 export const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "appearance", label: "Appearance" },
-  { id: "ai", label: "AI" },
+  { id: "ai", label: "AI Integrations" },
   { id: "access", label: "Access" },
+  // Between the settings you change and the facts you only read. Data holds
+  // the one control on this page that writes to the collection itself, which
+  // puts it below everything that merely configures the instance — and above
+  // Deployment, which changes nothing at all.
+  { id: "data", label: "Data" },
   { id: "deployment", label: "Deployment" },
-  { id: "danger", label: "Danger zone" },
 ];
 
 /** The last one, which the overview needs by name — see the scroll-spy. */

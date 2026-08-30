@@ -16,8 +16,10 @@ import {
   toggleRailOpen,
 } from "@/lib/ui/rail-state";
 import { KnownTagsProvider } from "./KnownTags";
+import { LogOutPrompt } from "./LogOutPrompt";
 import { NoteImport } from "./NoteImport";
 import { Rail, type RailData } from "./Rail";
+import { ListIcon, PlusIcon, SearchIcon } from "@/icons";
 
 type Props = {
   rail: RailData;
@@ -115,14 +117,14 @@ export function AppShell({ rail, tagNames, children }: Props) {
           a wide screen sit at thumb height here instead. */}
         <div className="glass lift-2 fixed inset-x-0 bottom-0 z-30 flex items-center justify-around gap-2 px-4 py-2 min-[1000px]:hidden">
           {/* "Notes", not "Tags": the drawer is the whole rail — All notes,
-            All tags, Untagged and Images, plus whatever is pinned — and naming
-            it after one of its rows undersold where the button goes. */}
+            All tags and Images, plus whatever is pinned — and naming it after
+            one of its rows undersold where the button goes. */}
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
             className="row-tint flex items-center gap-2 rounded-[var(--radius-control)] px-3 py-2 text-[13px] text-ink-muted"
           >
-            <ListIcon />
+            <ListIcon aria-hidden className="size-3.5 shrink-0" />
             Notes
           </button>
           <button
@@ -130,14 +132,14 @@ export function AppShell({ rail, tagNames, children }: Props) {
             onClick={() => setPaletteOpen(true)}
             className="row-tint flex items-center gap-2 rounded-[var(--radius-control)] px-3 py-2 text-[13px] text-ink-muted"
           >
-            <SearchIcon />
+            <SearchIcon aria-hidden className="size-3.5 shrink-0" />
             Search
           </button>
           <Link
             href="/notes/new"
             className="row-tint flex items-center gap-2 rounded-[var(--radius-control)] px-3 py-2 text-[13px] text-ink-muted"
           >
-            <PlusIcon />
+            <PlusIcon aria-hidden className="size-3.5 shrink-0" />
             New note
           </Link>
         </div>
@@ -153,62 +155,11 @@ export function AppShell({ rail, tagNames, children }: Props) {
             view inside it. ⌘K's "Import markdown files" opens the picker it
             owns. */}
         <NoteImport />
+
+        {/* The confirmation ⌘K's "Log out" row asks for. Mounted here rather
+            than in the rail so it survives the palette closing behind it. */}
+        <LogOutPrompt />
       </div>
     </KnownTagsProvider>
-  );
-}
-
-/* The bottom bar's glyphs. Drawn here rather than imported from the rail
-   because that file keeps its own set the same way — three inline paths are
-   cheaper than a module every component then has to agree with. Same
-   size-3.5, same weights, so the two navigations read as one family. */
-function ListIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 16 16"
-      className="size-3.5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M2.8 4.2h10.4M2.8 8h10.4M2.8 11.8h6.4" />
-    </svg>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      className="size-3.5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20 20-3.5-3.5" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 16 16"
-      className="size-3.5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M8 3.2v9.6M3.2 8h9.6" />
-    </svg>
   );
 }

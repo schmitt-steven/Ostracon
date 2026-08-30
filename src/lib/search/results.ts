@@ -31,7 +31,7 @@ const RANK: Record<MatchReason["kind"], number> = {
   recent: 3,
 };
 
-export function reasonRank(reason: MatchReason): number {
+function reasonRank(reason: MatchReason): number {
   return RANK[reason.kind];
 }
 

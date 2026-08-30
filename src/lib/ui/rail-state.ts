@@ -51,7 +51,7 @@ export function subscribeRailOpen(onChange: () => void): () => void {
   };
 }
 
-export function setRailOpen(next: boolean): void {
+function setRailOpen(next: boolean): void {
   if (getRailOpen() === next) return;
   snapshot = next;
   try {

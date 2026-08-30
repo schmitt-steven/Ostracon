@@ -50,6 +50,57 @@ export const notes = pgTable(
   ],
 );
 
+/**
+ * The password the app is unlocked with, once its owner has changed it.
+ *
+ * At most one row, always under the same id — a fixed key rather than a serial
+ * so setting the password is a single upsert with nothing to read first, and so
+ * a second row is impossible rather than merely unexpected.
+ *
+ * Its absence is meaningful: with no row, the password is still APP_PASSWORD
+ * from the environment, which is what a fresh deployment starts with and what
+ * the settings page reports as "never changed". Only what is *derived* from a
+ * password is kept here — see lib/auth/password for the scrypt parameters and
+ * why the plaintext deliberately stops being available once this row exists.
+ */
+export const appPassword = pgTable("app_password", {
+  id: text("id").primaryKey(),
+  /** `scrypt$N$r$p$salt$key`, hex — self-describing so old rows keep verifying
+   *  after the cost parameters are raised. */
+  hash: text("hash").notNull(),
+  changedAt: timestamp("changed_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/**
+ * Which model each AI provider should generate with.
+ *
+ * The same arrangement [appPassword] has with APP_PASSWORD: the model starts
+ * life as an environment variable set by hand on the platform, which means it
+ * cannot be changed from inside the app — and a model you cannot change is a
+ * model you are stuck with. A row here supersedes the variable; no row means
+ * the variable is still in force. See lib/ai/providers for the merge.
+ *
+ * One row per provider, keyed by the provider's own id rather than a serial,
+ * so setting a model is a single upsert with nothing to read first — and so a
+ * provider cannot end up with two rows disagreeing about it.
+ *
+ * **API keys are deliberately not here.** A model name is a preference; a key
+ * is a credential that bills its owner, and this database is held by the build,
+ * by drizzle-kit, by the Neon console and by every backup ever taken of it.
+ * Keys stay environment variables, set on the platform, which is what that
+ * store is for — settings reports whether one is present and nothing more.
+ */
+export const aiSettings = pgTable("ai_settings", {
+  providerId: text("provider_id").primaryKey(),
+  /** The model to generate with, or null to keep taking the environment's. */
+  model: text("model"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 // One row per client identity (see clientKey in lib/auth/throttle). Only the
 // failure streak is stored — the cooldown itself is derived at read time, so a
 // failure is a single upsert with no read-modify-write race.
@@ -60,36 +111,6 @@ export const loginAttempts = pgTable("login_attempts", {
     .notNull()
     .defaultNow(),
 });
-
-// Forensics for failed logins, kept separate from the throttle state above:
-// that table holds live counters, this one is an append-only audit log.
-// Deliberately stores no plaintext — see lib/auth/failure-log for why and for
-// what each column buys you.
-export const loginFailures = pgTable(
-  "login_failures",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    ip: text("ip").notNull(),
-    userAgent: text("user_agent"),
-    passwordLength: integer("password_length").notNull(),
-    // Keyed HMAC of the guess: equal guesses give equal fingerprints, so
-    // repeats can be grouped, but the guess can't be recovered from it.
-    fingerprint: text("fingerprint").notNull(),
-    // Edit distance to the real password; null when the guess was too long to
-    // bother comparing. Low numbers mean "this was you, typo-ing".
-    distance: integer("distance"),
-    // The guess itself, but only when it was far enough from the real password
-    // that it can't be an owner typo. Null means "too close to write down".
-    guess: text("guess"),
-    attemptedAt: timestamp("attempted_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (t) => [
-    index("login_failures_attempted_at_idx").on(t.attemptedAt),
-    index("login_failures_ip_idx").on(t.ip),
-  ],
-);
 
 // One row per successful login — that is, per device that holds a valid
 // cookie. The cookie names its row by id and proves it with an HMAC, so this
@@ -130,6 +151,14 @@ export const sessions = pgTable(
     createdIp: text("created_ip"),
     createdUserAgent: text("created_user_agent"),
     /**
+     * Where that address was, in place names, as the platform's edge reported
+     * it at the time — `Frankfurt, Germany`. Stored rather than derived on
+     * read, because an address is only evidence of a location on the day it
+     * was seen; see lib/auth/geo. Null off the platform, where there is no
+     * such header and the address itself is all there is to show.
+     */
+    createdLocation: text("created_location"),
+    /**
      * Updated as the session is used, throttled to keep an ordinary page view
      * from costing a write. The address is here rather than above because a
      * change in it is the interesting signal — same device, new network, or
@@ -139,6 +168,8 @@ export const sessions = pgTable(
       .notNull()
       .defaultNow(),
     lastSeenIp: text("last_seen_ip"),
+    /** The travelling half of the pair above, kept for the same reason. */
+    lastSeenLocation: text("last_seen_location"),
     /** A name the owner gives the device later; null until they do. */
     label: text("label"),
   },

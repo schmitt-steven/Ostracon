@@ -1,5 +1,7 @@
 "use client";
 
+import { SearchIcon } from "@/icons";
+
 import { setPaletteOpen } from "@/lib/command/palette-state";
 
 /**
@@ -35,18 +37,7 @@ export function HeaderSearchButton({
       title={hint}
       className="row-tint flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:text-ink"
     >
-      <svg
-        aria-hidden
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        className="size-4"
-      >
-        <circle cx="11" cy="11" r="7" />
-        <path d="m20 20-3.5-3.5" />
-      </svg>
+      <SearchIcon aria-hidden className="size-4" />
     </button>
   );
 }

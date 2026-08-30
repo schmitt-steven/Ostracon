@@ -55,7 +55,7 @@ function blank(match: string): string {
  * not a tag, and neither is a colour literal in a CSS block — the single most
  * common false positive in a notes app aimed at software engineering.
  */
-export function maskCode(bodyMd: string): string {
+function maskCode(bodyMd: string): string {
   return bodyMd.replace(FENCE_RE, blank).replace(INLINE_CODE_RE, blank);
 }
 
@@ -117,7 +117,7 @@ export function scanTags(bodyMd: string): TagMatch[] {
  * reading the tags of a legacy note written before the bar existed, and
  * knowing which names a body mentions.
  */
-export function extractTags(bodyMd: string): string[] {
+function extractTags(bodyMd: string): string[] {
   const seen = new Set<string>();
   const ordered: string[] = [];
   for (const { name } of scanTags(bodyMd)) {

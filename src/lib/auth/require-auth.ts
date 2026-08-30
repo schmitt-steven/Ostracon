@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { clientIp } from "./client-info";
+import { clientLocation } from "./geo";
 import {
   parseSessionToken,
   SESSION_COOKIE_NAME,
@@ -35,7 +36,13 @@ export const getSession = cache(async (): Promise<SessionRecord | null> => {
   const session = await loadActiveSession(token.sessionId);
   if (!session) return null;
 
-  await touchSession(session, await clientIp());
+  // Both read from the same request's headers and neither touches the
+  // network, so this is header parsing rather than a second round trip — the
+  // write it feeds is the throttled one inside touchSession.
+  await touchSession(session, {
+    ip: await clientIp(),
+    location: await clientLocation(),
+  });
   return session;
 });
 

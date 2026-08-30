@@ -24,13 +24,20 @@ const REVOKED_RETENTION_MS = 7 * 24 * 60 * 60_000;
 export type SessionRecord = typeof sessions.$inferSelect;
 
 /**
+ * Everything about the requester that a session row records. Grouped because
+ * the two writers — the login that creates a row and the request that touches
+ * one — take the same facts, and a shared shape is what keeps the created and
+ * last-seen halves of the table describing the same things.
+ */
+export type ClientFacts = { ip: string; location: string | null };
+
+/**
  * Records a new session and returns its id, which the caller signs into the
  * cookie. Expiry is stamped here so the row and the token agree from birth.
  */
-export async function createSession(input: {
-  ip: string;
-  userAgent: string | null;
-}): Promise<string> {
+export async function createSession(
+  input: ClientFacts & { userAgent: string | null },
+): Promise<string> {
   const now = new Date();
   const [row] = await db
     .insert(sessions)
@@ -39,8 +46,10 @@ export async function createSession(input: {
       expiresAt: new Date(now.getTime() + SESSION_MAX_AGE_SECONDS * 1000),
       createdIp: input.ip,
       createdUserAgent: input.userAgent,
+      createdLocation: input.location,
       lastSeenAt: now,
       lastSeenIp: input.ip,
+      lastSeenLocation: input.location,
     })
     .returning({ id: sessions.id });
 
@@ -77,21 +86,31 @@ export async function loadActiveSession(
 /**
  * Marks a session used. Skips the write unless lastSeenAt has gone stale, so
  * the common request pays nothing.
+ *
+ * The location is written alongside the address rather than checked against
+ * the row the way the address is: it is *derived* from that address, so a
+ * moved session is already caught by the comparison above it, and a row whose
+ * location is still null because it predates the column gets backfilled at the
+ * next stale read rather than never.
  */
 export async function touchSession(
   session: SessionRecord,
-  ip: string,
+  client: ClientFacts,
 ): Promise<void> {
   const now = new Date();
   if (
     now.getTime() - session.lastSeenAt.getTime() < TOUCH_INTERVAL_MS &&
-    session.lastSeenIp === ip
+    session.lastSeenIp === client.ip
   ) {
     return;
   }
   await db
     .update(sessions)
-    .set({ lastSeenAt: now, lastSeenIp: ip })
+    .set({
+      lastSeenAt: now,
+      lastSeenIp: client.ip,
+      lastSeenLocation: client.location,
+    })
     .where(eq(sessions.id, session.id));
 }
 
@@ -122,23 +141,27 @@ export async function revokeOtherSessions(keepId: string): Promise<number> {
 }
 
 /**
- * Every session still worth showing, newest activity first — live ones plus
- * recently revoked ones, which is what a "devices" screen wants to render.
- * Expired rows are left out; they're indistinguishable from signed-out and
- * only add noise.
+ * The sessions that are currently signed in, newest activity first.
+ *
+ * Live ones only — not revoked, not expired. Rows stay in the table after
+ * being signed out (see revokeSession, and REVOKED_RETENTION_MS above), but
+ * that is for the sake of *this instance's* record, not the reader's: what the
+ * settings list is for is deciding which devices to sign out, and a device
+ * that is already signed out is nothing to decide about. Printed anyway it
+ * would be a greyed row that outnumbers the live ones within a week of
+ * ordinary use, on a page whose entire point is to be scanned.
  */
 export async function listSessions(): Promise<SessionRecord[]> {
   return db
     .select()
     .from(sessions)
-    .where(gt(sessions.expiresAt, new Date()))
+    .where(and(isNull(sessions.revokedAt), gt(sessions.expiresAt, new Date())))
     .orderBy(desc(sessions.lastSeenAt));
 }
 
 /**
- * Drops rows nothing will ask about again. Called on successful login, the
- * same place the failure log is pruned, so the table stays bounded without a
- * scheduled job.
+ * Drops rows nothing will ask about again. Called on successful login, so the
+ * table stays bounded without a scheduled job.
  */
 export async function pruneSessions(): Promise<void> {
   const now = new Date();

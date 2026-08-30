@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1786736655947,
-      "tag": "0000_glamorous_champions",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1786893543239,
-      "tag": "0001_mute_storm",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1786894321366,
-      "tag": "0002_red_hobgoblin",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1786894748286,
-      "tag": "0003_flashy_captain_cross",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1787095945954,
-      "tag": "0004_elite_tony_stark",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1787670933793,
-      "tag": "0005_aberrant_red_skull",
+      "when": 1788017419010,
+      "tag": "0000_init",
       "breakpoints": true
     }
   ]

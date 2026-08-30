@@ -1,5 +1,7 @@
 "use client";
 
+import { CheckIcon, ChevronDownIcon } from "@/icons";
+
 import { useRef, useState } from "react";
 import { ContextMenu, menuItem } from "@/components/shell/ContextMenu";
 
@@ -86,18 +88,10 @@ export function SortControl<M extends string>({
         {/* A sibling of the label, not a background image: it has to inherit
             the trigger's colour so both halves lighten together on hover, and
             a background-image can't be told what currentColor is. */}
-        <svg
+        <ChevronDownIcon
           aria-hidden
-          viewBox="0 0 12 12"
           className="size-2.5 shrink-0 text-ink-faint transition-transform group-hover:text-ink-muted group-aria-expanded:rotate-180 group-aria-expanded:text-ink-muted"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="m2.5 4.5 3.5 3.5 3.5-3.5" />
-        </svg>
+        />
         {labels[value]}
       </button>
 
@@ -132,17 +126,7 @@ export function SortControl<M extends string>({
                     the list look like it re-sorted itself. */}
                 <span aria-hidden className="size-3 shrink-0">
                   {chosen && (
-                    <svg
-                      viewBox="0 0 12 12"
-                      className="size-3"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="m2 6.5 2.75 2.75L10 3.5" />
-                    </svg>
+                    <CheckIcon className="size-3" />
                   )}
                 </span>
                 {labels[mode]}

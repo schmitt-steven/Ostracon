@@ -1,1 +1,0 @@
-ALTER TABLE "login_failures" ADD COLUMN "guess" text;

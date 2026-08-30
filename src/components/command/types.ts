@@ -25,12 +25,25 @@ export type PaletteAction = {
   run: () => void;
 };
 
-export type ActionIcon = "note" | "search" | "tag" | "upload" | "image" | "run";
+export type ActionIcon =
+  | "note"
+  | "search"
+  | "tag"
+  | "upload"
+  | "image"
+  | "theme"
+  | "run";
 
 export type Row =
   | { id: string; kind: "note"; note: NoteHit }
   | { id: string; kind: "tag"; name: string; count: number }
   | { id: string; kind: "action"; action: PaletteAction };
 
-/** A titled run of rows. Headings are fixed by [sectionsFor]; nothing sorts. */
-export type Section = { heading: string; rows: Row[] };
+/**
+ * A titled run of rows. Headings are fixed by [sectionsFor]; nothing sorts.
+ *
+ * `empty` is the line shown under the heading when `rows` is empty — a section
+ * that stands on its own even with nothing in it (Recent, before any note has
+ * been opened) needs to say so rather than leaving a heading over a gap.
+ */
+export type Section = { heading: string; rows: Row[]; empty?: string };

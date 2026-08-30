@@ -65,10 +65,10 @@ export function TagMenu({
         disabled={!pinned && pinnedCount >= MAX_PINNED_TAGS}
       >
         {pinned
-          ? "Unpin"
+          ? "Unpin from the sidebar"
           : pinnedCount >= MAX_PINNED_TAGS
             ? `Pinned tags are full (${MAX_PINNED_TAGS})`
-            : "Pin to top"}
+            : "Pin to the sidebar"}
       </button>
 
       {pinned && onMove && (

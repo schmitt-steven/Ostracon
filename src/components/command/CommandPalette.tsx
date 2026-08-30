@@ -10,6 +10,12 @@ import {
   useSyncExternalStore,
 } from "react";
 import { RelativeDate } from "@/components/ui/RelativeDate";
+import { requestLogout } from "@/lib/auth/logout-request";
+import {
+  applyPreference,
+  resolvePreference,
+  subscribeToTheme,
+} from "@/lib/theme";
 import { useSearchIndex, type NoteHit } from "@/hooks/use-search-index";
 import { useTagHues } from "@/hooks/use-tag-hues";
 import {
@@ -83,6 +89,16 @@ const TAG_LEAD_LIMIT = 6;
 const DEBOUNCE_MS = 80;
 
 /**
+ * What the Recent section says before there is anything to be recent. A fresh
+ * collection has no notes to list, and a bare "Recent" heading over an empty
+ * column reads as something that failed to load rather than a list waiting to
+ * fill — so it names what will land there, right above the "New note" row that
+ * starts it off.
+ */
+const RECENT_EMPTY =
+  "Notes you open will show up here — make your first one below.";
+
+/**
  * ⌘K is how you get somewhere, and what you do to the note you're on.
  *
  * That's the trade the design makes: the header carries the two or three
@@ -92,9 +108,11 @@ const DEBOUNCE_MS = 80;
  * the old interface had too much of; a palette costs nothing until it's asked
  * for.
  *
- * Account settings are the line: theme and log out sit in the rail, where they
- * are already one visible click away. Things you do *to a note* belong here;
- * things you do to the session do not.
+ * Account settings get no resting row: theme and log out live in the rail,
+ * where they are already one visible click away, and the query-less list stays
+ * about the note and the collection. But once their name is typed the action
+ * itself lands here — a search for "log out" that put "New note titled log
+ * out" on the Return key would be answering the wrong question.
  *
  * Three rules hold the rest of it together:
  *
@@ -170,6 +188,18 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
     subscribeContextualCommands,
     getContextualCommands,
     getServerContextualCommands,
+  );
+
+  // Which palette the app is drawn in right now, for the "Switch theme" row's
+  // wording and for which way it flips. Read straight off the theme store —
+  // the same source the settings switch reads — so the row can't disagree with
+  // what's on screen. The server has no storage to resolve, so it assumes
+  // light; the row is never rendered before hydration anyway (the palette is
+  // shut), so the first paint of it is already the real answer.
+  const darkTheme = useSyncExternalStore(
+    subscribeToTheme,
+    () => resolvePreference() === "dark",
+    () => false,
   );
 
   // What the route is looking at, read from the pathname rather than threaded
@@ -407,6 +437,43 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
         needle,
       );
 
+    // The two session verbs. Neither ever shows without a query — the rail is
+    // their home and the resting list stays about the note (see the note up
+    // top) — so both are gated on `needle` with no `!needle ||` fallback.
+    const switchTheme: PaletteAction = {
+      id: "theme",
+      label: darkTheme ? "Switch to light theme" : "Switch to dark theme",
+      detail: darkTheme
+        ? "Draw the app in the light palette"
+        : "Draw the app in the dark palette",
+      icon: "theme",
+      run: () => applyPreference(darkTheme ? "light" : "dark"),
+    };
+    const themeMatches =
+      !!needle &&
+      commandMatches(
+        switchTheme.label,
+        // The combos ("dark mode", "light mode") are spelled out so a
+        // two-word query still hits — matching is substring, not per-token.
+        "theme mode dark light dark mode light mode appearance color colour scheme",
+        needle,
+      );
+
+    const logOut: PaletteAction = {
+      id: "log-out",
+      label: "Log out",
+      detail: "End this session and return to the sign-in screen",
+      icon: "run",
+      run: requestLogout,
+    };
+    const logOutMatches =
+      !!needle &&
+      commandMatches(
+        logOut.label,
+        "log out logout sign out signout quit exit end session",
+        needle,
+      );
+
     // Nothing found: the ways out, in the order you would reach for them.
     // Typing the name of a command counts as one of them — a search for
     // "import" that finds no notes has still found what it was after, and
@@ -419,6 +486,8 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
       noteHits.length === 0 && (!tagsFirst || tagRows.length === 0);
     if (needle && foundNothing) {
       if (importMatches) list.push(importFiles);
+      if (themeMatches) list.push(switchTheme);
+      if (logOutMatches) list.push(logOut);
       list.push(newNote(router, needle, scopeTag(scope)));
       return list;
     }
@@ -487,6 +556,11 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
       });
     }
 
+    // Last, under the navigations: a query that names one has found it, but it
+    // is still the thing you reach for least often from here.
+    if (themeMatches) list.push(switchTheme);
+    if (logOutMatches) list.push(logOut);
+
     return list;
   }, [
     needle,
@@ -495,6 +569,7 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
     noteHits.length,
     scope,
     contextual,
+    darkTheme,
     router,
   ]);
 
@@ -570,7 +645,11 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
     if (tagsFirst) {
       return [
         ...tagSection,
-        { heading: needle ? "Notes" : "Recent", rows: noteRows },
+        {
+          heading: needle ? "Notes" : "Recent",
+          rows: noteRows,
+          empty: needle ? undefined : RECENT_EMPTY,
+        },
         actionSection,
       ];
     }
@@ -580,7 +659,10 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
     // you were just in, so the shorter reach goes to that list and the
     // highlight rests on the newest of them.
     if (!needle) {
-      return [{ heading: "Recent", rows: noteRows }, actionSection];
+      return [
+        { heading: "Recent", rows: noteRows, empty: RECENT_EMPTY },
+        actionSection,
+      ];
     }
 
     // No note matched: the frame stays and the Notes section gives way to the
@@ -847,6 +929,11 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
                 <p className="px-3 pb-1 pt-4 text-[11px] uppercase tracking-wider text-ink-faint">
                   {section.heading}
                 </p>
+                {section.rows.length === 0 && section.empty && (
+                  <p className="px-3 pb-1 pt-1 text-[13px] text-ink-faint">
+                    {section.empty}
+                  </p>
+                )}
                 {section.rows.map((row) => (
                   <PaletteRow
                     key={row.id}
@@ -1333,6 +1420,16 @@ function ActionGlyph({ icon }: { icon: ActionIcon }) {
       <svg {...common}>
         <path d="M12 3v11m0 0 4-4m-4 4-4-4" />
         <path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+      </svg>
+    );
+  }
+  if (icon === "theme") {
+    // A disc half filled: the contrast mark this control carries everywhere,
+    // standing for the light/dark pair it flips between.
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M12 3.5a8.5 8.5 0 0 0 0 17z" fill="currentColor" stroke="none" />
       </svg>
     );
   }

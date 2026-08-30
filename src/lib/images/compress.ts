@@ -31,7 +31,7 @@
  */
 
 /** Below this, re-encoding costs more than it saves. */
-export const COMPRESS_MIN_BYTES = 800 * 1024;
+const COMPRESS_MIN_BYTES = 800 * 1024;
 
 /** The long edge, in CSS pixels. Twice the widest column a note ever has. */
 const MAX_EDGE = 2000;

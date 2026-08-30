@@ -9,6 +9,7 @@ import {
   THEME_PREFERENCES,
   type ThemePreference,
 } from "@/lib/theme";
+import { SettingRow } from "./SettingRow";
 
 /** What the server has to assume, having no storage to read: the default. */
 const serverPreference = (): ThemePreference => "system";
@@ -44,35 +45,27 @@ export function ThemeSetting() {
   );
 
   return (
-    // Wraps rather than crushes: below about 380px of section the label and
-    // the track can't share a line, and a three-segment control squeezed to
-    // fit would lose its labels before the sentence beside it lost anything.
-    <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-      {/* A paragraph, not a <label>: there is no single form control to be the
-          label *of* — the track is a group of buttons — and the same word is
-          on the group as its spoken name.
-
-          The word alone, with no line under it explaining what System means.
-          The three segments are the explanation, and a sentence spent saying
-          that the system setting is the system's is text for its own sake. */}
-      {/* 15px, not the 13px everything inside a control is set in. This is the
-          name of a setting standing on the page, one step down from the 22px
-          section heading above it — at 13px it read as a caption for the track
-          rather than as the thing the track answers. */}
-      <p className="min-w-0 text-[15px] text-ink">Theme</p>
-      <Segmented
-        label="Theme"
-        value={preference}
-        options={THEME_PREFERENCES}
-        // Paints, records, and tells every subscriber — this track included —
-        // that the answer has changed. Nothing to set here by hand.
-        onChange={applyPreference}
-        // Taller than the note header's h-7: nothing here has to line up with
-        // a row of icon buttons, and a control that is the only thing in its
-        // panel can stand at the height it wants to be pressed at.
-        className="grid h-8"
-        segmentClassName="min-w-[64px]"
-      />
-    </div>
+    // The page's own row — see [SettingRow], which owns the wrapping and the
+    // alignment. The one thing worth saying here is what it *doesn't* carry:
+    // no note. The three segments are the explanation, and a sentence spent
+    // saying that the system setting is the system's is text for its own sake.
+    <SettingRow
+      name="Theme"
+      control={
+        <Segmented
+          label="Theme"
+          value={preference}
+          options={THEME_PREFERENCES}
+          // Paints, records, and tells every subscriber — this track included —
+          // that the answer has changed. Nothing to set here by hand.
+          onChange={applyPreference}
+          // Taller than the note header's h-7: nothing here has to line up with
+          // a row of icon buttons, and a control that is the only thing in its
+          // panel can stand at the height it wants to be pressed at.
+          className="grid h-8 shrink-0"
+          segmentClassName="min-w-[64px]"
+        />
+      }
+    />
   );
 }

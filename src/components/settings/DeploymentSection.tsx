@@ -10,6 +10,7 @@ import {
   describeDatabase,
   formatBytes,
 } from "@/lib/deployment/services";
+import { SectionNote } from "./SectionNote";
 
 /**
  * Deployment — the one section of settings with nothing to set.
@@ -45,21 +46,38 @@ export function DeploymentSection() {
   const release = describeRelease();
 
   return (
-    <div className="flex flex-col gap-[var(--space-row)]">
+    <div className="flex flex-col gap-4">
       {release.target === "local" ? (
         // Said once, at the top, rather than left for the reader to infer from
         // a column of dashes. Off the platform most of these variables simply
         // do not exist — that is the answer, not a failure to look them up.
-        <p className="text-[13px] text-ink-faint">
-          Not running on Vercel, so this build has no release of its own to
-          describe. The database and blob store below are the real ones.
-        </p>
+        <SectionNote>
+          Not on Vercel, so this build has no release of its own.
+        </SectionNote>
       ) : null}
 
       <Group label="Release">
         <Fact label="Environment">{TARGET_LABEL[release.target]}</Fact>
 
-        <Fact label="Version" hint={release.commit?.ref ?? undefined}>
+        {/* Named for what it is rather than for what it stands in for: the
+            value is a short SHA, the link goes to the commit, the tooltip is
+            its subject line, and "Runtime" three rows down holds the only
+            actual version numbers on the page.
+
+            The branch goes under the hash, but only where a branch can be a
+            surprise. On a preview it is the one human-readable thing telling
+            two deploys apart — the URL is a hash and so is the commit. On
+            production it is the production branch by definition, and a hint
+            that always reads the same trains the eye to skip hints, which is
+            attention the deployment id under Region needs. */}
+        <Fact
+          label="Commit"
+          hint={
+            release.target === "production"
+              ? undefined
+              : (release.commit?.ref ?? undefined)
+          }
+        >
           {release.commit ? (
             release.commit.url ? (
               <a
@@ -100,7 +118,13 @@ export function DeploymentSection() {
           )}
         </Fact>
 
-        <Fact label="Region" hint={release.deploymentId ?? undefined}>
+        {/* "Function region" rather than "Region", for the reason "Database
+            size" isn't "Size": this page names two regions, and once the
+            functions sit next to the database both read `fra1 · Frankfurt`,
+            so the label is the only thing telling them apart. "Function" is
+            also the word the Vercel project settings use for the one you can
+            actually change. */}
+        <Fact label="Function region" hint={release.deploymentId ?? undefined}>
           {release.region ? (
             <RegionText region={release.region} />
           ) : (
@@ -135,16 +159,9 @@ async function Storage() {
   // and neither has anything to say to the other.
   const [stats, blobs] = await Promise.all([databaseStats(), blobStats()]);
 
-  // The parts that identify the compute rather than place it. Dropped
-  // individually when absent, so a missing one doesn't leave a dangling
-  // separator.
-  const detail = [database.name, database.endpoint, database.pooled && "pooled"]
-    .filter(Boolean)
-    .join(" · ");
-
   return (
     <Group label="Storage">
-      <Fact label="Database" hint={detail || undefined}>
+      <Fact label="Database">
         {database.host ? (
           <>
             Neon
@@ -160,6 +177,21 @@ async function Storage() {
         )}
       </Fact>
 
+      {/* Which compute inside that region is actually being talked to —
+          `ep-cool-name-a1b2c3`, Neon's own id for it. A row of its own rather
+          than a second line under Database, because it is the same kind of
+          thing as the blob store id four rows down: an identifier you copy
+          into a dashboard or a support thread, and the one string that tells
+          two Neon projects apart when both say `eu-central-1 · Frankfurt`.
+          Monospaced for that reason, as every identifier on this page is. */}
+      <Fact label="Endpoint">
+        {database.endpoint ? (
+          <span className="font-mono">{database.endpoint}</span>
+        ) : (
+          <Unknown />
+        )}
+      </Fact>
+
       {/* Named in full and standing directly under the database it measures.
           On its own, one row below a version number and one row above a blob
           store that has a size of its own, "Size" was a figure with no subject
@@ -168,11 +200,11 @@ async function Storage() {
         {stats.ok ? formatBytes(stats.value.sizeBytes) : <Unavailable />}
       </Fact>
 
-      <Fact label="Postgres">
+      <Fact label="Postgres version">
         {stats.ok ? stats.value.serverVersion : <Unavailable />}
       </Fact>
 
-      <Fact label="Blob store">
+      <Fact label="Blob store id">
         {store ? <span className="font-mono">{store}</span> : <Unknown />}
       </Fact>
 
@@ -188,7 +220,7 @@ async function Storage() {
 }
 
 /**
- * The same five rows with nothing in them yet.
+ * The same six rows with nothing in them yet.
  *
  * Written out rather than generated from a shared list, because the point of
  * it is to be exactly as tall as what replaces it — and a shared list is a
@@ -197,13 +229,18 @@ async function Storage() {
 function StorageSkeleton() {
   return (
     <Group label="Storage">
-      {["Database", "Database size", "Postgres", "Blob store", "Blobs"].map(
-        (label) => (
-          <Fact key={label} label={label}>
-            <Pending />
-          </Fact>
-        ),
-      )}
+      {[
+        "Database",
+        "Endpoint",
+        "Database size",
+        "Postgres version",
+        "Blob store id",
+        "Blobs",
+      ].map((label) => (
+        <Fact key={label} label={label}>
+          <Pending />
+        </Fact>
+      ))}
     </Group>
   );
 }

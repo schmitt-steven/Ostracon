@@ -1,10 +1,11 @@
 "use client";
 
 import { Segmented } from "@/components/ui/Segmented";
+import { EyeIcon, PencilIcon } from "@/icons";
 
 export type ViewMode = "write" | "split" | "preview";
 
-export const VIEW_MODES: { value: ViewMode; label: string }[] = [
+const VIEW_MODES: { value: ViewMode; label: string }[] = [
   { value: "write", label: "Write" },
   { value: "preview", label: "Preview" },
   { value: "split", label: "Split" },
@@ -67,48 +68,9 @@ export function ViewModeToggle({ mode, onChange }: Props) {
         onClick={() => onChange(previewing ? "write" : "preview")}
         className="row-tint flex h-7 shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] px-2 text-[13px] text-ink-muted min-[1000px]:hidden"
       >
-        {previewing ? <PencilIcon /> : <EyeIcon />}
+        {previewing ? <PencilIcon aria-hidden className="size-3.5 shrink-0" /> : <EyeIcon aria-hidden className="size-3.5 shrink-0" />}
         {previewing ? "Write" : "Preview"}
       </button>
     </>
-  );
-}
-
-/* Drawn here rather than imported, the way the shell's bottom bar keeps its
-   own three: same 16-unit box, same 1.3 stroke, same round caps, so the two
-   sets read as one family. */
-function PencilIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 16 16"
-      className="size-3.5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M11.1 2.6 13.4 4.9 6.2 12.1 3 12.9l0.8-3.2z" />
-      <path d="M9.8 3.9 12.1 6.2" />
-    </svg>
-  );
-}
-
-function EyeIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 16 16"
-      className="size-3.5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M1.5 8S4 3.9 8 3.9 14.5 8 14.5 8 12 12.1 8 12.1 1.5 8 1.5 8Z" />
-      <circle cx="8" cy="8" r="1.9" />
-    </svg>
   );
 }

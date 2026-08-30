@@ -43,10 +43,10 @@ type Props<V extends string> = {
  * The well is filled in translucent ink rather than --sunk, unlike those two
  * fields: they sit on the rail, which is a flat surface, and these sit over a
  * pane's coloured wash or in a sunk panel, where a flat grey box reads as a
- * grey box dropped on top instead of a step down into what's behind it. The
- * shade is taken down the way the search trigger takes it down: the well's
- * default lip is set for a field you type into, and at this height it reads as
- * a line ruled across the top rather than as depth.
+ * grey box dropped on top instead of a step down into what's behind it. Both
+ * lips are taken down the way the search trigger takes them down — see
+ * `.well-shallow`: the defaults are set for a field you type into, and at this
+ * height they read as two lines ruled across the control rather than as depth.
  *
  * Nothing here is coloured: colour in this design means "this is a tag", and
  * spending it on a switch would dilute the one thing hue is for.
@@ -74,7 +74,7 @@ export function Segmented<V extends string>({
       // p-0.5 is the track's inset, and the marker's `inset-y-0.5` / `left-0.5`
       // / `-4px` below are that same 2px — the marker sits inside the track
       // rather than on top of its edge.
-      className={`well [--well-shade:0.2] relative shrink-0 rounded-[var(--radius-control)] bg-[color-mix(in_srgb,var(--ink)_5%,transparent)] p-0.5 ${className}`}
+      className={`well well-shallow relative shrink-0 rounded-[var(--radius-control)] bg-[color-mix(in_srgb,var(--ink)_5%,transparent)] p-0.5 ${className}`}
       // Equal columns, so the marker's fraction always matches the segment
       // under it and the track doesn't jitter as the labels change length.
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}

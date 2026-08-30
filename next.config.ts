@@ -32,6 +32,41 @@ const nextConfig: NextConfig = {
      */
     BUILD_TIME: new Date().toISOString(),
   },
+  turbopack: {
+    /**
+     * `src/icons/*.svg` are imported as React components, not as URLs.
+     *
+     * They have to be, because every glyph in this app is drawn in
+     * `currentColor` and takes its colour from the row it sits in — a rail row
+     * that goes from `--ink-muted` to `--ink` on hover, a chip whose ✕ is
+     * `--ink-faint` until you're over it. An `<img src="/icons/tag.svg">` is a
+     * separate document: `currentColor` there resolves against *its* root, not
+     * against ours, so every one of those states would flatten to one fixed
+     * colour. SVGR inlines the markup into the page instead, where the
+     * cascade still reaches it — and the file on disk stays an ordinary `.svg`
+     * that opens in any editor.
+     *
+     * `as: "*.js"` tells Turbopack the loader hands back a module rather than
+     * an asset. Turbopack runs both `next dev` and `next build` as of 16, so
+     * this is the only bundler config needed; there is no webpack half.
+     */
+    rules: {
+      "*.svg": {
+        loaders: [
+          {
+            loader: "@svgr/webpack",
+            // SVGO is off on purpose. These paths were drawn by hand against a
+            // 16 (or 12, or 24) box with deliberate sub-pixel positions, and
+            // the optimiser's path-merging rewrites coordinates it considers
+            // equivalent. It isn't worth a re-rounded curve to save bytes on
+            // twenty glyphs that total under 4KB.
+            options: { svgo: false, ref: false, memo: true },
+          },
+        ],
+        as: "*.js",
+      },
+    },
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "2mb",

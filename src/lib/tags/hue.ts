@@ -44,13 +44,6 @@ export function tagRoot(name: string): string {
   return slash === -1 ? name : name.slice(0, slash);
 }
 
-/** How deep a nested tag sits. `infra` is 0, `infra/ci` is 1. */
-export function tagDepth(name: string): number {
-  let depth = 0;
-  for (const char of name) if (char === "/") depth++;
-  return depth;
-}
-
 /** The last segment — what a child row shows, since the parent is above it. */
 export function tagLeaf(name: string): string {
   const slash = name.lastIndexOf("/");

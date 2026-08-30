@@ -33,7 +33,7 @@ export const IMAGE_ACCEPT = IMAGE_MIME_TYPES.join(",");
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 /** Per drop. Ten is already more images than one note wants. */
-export const MAX_IMAGE_FILES = 10;
+const MAX_IMAGE_FILES = 10;
 
 /**
  * Per drop, summed over the originals.
@@ -44,7 +44,7 @@ export const MAX_IMAGE_FILES = 10;
  * kilobytes. Only a batch that is enormous *before* anything has been decoded
  * gets turned away, and it gets turned away without a byte being sent.
  */
-export const MAX_IMAGE_BATCH_BYTES = 60 * 1024 * 1024;
+const MAX_IMAGE_BATCH_BYTES = 60 * 1024 * 1024;
 
 export function isAllowedImageType(type: string): boolean {
   return (IMAGE_MIME_TYPES as readonly string[]).includes(type.toLowerCase());

@@ -15,7 +15,7 @@
  * platforms, `text/plain` on others and an empty string on plenty, so the
  * type is not something a filter can be built on.
  */
-export const IMPORT_EXTENSIONS = [".md", ".markdown", ".txt"] as const;
+const IMPORT_EXTENSIONS = [".md", ".markdown", ".txt"] as const;
 
 /**
  * The file dialog's filter. The MIME types are listed alongside the
@@ -83,7 +83,7 @@ function extensionOf(name: string): string {
   return dot > 0 ? base.slice(dot).toLowerCase() : "";
 }
 
-export function isImportableFile(name: string): boolean {
+function isImportableFile(name: string): boolean {
   return (IMPORT_EXTENSIONS as readonly string[]).includes(extensionOf(name));
 }
 

@@ -617,9 +617,14 @@ export function NoteEditor({
               {/* min-w-0 is what lets the title segment shrink and ellipsise
                 instead of forcing the row wider than the pane — the overflow
                 that used to push controls off the edge. */}
+              {/* -ml-1.5 cancels the first pill's own px-1.5, so what lines up
+                with the title below is the *word* "All notes" rather than the
+                box drawn around it. A pill's padding is part of its hit target,
+                not part of the text column — the same reason the tag heading's
+                swatch holds the left margin instead of the name. */}
               <nav
                 aria-label="Breadcrumb"
-                className="flex min-w-0 flex-1 items-center text-[13px]"
+                className="-ml-1.5 flex min-w-0 flex-1 items-center text-[13px]"
               >
                 {/* Same pill the tags themselves get, so a tag reads the same
                   wherever it appears — in the bar, or here in the path. */}

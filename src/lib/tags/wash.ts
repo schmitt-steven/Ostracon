@@ -16,7 +16,7 @@
  */
 
 /** How many lights the wash has. Four is what the gradient stack draws. */
-export const WASH_LIGHTS = 4;
+const WASH_LIGHTS = 4;
 
 export type WashLight = {
   /** Hue in degrees. */

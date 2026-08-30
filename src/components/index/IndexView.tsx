@@ -15,7 +15,7 @@ import { useTagHues } from "@/hooks/use-tag-hues";
 import { deleteNote } from "@/lib/notes/actions";
 import { requestNoteImport } from "@/lib/notes/import-request";
 import type { NoteOverviewLite } from "@/lib/notes/queries";
-import { ALL_NOTES_HREF, noteHref } from "@/lib/tags/routes";
+import { ALL_NOTES_HREF, noteHref, UNTAGGED_HREF } from "@/lib/tags/routes";
 import { washLights, washVars } from "@/lib/tags/wash";
 import { PaneScroller } from "@/components/shell/PaneScroller";
 import { TagDeleteDialog } from "@/components/shell/TagDeleteDialog";
@@ -27,6 +27,7 @@ import { TagPinButton } from "./TagPinButton";
 import { HeaderSearchButton } from "@/components/ui/HeaderSearchButton";
 import { SortControl } from "@/components/ui/SortControl";
 import { SORT_LABEL, SORT_MODES, type SortMode } from "./note-sort";
+import { EditIcon, TrashIcon } from "@/icons";
 
 type Props = {
   notes: NoteOverviewLite[];
@@ -60,7 +61,6 @@ const COMPARATORS: Record<
  * answering a slightly different question that nothing on screen explained.
  * The palette absorbed this one: it opens already narrowed to whatever tag
  * this view is showing, so the scoped search is still one keystroke away.
- * The old field is still in ./IndexSearch, unmounted.
  *
  * Everything separating one row from the next here is space: --space-row
  * between rows, --space-hair between a title and its own snippet. That ratio
@@ -161,6 +161,20 @@ export function IndexView({ notes, tag, heading }: Props) {
 
   const hue = tag ? hueOf(tag) : undefined;
   const title = tag ? `#${tag}` : (heading ?? "All notes");
+  // The root view, as against a tag's notes or Untagged's. The three share this
+  // component and only this one wants a line saying how the collection breaks
+  // down: inside a tag every note is tagged, and on Untagged the whole list is
+  // the number.
+  const allNotes = !tag && !heading;
+
+  // Live, for the same reason the rename and delete dialogs count this way — a
+  // row deleted a moment ago has already left the list and shouldn't still be
+  // in the sentence printed under it.
+  const untaggedCount = useMemo(
+    () =>
+      allNotes ? liveNotes.filter((note) => note.tags.length === 0).length : 0,
+    [allNotes, liveNotes],
+  );
 
   // The same wash the editor pane gets, from the same file — lit by this
   // view's one tag, or by the neutral palette on All notes and Untagged. The
@@ -188,9 +202,12 @@ export function IndexView({ notes, tag, heading }: Props) {
                 exactly that much — the header floats over the scroller now, so
                 the two numbers are one number. */}
             <div className="mx-auto flex min-h-[var(--head-h)] max-w-[680px] items-center gap-4 px-6 py-4">
+              {/* -ml-1.5 cancels the first pill's own px-1.5: the text column
+                starts at the heading below, and the pill's padding hangs
+                outside it the way the row tints in the rail do. */}
               <nav
                 aria-label="Breadcrumb"
-                className="min-w-0 flex-1 text-[13px]"
+                className="-ml-1.5 min-w-0 flex-1 text-[13px]"
               >
                 <Link
                   href={ALL_NOTES_HREF}
@@ -266,19 +283,10 @@ export function IndexView({ notes, tag, heading }: Props) {
                     {/* Held in layout at all times, revealed on reach:
                       appearing from nothing would resize the pill under the
                       pointer. */}
-                    <svg
+                    <EditIcon
                       aria-hidden
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.75"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
                       className="size-4 shrink-0 text-ink-faint opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none"
-                    >
-                      <path d="M4 20h4l10-10-4-4L4 16v4z" />
-                      <path d="m13.5 6.5 4 4" />
-                    </svg>
+                    />
                   </button>
                 </>
               ) : (
@@ -332,25 +340,44 @@ export function IndexView({ notes, tag, heading }: Props) {
                   title={`Delete ${title}`}
                   className="row-tint flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-danger-wash hover:text-danger"
                 >
-                  <svg
-                    aria-hidden
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.75"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="size-4"
-                  >
-                    <path d="M4 7h16" />
-                    <path d="M10 4h4a1 1 0 0 1 1 1v2H9V5a1 1 0 0 1 1-1z" />
-                    <path d="M6 7v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7" />
-                    <path d="M10 11.5v5.5M14 11.5v5.5" />
-                  </svg>
+                  <TrashIcon aria-hidden className="size-4" />
                 </button>
               </>
             )}
           </div>
+
+          {/* How the collection breaks down, in the place the tag directory
+              says the same thing — same line, same separator, same one link.
+              This is where the rail's Untagged row went: a row that never
+              moved and stood at `0` for as long as you were caught up, in the
+              part of the rail that is always there, for a list that is a
+              corner of the collection rather than a view of it. Here the
+              number appears only while there is something behind it, and it
+              appears under the heading of the very list it is a corner of.
+
+              One link, not two. There is no `/tagged`: it would be All notes
+              with a corner taken out, linked from All notes, and it would owe
+              a route, a [PaletteScope] and a chip to a list nobody goes
+              looking for. The asymmetry is the honest part — untagged is a
+              pile you work down, tagged is not a place. */}
+          {allNotes && (
+            <p className="mt-[var(--space-hair)] text-[13px] text-ink-muted">
+              {liveNotes.length} {liveNotes.length === 1 ? "note" : "notes"}
+              {untaggedCount > 0 && (
+                <>
+                  <span aria-hidden className="px-1.5 text-ink-faint">
+                    ·
+                  </span>
+                  <Link
+                    href={UNTAGGED_HREF}
+                    className="text-action underline-offset-2 hover:underline"
+                  >
+                    {untaggedCount} untagged
+                  </Link>
+                </>
+              )}
+            </p>
+          )}
 
           {tag && renaming && (
             <TagRenameDialog
@@ -375,11 +402,11 @@ export function IndexView({ notes, tag, heading }: Props) {
           )}
 
           {notes.length === 0 ? (
-            // Two different emptinesses. An index with nothing in it is a
-            // question about tags; the *root* index with nothing in it is a
-            // collection that doesn't exist yet, and the only useful thing to
-            // say there is how to start one — including the way in that has no
-            // button anywhere on this screen.
+            // Two different emptinesses. A tag or Untagged index with nothing
+            // in it just needs to say so; the *root* index with nothing in it
+            // is a collection that doesn't exist yet, and the only useful thing
+            // to say there is how to start one — including the way in that has
+            // no button anywhere on this screen.
             tag === null && !heading ? (
               <p className="pt-[var(--space-block)] text-base text-ink-muted">
                 Nothing here yet.{" "}
@@ -402,11 +429,9 @@ export function IndexView({ notes, tag, heading }: Props) {
               </p>
             ) : (
               <p className="pt-[var(--space-block)] text-base text-ink-muted">
-                Nothing here yet. Tags come from the notes themselves — type{" "}
-                <span className="font-mono text-[13px]">
-                  #{tag ?? "something"}
-                </span>{" "}
-                in a note and it will show up.
+                {tag
+                  ? `No notes filed under #${tag} yet.`
+                  : "Nothing here yet."}
               </p>
             )
           ) : (

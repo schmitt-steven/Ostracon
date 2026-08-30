@@ -1,5 +1,7 @@
 "use client";
 
+import { CloseIcon } from "@/icons";
+
 import { useEffect, useRef } from "react";
 
 type Props = {
@@ -71,17 +73,7 @@ export function ImageLightbox({ src, alt, onClose }: Props) {
         // nearly all of it.
         className="glass lift-2 absolute right-4 top-4 grid size-9 place-items-center rounded-full text-ink-muted hover:text-ink"
       >
-        <svg
-          aria-hidden
-          viewBox="0 0 16 16"
-          className="size-4"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        >
-          <path d="M4.5 4.5 11.5 11.5M11.5 4.5 4.5 11.5" />
-        </svg>
+        <CloseIcon aria-hidden className="size-4" />
       </button>
 
       {/* object-contain against both limits: a tall screenshot is bounded by

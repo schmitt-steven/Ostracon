@@ -1,5 +1,7 @@
 "use client";
 
+import { CloseSmallIcon } from "@/icons";
+
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTagHues } from "@/hooks/use-tag-hues";
@@ -400,17 +402,7 @@ function TagName({
         {/* A drawn cross rather than the × glyph: at this size the character's
             strokes are hairlines, and it read as a speck next to the tag name
             it belongs to. Stroked, it holds its weight. */}
-        <svg
-          aria-hidden
-          viewBox="0 0 12 12"
-          className="size-[11px]"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        >
-          <path d="M3.25 3.25 8.75 8.75M8.75 3.25 3.25 8.75" />
-        </svg>
+        <CloseSmallIcon aria-hidden className="size-[11px]" />
       </button>
     </span>
   );

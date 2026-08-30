@@ -46,7 +46,7 @@ const CONSONANT_Y = /[^aeiou]y$/;
  * → `serie`) still finds every note that spells it the same way. What it must
  * not do is merge two words that mean different things.
  */
-export function stemTerm(term: string): string {
+function stemTerm(term: string): string {
   const lower = term.toLowerCase();
   // Too short to have a plural worth folding, and short words are where a
   // wrong fold does the most damage: `is`, `was`, `aws`, `css`.

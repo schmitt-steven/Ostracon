@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { MouseEvent } from "react";
+import { DotsIcon } from "@/icons";
 
 type Props = {
   href: string;
@@ -78,7 +79,7 @@ export function RailRow({
         className={`row-tint flex min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1 text-[13px] ${
           selected
             ? // A tag lights up in its own hue; the rows that aren't tags —
-              // All notes, Untagged, Images — have none to light up in, so
+              // All notes, All tags, Images — have none to light up in, so
               // they take the neutral one instead of inheriting a colour that
               // would be saying something untrue.
               `${hue === undefined ? "row-selected" : "hue-row-selected"} text-ink`
@@ -168,24 +169,9 @@ export function RailRow({
                 "pointer-events-none opacity-0 focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 pointer-coarse:pointer-events-auto pointer-coarse:opacity-100"
           }`}
         >
-          <DotsIcon />
+          <DotsIcon aria-hidden className="size-3.5" />
         </button>
       )}
     </div>
-  );
-}
-
-function DotsIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 16 16"
-      className="size-3.5"
-      fill="currentColor"
-    >
-      <circle cx="8" cy="3.4" r="1.15" />
-      <circle cx="8" cy="8" r="1.15" />
-      <circle cx="8" cy="12.6" r="1.15" />
-    </svg>
   );
 }

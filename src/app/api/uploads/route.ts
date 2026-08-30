@@ -1,6 +1,7 @@
 import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth/require-auth";
+import { SNIFF_BYTES, sniffImageType } from "@/lib/images/sniff";
 import {
   isAllowedImageType,
   MAX_IMAGE_BYTES,
@@ -29,6 +30,22 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
+  // And then the bytes, because the line above only checked a *label*. On a
+  // file the user picked, the browser sniffed that label and it is honest; on a
+  // hand-built FormData it says whatever the sender wants, and this is a POST
+  // endpoint anyone signed in can reach. The label still gets checked first so
+  // an ordinary mistake is refused by name rather than as "not an image".
+  //
+  // Only the head is read — see SNIFF_BYTES — so a ten-megabyte upload is not
+  // pulled into memory to look at eight of them.
+  const head = new Uint8Array(await file.slice(0, SNIFF_BYTES).arrayBuffer());
+  const sniffed = sniffImageType(head);
+  if (!sniffed) {
+    return NextResponse.json(
+      { error: "That file isn't a PNG, JPEG, WebP, GIF or AVIF image" },
+      { status: 400 },
+    );
+  }
   // Re-checked here rather than trusted from the browser: the client shrinks
   // most images to a fraction of this before sending (see [compressImage]) and
   // refuses the rest, but neither of those is a control — this endpoint takes
@@ -43,7 +60,10 @@ export async function POST(request: Request) {
   const pathname = `notes/${Date.now()}-${sanitizeFilename(file.name || "image")}`;
   const blob = await put(pathname, file, {
     access: "public",
-    contentType: file.type,
+    // What the bytes are, not what the request said they were. This is the
+    // Content-Type every reader will be served the image under, so it is the
+    // one place where guessing from a label would actually have consequences.
+    contentType: sniffed,
     // Explicit, so this always resolves the same way regardless of the
     // linked Vercel project's OIDC configuration: @vercel/blob tries OIDC
     // first when a VERCEL_OIDC_TOKEN is present (Next.js injects one

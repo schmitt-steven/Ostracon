@@ -1,8 +1,11 @@
 "use client";
 
+import { SearchIcon } from "@/icons";
+
 import { usePathname } from "next/navigation";
 import { setPaletteOpen } from "@/lib/command/palette-state";
 import { scopeFromPath, scopePrompt } from "@/lib/command/scope";
+import { usePaletteShortcut } from "@/hooks/use-palette-shortcut";
 
 /**
  * The rail's search entry point — the one that made ⌘K findable.
@@ -31,6 +34,7 @@ import { scopeFromPath, scopePrompt } from "@/lib/command/scope";
  */
 export function SearchTrigger() {
   const scope = scopeFromPath(usePathname());
+  const shortcut = usePaletteShortcut();
 
   return (
     <button
@@ -42,7 +46,7 @@ export function SearchTrigger() {
       // control that already has a ground of its own comes out *lighter* than
       // the ground in the light theme — the box appearing to fade under the
       // pointer.
-      className="well [--well-shade:0.2] flex w-full items-center gap-2.5 rounded-[var(--radius-control)] bg-sunk px-2.5 py-1.5 text-left text-[13px] text-ink-faint transition-colors duration-200 hover:bg-[color-mix(in_srgb,var(--ink)_7%,var(--sunk))] hover:text-ink-muted motion-reduce:transition-none"
+      className="well well-shallow flex w-full items-center gap-2.5 rounded-[var(--radius-control)] bg-sunk px-2.5 py-1.5 text-left text-[13px] text-ink-faint transition-colors duration-200 hover:bg-[color-mix(in_srgb,var(--ink)_7%,var(--sunk))] hover:text-ink-muted motion-reduce:transition-none"
     >
       {/* Same 7px footprint the rows give their marks, and the same 2.5 gap
           after it — so the magnifier sits on the column of dots and glyphs
@@ -53,17 +57,7 @@ export function SearchTrigger() {
         aria-hidden
         className="flex size-[7px] shrink-0 items-center justify-center"
       >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="round"
-          className="size-3.5 shrink-0"
-        >
-          <circle cx="11" cy="11" r="7" />
-          <path d="m20 20-3.5-3.5" />
-        </svg>
+        <SearchIcon className="size-3.5 shrink-0" />
       </span>
       {/* Truncates rather than shortening: a long tag has to give way at the
           end of a 240px column, and `Search #infra/deploy…` cut is still the
@@ -77,7 +71,7 @@ export function SearchTrigger() {
         aria-hidden
         className="shrink-0 font-mono text-[11px] text-ink-faint max-[999px]:hidden"
       >
-        ⌘K
+        {shortcut}
       </span>
     </button>
   );

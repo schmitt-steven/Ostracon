@@ -1,5 +1,7 @@
 "use client";
 
+import { PlusLargeIcon } from "@/icons";
+
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
@@ -298,7 +300,7 @@ function DropOverlay({ kind }: { kind: DragKind }) {
         className="pointer-events-none fixed inset-x-0 bottom-8 z-[60] flex justify-center px-6"
       >
         <div className={`${card} px-7 py-5`}>
-          <PlusGlyph />
+          <PlusLargeIcon aria-hidden className="size-7 text-ink-faint" />
           <p className="mt-2 font-display text-[17px] font-medium text-ink">
             Drop to add images
           </p>
@@ -316,7 +318,7 @@ function DropOverlay({ kind }: { kind: DragKind }) {
       className="scrim pointer-events-none fixed inset-0 z-[60] flex items-center justify-center p-6"
     >
       <div className={`${card} px-10 py-8`}>
-        <PlusGlyph />
+        <PlusLargeIcon aria-hidden className="size-7 text-ink-faint" />
         <p className="mt-3 font-display text-[20px] font-medium text-ink">
           Drop to import
         </p>
@@ -325,26 +327,6 @@ function DropOverlay({ kind }: { kind: DragKind }) {
         </p>
       </div>
     </div>
-  );
-}
-
-/* The overlay's mark. Bare strokes rather than a plus in a circle: the dashed
-   rim around it is already the enclosing shape, and two of them nested reads
-   as a button you could press — which this is not, on a surface no pointer can
-   reach. */
-function PlusGlyph() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      className="size-7 text-ink-faint"
-    >
-      <path d="M12 5v14M5 12h14" />
-    </svg>
   );
 }
 

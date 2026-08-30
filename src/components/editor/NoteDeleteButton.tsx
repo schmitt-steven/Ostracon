@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteNote } from "@/lib/notes/actions";
+import { TrashIcon } from "@/icons";
 
 /**
  * Delete, in the header of the note you're reading.
@@ -70,7 +71,7 @@ export function NoteDeleteButton({
           confirming ? "bg-danger-wash text-danger" : "text-ink-faint"
         }`}
       >
-        <TrashIcon />
+        <TrashIcon aria-hidden className="h-4 w-4" />
       </button>
 
       {confirming && (
@@ -105,27 +106,5 @@ export function NoteDeleteButton({
         </div>
       )}
     </div>
-  );
-}
-
-/* Drawn here rather than imported, the way the index row's own delete control
-   keeps its copy: same 24-unit box, same stroke, so the two read as one. */
-function TrashIcon() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-4 w-4"
-    >
-      <path d="M4 7h16" />
-      <path d="M10 4h4a1 1 0 0 1 1 1v2H9V5a1 1 0 0 1 1-1z" />
-      <path d="M6 7v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7" />
-      <path d="M10 11.5v5.5M14 11.5v5.5" />
-    </svg>
   );
 }

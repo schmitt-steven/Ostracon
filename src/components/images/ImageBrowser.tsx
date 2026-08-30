@@ -39,9 +39,12 @@ export function ImageBrowser({
                 index — the minimum is what keeps the empty gallery's header,
                 which has nothing else in it, the same height as the others. */}
             <div className="mx-auto flex min-h-[var(--head-h)] max-w-[680px] items-center gap-4 px-6 py-4">
+              {/* -ml-1.5 cancels the first pill's own px-1.5, so "All notes"
+                sits over the Images heading below rather than 6px right of
+                it. */}
               <nav
                 aria-label="Breadcrumb"
-                className="min-w-0 flex-1 text-[13px]"
+                className="-ml-1.5 min-w-0 flex-1 text-[13px]"
               >
                 <Link
                   href={ALL_NOTES_HREF}

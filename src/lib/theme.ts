@@ -82,7 +82,7 @@ export function storedPreference(): ThemePreference {
 let sessionPreference: ThemePreference | null = null;
 
 /** What the OS is asking for right now. */
-export function systemTheme(): Theme {
+function systemTheme(): Theme {
   return window.matchMedia(OS_DARK_QUERY).matches ? "dark" : "light";
 }
 

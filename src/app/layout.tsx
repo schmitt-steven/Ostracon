@@ -64,7 +64,6 @@ async function loadRail() {
       tree,
       tagCount: flat.length,
       allCount: notes.length,
-      untaggedCount: notes.filter((note) => note.tags.length === 0).length,
       // Counted across notes rather than by listing the bucket: the same
       // markdown pasted into two notes points at one image, and the gallery
       // shows it once. See the note on the rail's row for where this and the

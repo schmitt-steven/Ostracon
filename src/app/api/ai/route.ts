@@ -1,28 +1,25 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAuth } from "@/lib/auth/require-auth";
-import { listProviders, resolveProvider } from "@/lib/ai/providers";
+import {
+  describeProvider,
+  listProviders,
+  resolveProvider,
+} from "@/lib/ai/providers";
 import { describeCompletionError, streamCompletion } from "@/lib/ai/stream";
 import {
   AI_ACTIONS,
   NOTE_CONTEXT_LIMIT,
+  PROVIDER_IDS,
   type ProviderInfo,
 } from "@/lib/ai/types";
 
 // Lets the menu render the real provider list — which ones exist, which are
-// usable right now, and why not. Deliberately maps the fields by hand rather
-// than spreading: baseURL and apiKey stay server-side.
+// usable right now, and why not. [describeProvider] is what keeps baseURL and
+// apiKey server-side; nothing is narrowed here beyond what it hands back.
 export async function GET(): Promise<NextResponse<ProviderInfo[]>> {
   await requireAuth();
-  return NextResponse.json(
-    (await listProviders()).map((p) => ({
-      id: p.id,
-      label: p.label,
-      model: p.model,
-      available: p.available,
-      unavailableReason: p.unavailableReason,
-    })),
-  );
+  return NextResponse.json((await listProviders()).map(describeProvider));
 }
 
 // A Route Handler rather than a Server Action: the response is a token stream,
@@ -30,7 +27,7 @@ export async function GET(): Promise<NextResponse<ProviderInfo[]>> {
 // is outside the Server Action auth convention, so requireAuth() here is
 // load-bearing — it guards both the notes' content and the API key's spend.
 const RequestSchema = z.object({
-  providerId: z.enum(["gemini", "lmstudio", "ollama"]).optional(),
+  providerId: z.enum(PROVIDER_IDS).optional(),
   action: z.enum(AI_ACTIONS),
   // Bounded so a stray select-all can't send an entire long note (and burn
   // the free tier's rate limit) on one keystroke. Optional because "ask" can

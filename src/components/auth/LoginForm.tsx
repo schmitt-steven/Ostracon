@@ -1,40 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
-import { loginAction, type LoginState } from "@/lib/auth/actions";
-
-function formatCountdown(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
-/**
- * Ticks the server-issued cooldown down to zero. Seeded during render rather
- * than in an effect so the first paint after a locked-out submit already shows
- * the full duration.
- */
-function useCooldown(state: LoginState): number {
-  const [remaining, setRemaining] = useState(state?.retryAfter ?? 0);
-  const [seenState, setSeenState] = useState(state);
-
-  if (state !== seenState) {
-    setSeenState(state);
-    setRemaining(state?.retryAfter ?? 0);
-  }
-
-  useEffect(() => {
-    if (remaining <= 0) return;
-    const id = setTimeout(() => setRemaining((r) => r - 1), 1000);
-    return () => clearTimeout(id);
-  }, [remaining]);
-
-  return remaining;
-}
+import { useActionState } from "react";
+import { loginAction } from "@/lib/auth/actions";
+import { formatCountdown, useCountdown } from "@/lib/ui/cooldown";
 
 export function LoginForm() {
   const [state, formAction, pending] = useActionState(loginAction, undefined);
-  const cooldown = useCooldown(state);
+  // Keyed on the entire answer; two refusals in a row can owe the same seconds, and clock has to restart anyway
+  const cooldown = useCountdown(state?.retryAfter ?? 0, state);
   const locked = cooldown > 0;
 
   return (
