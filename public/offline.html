@@ -1,0 +1,145 @@
+<!doctype html>
+<!--
+  What the service worker shows when a page load can't reach the server.
+
+  Everything it needs is in this file. It is served from the cache with no app
+  around it, so it can't import the palette, can't use the bundled fonts (they
+  live at hashed /_next/static/media URLs nothing static can name), and can't
+  read anything the app knows. The colours below are copied from globals.css
+  and the theme script from lib/theme.ts — the two places to check if either
+  changes.
+-->
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Offline · Ostracon</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <!-- Above the script, not below it: the script rewrites this tag, and a
+         querySelector that runs before the parser has reached it finds null,
+         throws into the catch, and leaves a light status bar over a dark
+         page. -->
+    <meta name="theme-color" content="#e6e8ec" />
+    <script>
+      // The same choice the app's own pre-paint script reads, resolved the
+      // same way, so arriving here doesn't flash the wrong palette.
+      {
+        try {
+          var s = localStorage.getItem("skb:theme");
+          var t =
+            s === "dark" || s === "light"
+              ? s
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          document.documentElement.setAttribute("data-theme", t);
+          document
+            .querySelector('meta[name="theme-color"]')
+            .setAttribute("content", t === "dark" ? "#0e0f12" : "#e6e8ec");
+        } catch (e) {}
+      }
+    </script>
+    <style>
+      :root {
+        color-scheme: light;
+        --paper: #e6e8ec;
+        --surface: #f4f5f8;
+        --ink: #0a1a33;
+        --ink-muted: #42506a;
+        --line: #d6d9df;
+        --action: #1d4e8f;
+        --action-hover: #163d73;
+      }
+      [data-theme="dark"] {
+        color-scheme: dark;
+        --paper: #0e0f12;
+        --surface: #1a1c21;
+        --ink: #fbf7f2;
+        --ink-muted: #c1bab0;
+        --line: #2b2e34;
+        --action: #c2603a;
+        --action-hover: #d4744e;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        /* Renders under the translucent status bar, like the app does. */
+        padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+          max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+        background-color: var(--paper);
+        color: var(--ink);
+        /* Not the app's Plex/Fraunces — see the comment at the top. */
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      main {
+        max-width: 27rem;
+        text-align: center;
+      }
+      img {
+        width: 64px;
+        height: 64px;
+      }
+      h1 {
+        margin: 20px 0 0;
+        font-size: 22px;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+      }
+      p {
+        margin: 10px 0 0;
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--ink-muted);
+      }
+      button {
+        margin-top: 24px;
+        padding: 9px 20px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background-color: var(--surface);
+        color: var(--action);
+        font: inherit;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      button:hover {
+        color: var(--action-hover);
+      }
+      button:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--action) 60%, transparent);
+        outline-offset: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icons/icon-192.png" alt="" width="64" height="64" />
+      <h1>No connection</h1>
+      <p>
+        Ostracon keeps your notes on the server, so it needs the network to show
+        them. Anything you were typing is still saved on this device and will be
+        here when you get back.
+      </p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+    <script>
+      // Reconnecting is the answer to this page, so don't make them press it.
+      window.addEventListener("online", function () {
+        location.reload();
+      });
+    </script>
+  </body>
+</html>

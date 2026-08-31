@@ -16,6 +16,8 @@ export { default as NotesIcon } from "./notes.svg";
 export { default as TagIcon } from "./tag.svg";
 export { default as ImagesIcon } from "./images.svg";
 export { default as GearIcon } from "./gear.svg";
+/** Arrow onto a line — the update row. Not a tray: at 14px the box reads as noise. */
+export { default as DownloadIcon } from "./download.svg";
 export { default as LogOutIcon } from "./log-out.svg";
 export { default as ListIcon } from "./list.svg";
 export { default as PencilIcon } from "./pencil.svg";

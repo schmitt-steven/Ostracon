@@ -67,10 +67,40 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  async headers() {
+    return [
+      {
+        // The one file the browser must never serve from its own HTTP cache.
+        // `updateViaCache: "none"` at registration covers the same ground from
+        // the other side; a stale worker is the failure mode that outlives a
+        // deploy, so both ends say it.
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        ],
+      },
+    ];
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "2mb",
     },
+    /**
+     * A dropped connection stops throwing. Failed navigations, RSC fetches,
+     * prefetches and Server Actions stay pending and retry themselves once the
+     * network is back, and `useOffline` from next/offline reports the state.
+     *
+     * Works without Cache Components because there is a route-level
+     * app/loading.tsx to prefetch as the shell — see the offline-support guide
+     * in node_modules/next/dist/docs.
+     *
+     * Note what this changes: a Server Action that fails on the network no
+     * longer rejects, so use-autosave's "error" branch stops firing for
+     * offline saves and the hint sits pending instead. That is why the save
+     * hint reads the offline state (see SaveHint).
+     */
+    useOffline: true,
   },
 };
 

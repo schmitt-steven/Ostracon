@@ -9,6 +9,22 @@ export type ThemePreference = Theme | "system";
 const STORAGE_KEY = "skb:theme";
 const OS_DARK_QUERY = "(prefers-color-scheme: dark)";
 
+/**
+ * What the browser paints around an installed window — the status bar on iOS,
+ * the task-switcher header on Android. Both are --paper: the theme colour is
+ * the page's own ground continuing past the edge of the page.
+ *
+ * This lives here, and not in a `themeColor` on the layout's viewport export,
+ * because Next emits that as prefers-color-scheme media queries — and the OS
+ * preference is exactly what a reader who picked light or dark by hand has
+ * overridden. The attribute and the meta tag have to move together or the
+ * status bar contradicts the app below it, so one place moves both.
+ */
+export const THEME_COLORS: Record<Theme, string> = {
+  light: "#e6e8ec",
+  dark: "#0e0f12",
+};
+
 /** The switcher's segments. System leads — it's the default and the other two
  * are what it picks between. */
 export const THEME_PREFERENCES: { value: ThemePreference; label: string }[] = [
@@ -27,9 +43,11 @@ export const THEME_PREFERENCES: { value: ThemePreference; label: string }[] = [
  */
 export const THEME_INIT_SCRIPT = `{try{var s=localStorage.getItem(${JSON.stringify(
   STORAGE_KEY,
-)});document.documentElement.setAttribute("data-theme",s==="dark"||s==="light"?s:(window.matchMedia(${JSON.stringify(
+)});var t=s==="dark"||s==="light"?s:(window.matchMedia(${JSON.stringify(
   OS_DARK_QUERY,
-)}).matches?"dark":"light"))}catch(e){}}`;
+)}).matches?"dark":"light");document.documentElement.setAttribute("data-theme",t);var m=document.querySelector('meta[name="theme-color"]');if(!m){m=document.createElement("meta");m.setAttribute("name","theme-color");document.head.appendChild(m)}m.setAttribute("content",t==="dark"?${JSON.stringify(
+  THEME_COLORS.dark,
+)}:${JSON.stringify(THEME_COLORS.light)})}catch(e){}}`;
 
 /**
  * The stored choice; "system" when there's no key or an unrecognised one
@@ -61,9 +79,23 @@ export function resolvePreference(
   return preference === "system" ? systemTheme() : preference;
 }
 
-/** Paints a palette without recording anything: the attribute is the display. */
+/**
+ * Paints a palette without recording anything: the attribute is the display.
+ *
+ * The meta tag moves with it — the browser chrome around an installed window
+ * is part of the same surface. Created if it isn't there, because the only
+ * thing that writes it is this function and the script above.
+ */
 export function applyTheme(theme: Theme) {
   document.documentElement.setAttribute("data-theme", theme);
+
+  let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.name = "theme-color";
+    document.head.appendChild(meta);
+  }
+  meta.content = THEME_COLORS[theme];
 }
 
 /**

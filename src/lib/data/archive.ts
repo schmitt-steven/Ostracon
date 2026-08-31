@@ -8,7 +8,7 @@
  * Setting up Neon.md
  * Tag design.md
  * images/1740000000000-diagram.png
- * kb-export.json
+ * ostracon-export.json
  * ```
  *
  * - Notes are named after their titles, at the root, so `[[Tag design]]`
@@ -16,7 +16,7 @@
  *   Obsidian vault. The zip is a convenience — a plain folder drops in too.
  * - Image references are relative in the archive and absolute in the app: only
  *   our own uploads are rewritten; external URLs stay as written.
- * - The manifest (`kb-export.json`) says only what the archive *is*; every
+ * - The manifest (`ostracon-export.json`) says only what the archive *is*; every
  *   fact about a note is in that note's frontmatter. Its presence is what lets
  *   the importer trust frontmatter over filenames.
  *
@@ -24,12 +24,12 @@
  */
 
 /** Marks an archive as ours. Anything else is read as loose markdown. */
-export const ARCHIVE_FORMAT = "se-knowledge-base/export";
+export const ARCHIVE_FORMAT = "ostracon/export";
 
 /** Bumped when a reader would need to behave differently — not per added field. */
 export const ARCHIVE_VERSION = 1;
 
-export const MANIFEST_NAME = "kb-export.json";
+export const MANIFEST_NAME = "ostracon-export.json";
 
 /** Everything not a note. Trailing slash: it is matched as a prefix. */
 export const IMAGES_DIR = "images/";

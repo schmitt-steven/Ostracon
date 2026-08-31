@@ -26,6 +26,8 @@
 
 # personal notes / scratch
 updates.md
+RELEASING.md
+scripts/
 
 # debug
 npm-debug.log*

@@ -1,4 +1,9 @@
-# Ostracon
+# <img src="src/assets/ostracon-icon.png" alt="" width="36" align="top"> &nbsp;Ostracon
+[![Version](https://img.shields.io/github/package-json/v/schmitt-steven/Ostracon?label=version)](https://github.com/schmitt-steven/Ostracon/releases)
+[![Next.js](https://img.shields.io/github/package-json/dependency-version/schmitt-steven/Ostracon/next?logo=nextdotjs&label=next.js)](https://nextjs.org)
+[![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue)](LICENSE)
+
+
 
 Ostracon is a self-hosted Markdown knowledge base for one person.
 
@@ -11,11 +16,13 @@ It runs on Next.js and hosting is free: one Vercel project holds the app, a Neon
 - **Markdown editor**: CodeMirror 6 (what Obsidian uses), write/preview/split-view toggle, Shiki syntax highlighting.
 - **Tag-based organization**: hierarchical tags and filtering.
 - **All-in-one menu**: `⌘+K` / `Ctrl+K` for search, navigation, and context-aware actions. No mouse? No problem.
+- **Installable**: add it to your home screen or dock and it opens in its own window, with shortcuts and a share target. Open `.md` and `.txt` files directly in Ostracon. If you lose connection mid-work your edits are saved once you're back online.
 - **Full-text search**: instant and client-side over the whole corpus.
 - **Images**: paste or drag-and-drop to upload; gallery browser with all uploaded images.
 - **AI Integration**: select text and Explain, Summarize, Rewrite, or Ask, via Gemini or local LLMs.
 - **Authentication**: signed sessions, per-device tracking, login throttling.
 - **Import / Export**: Import `.md` and `.txt` files, or a `.zip`. Export everything as a `.zip`.
+- **Update notice**: tells you when a new version is out and how to migrate to it.
 
 ## Getting started
 
@@ -35,7 +42,7 @@ Still under **Storage**, select **Create Database → Blob (Fast Object Storage)
 
 ### 4. Set the required secrets
 
-In **Settings → Environment Variables**, add:
+In the project's **Environment Variables** tab, add:
 
 | Variable | Value |
 | --- | --- |
@@ -48,29 +55,25 @@ cookie. If you don't have `openssl`, you could use
 
 Optionally add your `GEMINI_API_KEY` to enable the AI features.
 
-### 5. Create the database tables
+### 5. Deploy the app
 
-In the root folder of your cloned repo:
+Got to the **Deployments** tab.
+If Vercel already tried to deploy, click the three dots of the last deployment and redeploy.
+Otherwise click the three dots in the top right corner and start a new deployment.
+
+Once Vercel finished the deployment you can open your website and unlock Ostracon with your `APP_PASSWORD`. If you want a different password, you can change it in Ostracon's settings. Once you have, you can also delete the `APP_PASSWORD` environment variable.
+
+## Updating
+
+Ostracon tells you when there is a new version is available. If an update is available, an Update button will appear in the side bar. Click it and follow the instructions to update.
+
+## Running it locally
 
 ```bash
 npm install
 npm install -g vercel        # Vercel CLI
-vercel link                  # and pick the project you just created
-vercel env pull .env.local
-npm run db:migrate
-```
-
-### 6. Deploy the app
-
-Deploy the app (**Deployments → "..." of the last deployment → Redeploy** or create a new deployment by clicking on the "..." at the top right, or simply push a commit). The app builds against the database you just set up.
-
-Now you can unlock Ostracon with your `APP_PASSWORD`. If you want a different password, you can change it in Ostracon's settings. Once you have, you can also delete the `APP_PASSWORD` environment variable.
-
-### Running it locally
-
-Once `.env.local` exists (step 5), start the local server with:
-
-```bash
+vercel link                  # and pick the project you created above
+vercel env pull .env.local   # fetches DATABASE_URL and the rest
 npm run dev
 ```
 

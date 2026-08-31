@@ -18,6 +18,9 @@ import { SectionNote } from "./SectionNote";
  * [SettingsView] so the connection string and blob token never reach a client
  * bundle. Release facts render immediately; storage figures (two round trips,
  * one walking the whole blob store) stream in behind a same-height skeleton.
+ *
+ * Whether a *newer* version exists is not asked here — that's the rail's
+ * [UpdateRow], where it can be seen without opening this page.
  */
 export function DeploymentSection() {
   const release = describeRelease();
@@ -32,6 +35,8 @@ export function DeploymentSection() {
       ) : null}
 
       <Group label="Release">
+        <Fact label="Version">{release.version}</Fact>
+
         <Fact label="Environment">{TARGET_LABEL[release.target]}</Fact>
 
         {/* Branch shown as the hint only off production, where it's the one

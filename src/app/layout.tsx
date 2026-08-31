@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { ServiceWorkerRegistrar } from "@/components/pwa/ServiceWorkerRegistrar";
 import { AppShell } from "@/components/shell/AppShell";
 import { InlineScript } from "@/components/ui/InlineScript";
 import { ThemeSync } from "@/components/ui/ThemeSync";
@@ -37,6 +38,35 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: "Ostracon",
   description: "Personal software-engineering notes",
+  // The name an installed window carries, as distinct from the page title.
+  applicationName: "Ostracon",
+  appleWebApp: {
+    capable: true,
+    title: "Ostracon",
+    // The page runs *under* the status bar rather than below it, which is what
+    // makes an installed app look like one — and what makes the safe-area
+    // insets in globals.css load-bearing rather than decorative.
+    statusBarStyle: "black-translucent",
+  },
+  // Nothing here is a phone number; iOS deciding otherwise turns note text
+  // blue and tappable.
+  formatDetection: { telephone: false },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Draw into the notch and the home-indicator strip. Everything that then has
+  // to keep out of them does it with env(safe-area-inset-*) — see .shell-inset
+  // and .bar-inset in globals.css.
+  viewportFit: "cover",
+  // The keyboard shortens the layout viewport instead of sliding it, so the
+  // touch bottom bar lands above the keyboard rather than behind it.
+  interactiveWidget: "resizes-content",
+  // No themeColor here on purpose: Next writes it as prefers-color-scheme
+  // media queries, and the OS preference is the thing a reader who chose light
+  // or dark by hand has overridden. lib/theme.ts owns the tag instead, and
+  // moves it with `data-theme`.
 };
 
 /**
@@ -100,6 +130,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             [ThemeSync] for the two ways it can go stale — and it sits out here
             rather than inside the shell because /login is drawn without one. */}
         <ThemeSync />
+        {/* Also out here rather than in the shell: /login is the page an
+            installed app opens against a cold cache, and its assets are worth
+            storing like any other. */}
+        <ServiceWorkerRegistrar />
         {shell ? (
           <AppShell rail={shell.rail} tagNames={shell.tagNames}>
             {children}

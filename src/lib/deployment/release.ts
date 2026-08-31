@@ -1,5 +1,6 @@
 import "server-only";
 import { version as nextVersion } from "next/package.json";
+import { version as appVersion } from "../../../package.json";
 import { describeRegion, type Region } from "./regions";
 
 /**
@@ -23,6 +24,12 @@ export const TARGET_LABEL: Record<DeployTarget, string> = {
 };
 
 export type Release = {
+  /**
+   * This build's Ostracon version, straight from `package.json`. Bumped by
+   * hand when a change is one people running a copy should take — it is what
+   * [checkForUpdate] compares against upstream to answer "is there an update".
+   */
+  version: string;
   target: DeployTarget;
   /** Vercel's id for this deployment; null anywhere else. */
   deploymentId: string | null;
@@ -78,6 +85,7 @@ export function describeRelease(): Release {
   const region = process.env.VERCEL_REGION;
 
   return {
+    version: appVersion,
     target,
     deploymentId: process.env.VERCEL_DEPLOYMENT_ID || null,
     region: region ? describeRegion(region) : null,

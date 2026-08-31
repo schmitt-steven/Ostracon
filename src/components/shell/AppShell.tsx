@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { CommandPalette } from "@/components/command/CommandPalette";
+import { OfflineToast } from "@/components/pwa/OfflineToast";
+import { PaletteLaunch } from "@/components/pwa/PaletteLaunch";
 import {
   getPaletteOpen,
   getServerPaletteOpen,
@@ -60,7 +62,9 @@ export function AppShell({ rail, tagNames, children }: Props) {
 
   return (
     <KnownTagsProvider tags={tagNames}>
-      <div className="flex h-dvh gap-[14px] p-[14px] max-[999px]:p-2 max-[999px]:pb-0">
+      {/* .shell-inset carries the padding *and* the notch — see globals.css;
+          it is where the 14px/8px breakpoint moved to. */}
+      <div className="shell-inset flex h-dvh gap-[14px]">
         <aside
           // Width is the only thing that animates; the rail swaps to its strip
           // layout on the first frame. Cross-fading the contents as well would
@@ -100,7 +104,7 @@ export function AppShell({ rail, tagNames, children }: Props) {
 
         {/* Bottom bar, touch only. The controls that live in the pane header on
           a wide screen sit at thumb height here instead. */}
-        <div className="glass lift-2 fixed inset-x-0 bottom-0 z-30 flex items-center justify-around gap-2 px-4 py-2 min-[1000px]:hidden">
+        <div className="glass lift-2 bar-inset fixed inset-x-0 bottom-0 z-30 flex items-center justify-around gap-2 pt-2 min-[1000px]:hidden">
           {/* "Notes", not "Tags": the drawer is the whole rail — All notes,
             All tags and Images, plus whatever is pinned — and naming it after
             one of its rows undersold where the button goes. */}
@@ -144,6 +148,12 @@ export function AppShell({ rail, tagNames, children }: Props) {
         {/* The confirmation ⌘K's "Log out" row asks for. Mounted here rather
             than in the rail so it survives the palette closing behind it. */}
         <LogOutPrompt />
+
+        {/* Both belong to the shell for the same reason the palette does: one
+            reports a condition the whole app is in, the other answers a
+            shortcut that can land on any route. */}
+        <OfflineToast />
+        <PaletteLaunch />
       </div>
     </KnownTagsProvider>
   );

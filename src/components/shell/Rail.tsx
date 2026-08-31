@@ -1,8 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState, type MouseEvent } from "react";
+import icon from "@/assets/ostracon-icon.png";
 import { setPaletteOpen } from "@/lib/command/palette-state";
 import { scopeFromPath, scopePrompt } from "@/lib/command/scope";
 import type { PinnedNote } from "@/lib/notes/queries";
@@ -40,6 +42,7 @@ import { SearchTrigger } from "./SearchTrigger";
 import { TagMenu } from "./TagMenu";
 import { TagDeleteDialog } from "./TagDeleteDialog";
 import { TagRenameDialog } from "./TagRenameDialog";
+import { UpdateRow } from "./UpdateRow";
 
 export type RailData = {
   /** At most MAX_PINNED_NOTES, in the order they were pinned. */
@@ -216,6 +219,7 @@ export function Rail({
         </Link>
 
         <div className="mt-auto flex flex-col items-start gap-[var(--space-item)]">
+          <UpdateRow compact />
           <Link
             href="/settings"
             aria-label="Settings"
@@ -238,13 +242,24 @@ export function Rail({
       className="flex h-full flex-col overflow-y-auto px-3 py-4"
       onClick={onNavigate}
     >
-      {/* Wordmark left, fold control right. -mr-1.5 cancels the button's
-          centring gutter so the glyph sits on the content edge. */}
+      {/* Wordmark left, fold control right. */}
       {onToggleCollapsed && (
         <div className="mb-[calc(var(--space-item)*2)] -mr-1.5 flex items-center justify-between">
-          <span className="select-none font-display text-[19px] font-bold leading-none text-ink">
+          {/* Wordmark is the way back to All notes. */}
+          <Link
+            href={ALL_NOTES_HREF}
+            aria-label="All notes"
+            aria-current={pathname === ALL_NOTES_HREF ? "page" : undefined}
+            className="group flex select-none items-center gap-2 font-display text-[19px] font-bold leading-none text-ink [paint-order:stroke] [-webkit-text-stroke:3px_transparent] transition-[-webkit-text-stroke-color] duration-200 hover:[-webkit-text-stroke-color:var(--color-line)] motion-reduce:transition-none"
+          >
+            <Image
+              src={icon}
+              alt=""
+              aria-hidden
+              className="size-6 shrink-0 transition duration-500 ease-out group-hover:[filter:drop-shadow(1px_0_0_var(--color-line))_drop-shadow(-1px_0_0_var(--color-line))_drop-shadow(0_1px_0_var(--color-line))_drop-shadow(0_-1px_0_var(--color-line))] motion-safe:group-hover:rotate-[360deg] motion-reduce:duration-200"
+            />
             Ostracon
-          </span>
+          </Link>
           <FoldButton collapsed={false} onClick={onToggleCollapsed} />
         </div>
       )}
@@ -352,8 +367,11 @@ export function Rail({
       )}
 
       {/* mt-auto pins this to the foot. Settings is a [RailRow] (a place now),
-          where the theme toggle used to be — one row for all preferences. */}
+          where the theme toggle used to be — one row for all preferences. The
+          update row sits above it, absent almost always. */}
       <div className="mt-auto flex flex-col gap-[var(--space-item)] pt-[var(--space-group)]">
+        {/* Only ever drawn when there is one, and only until it's waved away. */}
+        <UpdateRow />
         <RailRow
           href="/settings"
           label="Settings"

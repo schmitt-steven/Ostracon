@@ -107,6 +107,27 @@ export function NoteImport() {
   // ⌘K's row — synchronous inside the gesture, or the dialog won't open.
   useEffect(() => subscribeNoteImport(() => inputRef.current?.click()), []);
 
+  /**
+   * The third way in: a .md opened from the desktop, via the manifest's
+   * file_handlers. Consumed here because the queue may only be claimed once
+   * per page load and this component is mounted exactly once — and because the
+   * files want [runImport] anyway, same as a drop.
+   *
+   * Chromium desktop only; everywhere else `launchQueue` is undefined.
+   */
+  useEffect(() => {
+    const queue = window.launchQueue;
+    if (!queue) return;
+
+    queue.setConsumer((params) => {
+      if (params.files.length === 0) return;
+      void Promise.all(params.files.map((handle) => handle.getFile()))
+        .then(runImport)
+        // A handle whose file has since moved or been revoked.
+        .catch(() => setStatus({ kind: "failed" }));
+    });
+  }, [runImport]);
+
   useEffect(() => {
     // "left the window" = the dragenter/dragleave depth count reaching zero.
     let depth = 0;

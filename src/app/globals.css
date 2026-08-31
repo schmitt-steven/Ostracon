@@ -82,15 +82,14 @@
   --ink-muted: #c1bab0;
   --ink-faint: #99938c;
 
-  /* Ambient/actionable split now spelled in two warm hues (terracotta,
-     amber) instead of across the wheel, since navy became the paper. */
+  /* Ambient/actionable split */
   --accent: #d9794e;
   --accent-hover: #e88f63;
   --accent-wash: #2e1e14;
 
-  --action: #eba55f;
-  --action-hover: #f6b877;
-  --action-wash: #33261a;
+  --action: #c2603a;
+  --action-hover: #d4744e;
+  --action-wash: #2e1a12;
 
   --green: #7cba90;
   --green-wash: #16291d;
@@ -145,6 +144,53 @@ body {
   transition:
     background-color 250ms ease,
     color 250ms ease;
+}
+
+/* ── Installed, and behaving like it ───────────────────────────────────────
+   The layout asks for `viewport-fit: cover` and a translucent status bar, so
+   the page runs edge to edge — under the notch, under the home indicator.
+   That is what makes an installed window stop looking like a browser, and it
+   means the two elements that touch those edges have to hold themselves off.
+
+   Both are written as `max(<the spacing this app already uses>, <inset>)`, so
+   on a screen with no insets — every desktop, most laptops — they compute to
+   exactly the padding that was there before. */
+
+/* The shell's own frame. Carries the 14px/8px breakpoint that used to live in
+   AppShell's class list, because a padding that now has two reasons to be the
+   value it is belongs in one place. */
+.shell-inset {
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+    max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+}
+
+@media (max-width: 999px) {
+  /* Tighter, and no bottom padding: the pane runs under the bottom bar, which
+     puts its own inset in. */
+  .shell-inset {
+    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 0
+      max(8px, env(safe-area-inset-left));
+  }
+}
+
+/* The touch bottom bar, lifted off the home indicator. */
+.bar-inset {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+/* Standalone has no address bar to absorb an overscroll, so a rubber-band drag
+   bounces the whole app off its own edge. The body doesn't scroll anyway (see
+   the layout) — this stops the panes inside it from chaining out to it. */
+html,
+body {
+  overscroll-behavior: none;
+}
+
+/* The grey flash on tap reads as "web page" more than anything else here. */
+html {
+  -webkit-tap-highlight-color: transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {

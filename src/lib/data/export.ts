@@ -108,7 +108,7 @@ function noteFile(row: ExportedNote, entryByUrl: Map<string, string>): string {
 
 /** The name the browser saves it under. */
 export function archiveFilename(now = new Date()): string {
-  return `knowledge-base-${now.toISOString().slice(0, 10)}.zip`;
+  return `ostracon-${now.toISOString().slice(0, 10)}.zip`;
 }
 
 export function exportArchiveStream(): ReadableStream<Uint8Array> {
