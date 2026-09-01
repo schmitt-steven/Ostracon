@@ -274,7 +274,7 @@ export function Sidebar({
           under search, above the pins (which grow). New note is a [SidebarRow],
           not a button — the sidebar has one box and it's the search field. */}
       <nav
-        className="mt-[var(--space-item)] flex flex-col gap-[var(--space-item)]"
+        className="mt-[var(--space-item)] flex flex-col gap-1"
         aria-label="Views"
       >
         <SidebarRow
@@ -320,7 +320,7 @@ export function Sidebar({
           <p className="px-2.5 pb-[var(--space-item)] text-[13px] text-ink-faint">
             Pinned notes
           </p>
-          <ul className="flex flex-col gap-[var(--space-item)]">
+          <ul className="flex flex-col gap-1">
             {pinnedNoteItems.map((item) => (
               <li key={item.key}>
                 {/* No count, no `from` — the note opens under its own first tag. */}
@@ -347,7 +347,7 @@ export function Sidebar({
           <p className="px-2.5 pb-[var(--space-item)] text-[13px] text-ink-faint">
             Pinned tags
           </p>
-          <ul className="flex flex-col gap-[var(--space-item)]">
+          <ul className="flex flex-col gap-1">
             {pinnedTagItems.map((item) => (
               <li key={item.key}>
                 <SidebarRow
@@ -372,7 +372,7 @@ export function Sidebar({
       {/* mt-auto pins this to the foot. Settings is a [SidebarRow] (a place
           now), where the theme toggle used to be — one row for all preferences.
           The update row sits above it, absent almost always. */}
-      <div className="mt-auto flex flex-col gap-[var(--space-item)] pt-[var(--space-group)]">
+      <div className="mt-auto flex flex-col gap-1 pt-[var(--space-group)]">
         {/* Only ever drawn when there is one, and only until it's waved away. */}
         <UpdateRow />
         <SidebarRow

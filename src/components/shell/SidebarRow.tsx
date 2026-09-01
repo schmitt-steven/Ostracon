@@ -61,7 +61,7 @@ export function SidebarRow({
             ? undefined
             : ({ "--h": hue } as React.CSSProperties)
         }
-        className={`row-tint flex min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1 text-[14px] leading-[1.15] ${
+        className={`row-tint flex min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1.5 text-[14px] leading-[1.15] ${
           selected
             ? // A tag lights in its hue; the fixed views take the neutral tint.
               `${hue === undefined ? "row-selected" : "hue-row-selected"} text-ink`

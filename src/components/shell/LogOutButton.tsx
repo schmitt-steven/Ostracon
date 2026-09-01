@@ -43,7 +43,7 @@ export function LogOutButton({ compact = false }: Props) {
             event.stopPropagation();
             setConfirming(true);
           }}
-          className="row-tint flex w-full items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1 text-left text-[14px] leading-[1.15] text-ink-muted hover:text-ink"
+          className="row-tint flex w-full items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1.5 text-left text-[14px] leading-[1.15] text-ink-muted hover:text-ink"
         >
           {/* The 7px mark slot [SidebarRow] uses, so the name lines up. */}
           <span

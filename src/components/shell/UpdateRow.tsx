@@ -64,7 +64,7 @@ export function UpdateRow({ compact = false }: Props) {
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="row-tint flex min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1 text-left text-[13px] text-action"
+            className="row-tint flex min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1.5 text-left text-[13px] text-action"
           >
             {/* The sidebar's shared left edge: every row opens with a mark in
                 the dot's 7px footprint. */}
