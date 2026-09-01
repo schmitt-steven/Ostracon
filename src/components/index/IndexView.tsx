@@ -26,7 +26,12 @@ import { TagHueButton } from "./TagHueButton";
 import { TagPinButton } from "./TagPinButton";
 import { HeaderSearchButton } from "@/components/ui/HeaderSearchButton";
 import { SortControl } from "@/components/ui/SortControl";
-import { SORT_LABEL, SORT_MODES, type SortMode } from "./note-sort";
+import {
+  SORT_DATE_FIELD,
+  SORT_LABEL,
+  SORT_MODES,
+  type SortMode,
+} from "./note-sort";
 import { EditIcon, TrashIcon } from "@/icons";
 
 type Props = {
@@ -408,7 +413,7 @@ export function IndexView({ notes, tag, heading }: Props) {
                               </span>
                             </span>
                             <RelativeDate
-                              date={note.updatedAt}
+                              date={note[SORT_DATE_FIELD[sort]]}
                               // Yields the corner to the delete control on hover.
                               className="shrink-0 whitespace-nowrap pt-0.5 text-[13px] text-ink-muted transition-opacity group-hover/row:opacity-0"
                             />
