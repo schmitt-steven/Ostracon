@@ -17,6 +17,7 @@ import {
   subscribeSidebarOpen,
   toggleSidebarOpen,
 } from "@/lib/ui/sidebar-state";
+import type { NoteOverviewLite } from "@/lib/notes/queries";
 import { TagNamesProvider } from "./TagNames";
 import { LogOutPrompt } from "./LogOutPrompt";
 import { NoteImport } from "./NoteImport";
@@ -27,6 +28,8 @@ type Props = {
   sidebar: SidebarData;
   /** Every tag in use, flattened — the search menu's "jump to tag" list. */
   tagNames: string[];
+  /** Most-recent notes, so the search menu's Recent section paints at once. */
+  recentNotes: NoteOverviewLite[];
   children: ReactNode;
 };
 
@@ -44,7 +47,7 @@ type Props = {
  * touch). On a wide screen it can also fold to a strip rather than vanishing,
  * so the reopen control stays where the close control was.
  */
-export function AppShell({ sidebar, tagNames, children }: Props) {
+export function AppShell({ sidebar, tagNames, recentNotes, children }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Outside React so scattered triggers can open it — see
   // lib/search-menu/menu-state.
@@ -136,6 +139,7 @@ export function AppShell({ sidebar, tagNames, children }: Props) {
 
         <SearchMenu
           tags={tagNames}
+          recentNotes={recentNotes}
           open={searchMenuOpen}
           onOpenChange={setSearchMenuOpen}
         />

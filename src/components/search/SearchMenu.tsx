@@ -36,6 +36,7 @@ import {
   type SearchMenuScope,
 } from "@/lib/search-menu/scope";
 import { requestNoteImport } from "@/lib/notes/import-request";
+import type { NoteOverviewLite } from "@/lib/notes/queries";
 import {
   countMatches,
   excerpt,
@@ -57,6 +58,9 @@ import type { ActionIcon, SearchMenuAction, Row, Section } from "./types";
 type Props = {
   /** Every tag in use, for the Tags section and for a scope's sub-tags. */
   tags: string[];
+  /** The most-recent notes, server-rendered, so Recent shows before the
+   * corpus fetch lands. */
+  recentNotes: NoteOverviewLite[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
@@ -95,7 +99,7 @@ const RECENT_EMPTY =
  * ⇥ or typing `#infra ` narrows to a tag; a `#` before anything else is just
  * stripped before matching.
  */
-export function SearchMenu({ tags, open, onOpenChange }: Props) {
+export function SearchMenu({ tags, recentNotes, open, onOpenChange }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const [query, setQuery] = useState("");
@@ -116,7 +120,10 @@ export function SearchMenu({ tags, open, onOpenChange }: Props) {
     getSearchMenuEverOpened,
     getServerSearchMenuEverOpened,
   );
-  const { search, recent, tagCounts, tagLastUsed } = useSearchIndex(everOpened);
+  const { search, recent, tagCounts, tagLastUsed } = useSearchIndex(
+    everOpened,
+    recentNotes,
+  );
 
   const contextual = useSyncExternalStore(
     subscribeContextualCommands,
@@ -590,7 +597,11 @@ export function SearchMenu({ tags, open, onOpenChange }: Props) {
       const selected = event.currentTarget.selectionEnd ?? 0;
       if (!scope || query !== "" || caret !== 0 || selected !== 0) return;
       event.preventDefault();
+      // Drop the chip without letting the highlight snap to the first row:
+      // re-stamp the current row onto the now-unscoped list.
+      const keep = active?.id;
       dropScope();
+      if (keep) setMark({ list: `${needle} `, id: keep });
     } else if (event.key === "Escape") {
       event.preventDefault();
       close();

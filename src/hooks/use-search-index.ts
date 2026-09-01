@@ -8,6 +8,7 @@ import {
   type NoteDoc,
 } from "@/lib/search/build-index";
 import type { SearchMenuScope } from "@/lib/search-menu/scope";
+import type { NoteOverviewLite } from "@/lib/notes/queries";
 import { loadCachedIndex, saveIndexCache } from "@/lib/search/indexeddb";
 import { countImages } from "@/lib/notes/text-length";
 import { byReason, reasonFrom, type MatchReason } from "@/lib/search/results";
@@ -30,7 +31,13 @@ export type NoteHit = {
    * for `deploy` matches the stored `deployments`). */
   terms: string[];
   reason: MatchReason;
+  /** Built from a server-seeded lite note, before the corpus fetch landed —
+   * the list is right, but `text`/`raw`/`images` are stand-ins. */
+  partial?: boolean;
 };
+
+/** Stable empty default so the hook's callbacks don't re-create each render. */
+const NO_SEED: NoteOverviewLite[] = [];
 
 /** Shared so an un-run search doesn't hand back a new object every render. */
 const EMPTY_SEARCH = Object.freeze({ hits: [] as NoteHit[], total: 0 });
@@ -71,7 +78,10 @@ const SCHEMA_VERSION = 3;
  * fields. One corpus, two questions (everything, vs. only this index's notes),
  * off one lazily-triggered fetch.
  */
-export function useSearchIndex(enabled: boolean) {
+export function useSearchIndex(
+  enabled: boolean,
+  seedRecent: NoteOverviewLite[] = NO_SEED,
+) {
   // State, not a ref — results are read during render, and the React Compiler
   // keeps refs out of render.
   const [index, setIndex] = useState<MiniSearch<NoteDoc> | null>(null);
@@ -180,7 +190,26 @@ export function useSearchIndex(enabled: boolean) {
       limit: number,
       scope: SearchMenuScope | null = null,
     ): NoteHit[] => {
-      if (!corpus) return [];
+      if (!corpus) {
+        // Corpus fetch hasn't landed — the server-seeded lite notes (already
+        // updatedAt-desc) carry the list so Recent paints with the rest.
+        return seedRecent
+          .filter((note) => inScope(note.tags, scope))
+          .slice(0, limit)
+          .map((note) => ({
+            id: note.id,
+            slug: note.slug,
+            title: note.title,
+            tags: note.tags,
+            updatedAt: note.updatedAt,
+            text: note.snippet,
+            raw: "",
+            images: 0,
+            terms: [],
+            reason: { kind: "recent" as const },
+            partial: true,
+          }));
+      }
       // Filtered before sorting.
       return corpus
         .filter((note) => inScope(note.tags ?? [], scope))
@@ -199,7 +228,7 @@ export function useSearchIndex(enabled: boolean) {
           reason: { kind: "recent" as const },
         }));
     },
-    [corpus],
+    [corpus, seedRecent],
   );
 
   /**

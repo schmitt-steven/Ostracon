@@ -101,6 +101,9 @@ async function loadSidebar() {
       imageCount: new Set(all.flatMap((note) => note.imageUrls)).size,
     },
     tagNames: flat.map((node) => node.name),
+    // `notes` is already updatedAt-desc — enough rows that a scoped search
+    // menu still has some to show before the corpus fetch lands.
+    recentNotes: notes.slice(0, 24),
   };
 }
 
@@ -135,7 +138,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             storing like any other. */}
         <ServiceWorkerRegistrar />
         {shell ? (
-          <AppShell sidebar={shell.sidebar} tagNames={shell.tagNames}>
+          <AppShell
+            sidebar={shell.sidebar}
+            tagNames={shell.tagNames}
+            recentNotes={shell.recentNotes}
+          >
             {children}
           </AppShell>
         ) : (

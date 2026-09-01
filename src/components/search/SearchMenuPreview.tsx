@@ -96,7 +96,11 @@ function NotePreview({
   onNavigate: () => void;
 }) {
   const { note } = row;
-  const words = note.text.split(/\s+/).filter(Boolean).length;
+  // A seeded recent row only has its snippet — the real counts arrive with the
+  // corpus, so leave those rows off until then.
+  const words = note.partial
+    ? null
+    : note.text.split(/\s+/).filter(Boolean).length;
   // The row's window, opened wider — and where the row has nothing to show,
   // this shows the opening line anyway (the Matches line names the term).
   const body = snippet(note.text, note.raw, note.terms, 320);
@@ -117,9 +121,11 @@ function NotePreview({
               })}
             </span>
           </Meta>
-          <Meta label="Words">{words}</Meta>
-          {/* Only when there are any. */}
-          {note.images > 0 && <Meta label="Images">{note.images}</Meta>}
+          {words !== null && <Meta label="Words">{words}</Meta>}
+          {/* Only when there are any, and only once the corpus can be sure. */}
+          {!note.partial && note.images > 0 && (
+            <Meta label="Images">{note.images}</Meta>
+          )}
           {/* Only with a query — "0 matches" on a recent row reads as a fail. */}
           {note.reason.kind !== "recent" && (
             <Meta label="Matches">{matchSummary(note)}</Meta>
