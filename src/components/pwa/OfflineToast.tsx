@@ -11,7 +11,7 @@ import { useOffline } from "next/offline";
  * next.config.ts; without it the hook is always false.
  *
  * Bottom *left*, unlike the save and import toasts. Those report something
- * that just happened and take the right-hand corner in turn; this reports a
+ * that just happened and take the top-right corner in turn; this reports a
  * condition that stands until it doesn't, and has to be able to sit there
  * while one of them is showing.
  */

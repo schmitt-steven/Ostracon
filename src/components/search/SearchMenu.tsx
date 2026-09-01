@@ -147,23 +147,12 @@ export function SearchMenu({ tags, open, onOpenChange }: Props) {
   // still follows below them.
   const tagsFirst = scope?.kind === "tags";
 
-  // Whether the scope gathers anything beneath it — the `+ sub` toggle only
-  // appears then. Tags only; the others have no tree.
-  const scopeHasChildren =
-    scope?.kind === "tag" &&
-    tags.some((name) => name !== scope.name && tagMatches(name, scope.name));
-
-  // Whether the scope sweeps in sub-tags. Sticky across scope changes within
-  // one opening; `close()` resets it.
-  const [subtags, setSubtags] = useState(true);
-
   const close = useCallback(() => {
     onOpenChange(false);
     setQuery("");
     setDeferred("");
     setMark(null);
     setOverride(undefined);
-    setSubtags(true);
   }, [onOpenChange]);
 
   // The debounce. Guarded on equality so settling doesn't re-arm the timer.
@@ -217,7 +206,7 @@ export function SearchMenu({ tags, open, onOpenChange }: Props) {
 
   // Identity of the current list. `query` is deliberately not in it, so the
   // highlight survives keystrokes inside a debounce.
-  const listKey = `${needle} ${scope ?? ""} ${subtags}`;
+  const listKey = `${needle} ${scope ?? ""}`;
   const activeId = mark?.list === listKey ? mark.id : null;
   const setActiveId = useCallback(
     (id: string) => setMark({ list: listKey, id }),
@@ -229,10 +218,10 @@ export function SearchMenu({ tags, open, onOpenChange }: Props) {
     hits: NoteHit[];
     total: number;
   }>(() => {
-    if (needle) return search(needle, scope, NOTE_LIMIT, subtags);
-    const hits = recent(RECENT_LIMIT, scope, subtags);
+    if (needle) return search(needle, scope, NOTE_LIMIT);
+    const hits = recent(RECENT_LIMIT, scope);
     return { hits, total: hits.length };
-  }, [needle, scope, subtags, search, recent]);
+  }, [needle, scope, search, recent]);
 
   // The tags the query matches: the list shows the first few, the header the
   // total. Independent of the notes. Under tags-first it's the leading section
@@ -638,9 +627,6 @@ export function SearchMenu({ tags, open, onOpenChange }: Props) {
             <ScopeChip
               scope={scope}
               hueOf={hueOf}
-              subtags={subtags}
-              hasChildren={scopeHasChildren}
-              onToggleSubtags={() => setSubtags((on) => !on)}
               onDrop={dropScope}
             />
           )}
@@ -764,22 +750,15 @@ export function SearchMenu({ tags, open, onOpenChange }: Props) {
 /**
  * The chip above the field: what the search is pointed at, and the × that drops
  * it. A tag wears its hue; Untagged/All tags take the sidebar's neutral
- * `.sidebar-dot` ring on `.row-selected`. Only a tag gets the `+ sub` switch;
- * the × is on all three.
+ * `.sidebar-dot` ring on `.row-selected`.
  */
 function ScopeChip({
   scope,
   hueOf,
-  subtags,
-  hasChildren,
-  onToggleSubtags,
   onDrop,
 }: {
   scope: SearchMenuScope;
   hueOf: (name: string) => number;
-  subtags: boolean;
-  hasChildren: boolean;
-  onToggleSubtags: () => void;
   onDrop: () => void;
 }) {
   const tag = scopeTag(scope);
@@ -802,26 +781,6 @@ function ScopeChip({
       <span className={`max-w-40 truncate ${tag ? "hue-text" : "text-ink"}`}>
         {label}
       </span>
-      {/* The sub-tag rule, said once, as a switch — lit means sub-tags are in. */}
-      {hasChildren && (
-        <button
-          type="button"
-          onClick={onToggleSubtags}
-          aria-pressed={subtags}
-          aria-label={
-            subtags
-              ? `Sub-tags of ${label} are included. Search ${label} only`
-              : `Sub-tags of ${label} are excluded. Include them`
-          }
-          className={`shrink-0 rounded-full px-1.5 py-px text-[11px] transition-opacity focus-visible:outline-none! ${
-            subtags
-              ? "hue-text opacity-100"
-              : "text-ink-faint opacity-55 hover:opacity-80"
-          }`}
-        >
-          + sub
-        </button>
-      )}
       <button
         type="button"
         onClick={onDrop}

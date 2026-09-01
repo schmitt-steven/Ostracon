@@ -13,6 +13,7 @@ import {
   type SkippedFile,
   type SkipReason,
 } from "@/lib/notes/import-files";
+import { collectDroppedFiles } from "@/lib/notes/drop-files";
 import { getImageTarget } from "@/lib/images/insert-target";
 import { looksLikeImageType } from "@/lib/images/upload-rules";
 import { importNotes, type ImportedNote } from "@/lib/notes/import";
@@ -35,7 +36,7 @@ type Status =
  * Getting notes in from outside — `.md`/`.txt` files become notes, one per
  * file. Two ways in (window drop, ⌘K "Import files"), both landing in
  * [runImport]. Mounted in the shell because the drop target is the whole
- * window.
+ * window. A dropped folder is walked for files (see [collectDroppedFiles]).
  *
  * Images in a drop go to the open editor (lib/images/insert-target) at the
  * drop point; a mixed drop splits. The drop is always claimed — an unclaimed
@@ -169,30 +170,30 @@ export function NoteImport() {
     }
 
     function onDrop(event: DragEvent) {
-      if (!carriesFiles(event)) return;
+      if (!carriesFiles(event) || !event.dataTransfer) return;
       event.preventDefault();
       depth = 0;
       setDragging(false);
 
-      const files = [...(event.dataTransfer?.files ?? [])];
-      if (files.length === 0) return;
+      // Read entries and the drop point now — both go stale after the event.
+      const at = { x: event.clientX, y: event.clientY };
+      void collectDroppedFiles(event.dataTransfer).then((files) => {
+        if (files.length === 0) return;
 
-      // Split by what each file is — a mixed drop does both.
-      const images = files.filter((file) => looksLikeImageType(file.type));
-      const rest = files.filter((file) => !looksLikeImageType(file.type));
-      const target = getImageTarget();
+        // Split by what each file is — a mixed drop does both.
+        const images = files.filter((file) => looksLikeImageType(file.type));
+        const rest = files.filter((file) => !looksLikeImageType(file.type));
+        const target = getImageTarget();
 
-      if (images.length > 0 && target) {
-        // At the drop point.
-        target(images, { x: event.clientX, y: event.clientY });
-      }
+        if (images.length > 0 && target) target(images, at);
 
-      // No note open ⇒ nowhere for an image to go.
-      const homeless: SkippedFile[] = target
-        ? []
-        : images.map((file) => ({ name: file.name, reason: "no-note" }));
+        // No note open ⇒ nowhere for an image to go.
+        const homeless: SkippedFile[] = target
+          ? []
+          : images.map((file) => ({ name: file.name, reason: "no-note" }));
 
-      if (rest.length > 0 || homeless.length > 0) runImport(rest, homeless);
+        if (rest.length > 0 || homeless.length > 0) runImport(rest, homeless);
+      });
     }
 
     window.addEventListener("dragenter", onDragEnter);
@@ -288,7 +289,7 @@ function DropOverlay({ kind }: { kind: DragKind }) {
   );
 }
 
-/** What happened, bottom-right, in the save toast's frame. */
+/** What happened, top-right, in the save toast's frame. */
 function ImportToast({
   status,
   onDismiss,
@@ -307,7 +308,7 @@ function ImportToast({
   }
 
   return (
-    <div className="pointer-events-none fixed bottom-6 right-6 z-40 flex max-w-xs flex-col items-end gap-2 text-right">
+    <div className="pointer-events-none fixed right-6 top-[calc(var(--head-h)+1.25rem)] z-40 flex max-w-xs flex-col items-end gap-2 text-right">
       <p
         role="status"
         className="glass lift-2 toast-enter pointer-events-auto rounded-[var(--radius-control)] px-4 py-2.5 text-[13px] text-ink"

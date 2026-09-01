@@ -36,21 +36,18 @@ export type NoteHit = {
 const EMPTY_SEARCH = Object.freeze({ hits: [] as NoteHit[], total: 0 });
 
 /**
- * Whether a note falls inside a scope. `subtags` is the search menu's toggle
- * for whether `#infra` includes `#infra/ci`. The `tags` scope lets everything
- * through — it orders the list, doesn't narrow it (see [SearchMenuScope]).
+ * Whether a note falls inside a scope. A tag scope includes its sub-tags
+ * (`#infra` covers `#infra/ci`). The `tags` scope lets everything through — it
+ * orders the list, doesn't narrow it (see [SearchMenuScope]).
  */
 function inScope(
   tags: readonly string[],
   scope: SearchMenuScope | null,
-  subtags: boolean,
 ): boolean {
   if (!scope) return true;
   if (scope.kind === "untagged") return tags.length === 0;
   if (scope.kind === "tags") return true;
-  return subtags
-    ? tags.some((name) => tagMatches(name, scope.name))
-    : tags.includes(scope.name);
+  return tags.some((name) => tagMatches(name, scope.name));
 }
 
 /**
@@ -139,7 +136,6 @@ export function useSearchIndex(enabled: boolean) {
       query: string,
       scope: SearchMenuScope | null = null,
       limit = 6,
-      subtags = true,
     ): { hits: NoteHit[]; total: number } => {
       const trimmed = query.trim();
       if (!trimmed || !index) return EMPTY_SEARCH;
@@ -148,7 +144,7 @@ export function useSearchIndex(enabled: boolean) {
         .search(trimmed, { prefix: true, fuzzy: FUZZY, boost: { title: 2 } })
         // Narrowed here, not asked-for-six — the global top six may contain
         // none of the scope's.
-        .filter((hit) => inScope((hit.tags as string[]) ?? [], scope, subtags));
+        .filter((hit) => inScope((hit.tags as string[]) ?? [], scope));
 
       const results = hits.slice(0, limit).map((hit): NoteHit => {
         const tags = (hit.tags as string[]) ?? [];
@@ -183,12 +179,11 @@ export function useSearchIndex(enabled: boolean) {
     (
       limit: number,
       scope: SearchMenuScope | null = null,
-      subtags = true,
     ): NoteHit[] => {
       if (!corpus) return [];
       // Filtered before sorting.
       return corpus
-        .filter((note) => inScope(note.tags ?? [], scope, subtags))
+        .filter((note) => inScope(note.tags ?? [], scope))
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
         .slice(0, limit)
         .map((note) => ({

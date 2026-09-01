@@ -60,7 +60,7 @@ export function SaveToast({ status, onSave }: Props) {
   if (!failed && !waiting && !showHint) return null;
 
   return (
-    <div className="pointer-events-none fixed bottom-6 right-6 z-30 flex max-w-xs flex-col items-end gap-2 text-right">
+    <div className="pointer-events-none fixed right-6 top-[calc(var(--head-h)+1.25rem)] z-30 flex max-w-xs flex-col items-end gap-2 text-right">
       {failed && (
         <p
           role="alert"

@@ -399,20 +399,11 @@ html {
   color: var(--ink);
 }
 
-/* A section break is an asterism, never a rule. */
 .markdown-body hr {
   border: none;
+  border-top: 1px solid var(--line);
   margin: 2em 0;
-  height: auto;
-  color: var(--ink-faint);
-  font-size: 13px;
-  letter-spacing: 0.3em;
-  text-align: center;
-  text-indent: 0.3em;
-}
-
-.markdown-body hr::before {
-  content: "⁂";
+  height: 0;
 }
 
 .markdown-body img {
