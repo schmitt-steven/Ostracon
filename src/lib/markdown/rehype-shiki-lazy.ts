@@ -5,8 +5,11 @@ import { visit } from "unist-util-visit";
 
 // Dual output: server-rendered HTML can't know the reader's theme, so every
 // token carries both colours (light inline, dark in `--shiki-dark`) and the
-// CSS picks one. Both themes are Rose Pine — dawn and moon.
-const THEMES = { light: "rose-pine-dawn", dark: "rose-pine-moon" } as const;
+// CSS picks one.
+// Not Rose Pine Dawn: globals.css drops each theme's own background for
+// --sunk, which in light mode is darker than dawn's cream, and dawn's already
+// weak tokens fell under 3:1 there. One Light survives the swap.
+const THEMES = { light: "one-light", dark: "rose-pine-moon" } as const;
 
 function languageFromClassName(className: unknown): string | null {
   if (!Array.isArray(className)) return null;

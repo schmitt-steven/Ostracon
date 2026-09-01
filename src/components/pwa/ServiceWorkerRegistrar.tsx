@@ -14,6 +14,23 @@ export function ServiceWorkerRegistrar() {
     if (!("serviceWorker" in navigator)) return;
 
     /**
+     * Never in development. The worker serves /_next/static cache-first on the
+     * premise that those URLs are content-hashed, which holds for a build but
+     * not for `next dev`: Turbopack reuses one chunk URL and pushes edits over
+     * HMR, so the first stylesheet cached is the only one ever served. Tear
+     * down whatever an earlier run left installed, since a registered worker
+     * outlives the guard that stops it being registered again.
+     */
+    if (process.env.NODE_ENV !== "production") {
+      void navigator.serviceWorker
+        .getRegistrations()
+        .then((regs) => Promise.all(regs.map((reg) => reg.unregister())))
+        .then(() => caches.keys())
+        .then((keys) => Promise.all(keys.map((key) => caches.delete(key))));
+      return;
+    }
+
+    /**
      * The build stamp doubles as the worker's cache tag.
      *
      * A worker is only replaced when its script *URL or bytes* change, and
