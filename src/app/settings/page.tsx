@@ -6,7 +6,7 @@ import { SettingsView } from "@/components/settings/SettingsView";
 import { requireAuth } from "@/lib/auth/require-auth";
 
 /**
- * Everything about the instance rather than a note. Its own route (the rail
+ * Everything about the instance rather than a note. Its own route (the sidebar
  * links to it). The four data sections are passed as server-component slots,
  * so their `server-only` code and secrets (keys, the password row, the DB URL)
  * stay out of the client bundle. See [SettingsView].

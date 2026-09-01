@@ -12,7 +12,7 @@ type Props = {
   /** False at the top of the pinned section, which greys "Move up" out. */
   canMoveUp: boolean;
   canMoveDown: boolean;
-  /** The move itself belongs to the rail — see [Rail.moveProps]. */
+  /** The move itself belongs to the sidebar — see [Sidebar.moveProps]. */
   onMove: (direction: -1 | 1) => void;
   onClose: () => void;
   /** Viewport coordinates of the row this was opened from. */

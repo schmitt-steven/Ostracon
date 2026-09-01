@@ -4,7 +4,7 @@ import { describeRelease } from "@/lib/deployment/release";
 import { checkForUpdate } from "@/lib/deployment/update";
 
 /**
- * Whether a newer Ostracon exists — asked by the rail's update row.
+ * Whether a newer Ostracon exists — asked by the sidebar's update row.
  *
  * A Route Handler rather than something the layout awaits: the check is a
  * request to GitHub, and every page in the app renders through that layout. A

@@ -4,7 +4,7 @@ import { LocalDate } from "@/components/ui/LocalDate";
 import type { StoredImage } from "@/lib/images/queries";
 import { noteHref } from "@/lib/tags/routes";
 
-// Two columns on a phone, three otherwise. The 680px pane caps a tile at
+// Two columns on a phone, three otherwise. The 680px column caps a tile at
 // ~215px, hence the fixed 220px rather than a viewport fraction.
 const SIZES = "(max-width: 640px) 50vw, 220px";
 

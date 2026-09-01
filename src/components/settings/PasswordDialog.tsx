@@ -76,8 +76,8 @@ export function PasswordDialog({ onClose }: Props) {
     });
   }
 
-  // Into <body>, like the tag dialogs — `.pane > *` sets `position`, so a
-  // dialog inside a pane would lay out in flow.
+  // Into <body>, like the tag dialogs — `.content > *` sets `position`, so a
+  // dialog inside a content area would lay out in flow.
   return createPortal(
     <div
       role="dialog"

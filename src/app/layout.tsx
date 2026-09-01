@@ -70,13 +70,13 @@ export const viewport: Viewport = {
 };
 
 /**
- * The rail's contents, built once per render of the shell.
+ * The sidebar's contents, built once per render of the shell.
  *
- * Loaded in the layout rather than in each page because the rail is the same
+ * Loaded in the layout rather than in each page because the sidebar is the same
  * on all of them — and because a tag tree assembled per route would flicker
  * its counts on every navigation as each page recomputed it.
  */
-async function loadRail() {
+async function loadSidebar() {
   // Two reads rather than one filtered pass over the overview: see
   // [listPinnedNotes] for why the pins are asked for separately, and they are
   // asked for at the same time so the pair costs one round trip's worth of
@@ -89,14 +89,14 @@ async function loadRail() {
   const tree = buildTagTree(notes);
   const flat = flattenTree(tree);
   return {
-    rail: {
+    sidebar: {
       pinnedNotes,
       tree,
       tagCount: flat.length,
       allCount: notes.length,
       // Counted across notes rather than by listing the bucket: the same
       // markdown pasted into two notes points at one image, and the gallery
-      // shows it once. See the note on the rail's row for where this and the
+      // shows it once. See the note on the sidebar's row for where this and the
       // gallery can disagree.
       imageCount: new Set(all.flatMap((note) => note.imageUrls)).size,
     },
@@ -105,10 +105,10 @@ async function loadRail() {
 }
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  // The shell wraps /login too, so it has to know: a rail full of tags behind
-  // a login form would be both wrong and a leak.
+  // The shell wraps /login too, so it has to know: a sidebar full of tags
+  // behind a login form would be both wrong and a leak.
   const signedIn = await isAuthenticated();
-  const shell = signedIn ? await loadRail() : null;
+  const shell = signedIn ? await loadSidebar() : null;
 
   return (
     <html
@@ -123,7 +123,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <InlineScript html={THEME_INIT_SCRIPT} />
       </head>
-      {/* The shell sizes itself to the viewport and scrolls its panes
+      {/* The shell sizes itself to the viewport and scrolls its content areas
           internally, so the document itself never scrolls. */}
       <body className="h-full overflow-hidden">
         {/* Draws nothing. It holds the attribute the script above set — see
@@ -135,7 +135,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             storing like any other. */}
         <ServiceWorkerRegistrar />
         {shell ? (
-          <AppShell rail={shell.rail} tagNames={shell.tagNames}>
+          <AppShell sidebar={shell.sidebar} tagNames={shell.tagNames}>
             {children}
           </AppShell>
         ) : (

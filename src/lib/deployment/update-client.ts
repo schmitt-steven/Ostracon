@@ -7,7 +7,7 @@ import type { UpdateCheck } from "./update";
  * of which version the reader has waved away.
  *
  * Both are module-level rather than component state because the shell renders
- * two rails — the wide column and the touch drawer — and they have to agree.
+ * two sidebars — the wide column and the touch drawer — and they have to agree.
  * Dismissing in one has to empty the other, and neither should ask GitHub a
  * question the other already asked.
  */
@@ -20,7 +20,8 @@ let inFlight: Promise<UpdateCheck | null> | null = null;
 
 /**
  * The answer, fetched once per page load and shared by every caller. Null for
- * any failure — a rail row is not the place to report that a check didn't run.
+ * any failure — a sidebar row is not the place to report that a check didn't
+ * run.
  */
 export function loadUpdateCheck(): Promise<UpdateCheck | null> {
   inFlight ??= fetch("/api/update")

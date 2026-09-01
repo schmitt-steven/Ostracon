@@ -2,11 +2,11 @@
 
 import { SearchIcon } from "@/icons";
 
-import { setPaletteOpen } from "@/lib/command/palette-state";
+import { setSearchMenuOpen } from "@/lib/search-menu/menu-state";
 
 /**
  * The magnifier at the right end of an overview's heading row — opens the
- * palette, like ⌘K and [SearchTrigger]. The palette reads the route and
+ * search menu, like ⌘K and [SearchTrigger]. The search menu reads the route and
  * narrows itself. `label` names the target for a screen reader; `hint` is the
  * pointer tooltip.
  */
@@ -20,7 +20,7 @@ export function HeaderSearchButton({
   return (
     <button
       type="button"
-      onClick={() => setPaletteOpen(true)}
+      onClick={() => setSearchMenuOpen(true)}
       aria-label={label}
       aria-keyshortcuts="Meta+K Control+K"
       title={hint}

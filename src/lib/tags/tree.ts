@@ -9,7 +9,7 @@ export type TagNode = {
   /** Notes carrying this tag or any tag beneath it — matching the route it
    * opens. */
   count: number;
-  /** Most recent `updatedAt` among those notes — what the rail sorts on. */
+  /** Most recent `updatedAt` among those notes — what the sidebar sorts on. */
   lastUsed: string;
   children: TagNode[];
 };
@@ -18,7 +18,8 @@ type Counted = { count: number; lastUsed: string };
 
 export type TaggedNote = { tags: string[]; updatedAt: string };
 
-/** The rail's tag tree, sorted by recent use at every level (not alphabetical). */
+/** The sidebar's tag tree, sorted by recent use at every level (not
+ * alphabetical). */
 export function buildTagTree(notes: TaggedNote[]): TagNode[] {
   // Every ancestor is counted — `#infra/ci` alone still creates an `#infra` row.
   const stats = new Map<string, Counted>();

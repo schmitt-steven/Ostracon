@@ -55,7 +55,8 @@ async function currentNote(id: string) {
   return row;
 }
 
-/** The uploads a note holds, as the rail counts them (see listNotesOverview). */
+/** The uploads a note holds, as the sidebar counts them (see
+ * listNotesOverview). */
 function uploadSet(contentMd: string): string {
   return [...new Set(referencedUrls(contentMd).filter(isUploadedBlobUrl))]
     .sort()
@@ -278,12 +279,12 @@ export async function setNotePinned(input: unknown): Promise<PinNoteResult> {
   };
 }
 
-// The rail is in the layout, so a pin needs `refresh` to re-run it for the
+// The sidebar is in the layout, so a pin needs `refresh` to re-run it for the
 // page the press came from.
 function revalidatePinned(slug: string, canRefreshShell: boolean): void {
   revalidatePath("/");
   revalidatePath(`/notes/${slug}`);
-  // The button holds its own state, so withholding this costs only the rail
+  // The button holds its own state, so withholding this costs only the sidebar
   // section until the next navigation.
   if (canRefreshShell) refresh();
 }
@@ -369,7 +370,7 @@ const TagInput = z.object({ tag: z.string().min(1).max(120) });
 
 /**
  * Every note filed under `target` or beneath it. Descendants are included —
- * a tag exists only as far as something is filed under it (see [knownTagSet]).
+ * a tag exists only as far as something is filed under it (see [tagNameSet]).
  * Reads via `parseContentMd`/[resolveNoteTags], not the `tags` column, so
  * pre-frontmatter notes are caught too.
  */

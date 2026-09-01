@@ -22,10 +22,10 @@ export const notes = pgTable(
       .default(sql`'{}'::text[]`),
     version: integer("version").notNull().default(1),
     /**
-     * When the note was pinned to the rail; null means it isn't. A timestamp,
-     * not a boolean, so the pinned section keeps its order across a reload. A
-     * column, not localStorage like tag pins, because the rail needs the title
-     * and that only lives here.
+     * When the note was pinned to the sidebar; null means it isn't. A
+     * timestamp, not a boolean, so the pinned section keeps its order across a
+     * reload. A column, not localStorage like tag pins, because the sidebar
+     * needs the title and that only lives here.
      */
     pinnedAt: timestamp("pinned_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })

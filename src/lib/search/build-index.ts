@@ -21,7 +21,7 @@ const CONSONANT_Y = /[^aeiou]y$/;
 /**
  * Folds a term so a word and its plural share a token — `etfs` should find a
  * note that only spells it `ETF`. Every fold is a left-truncation, never a
- * rewrite (`queries` and `query` both fold to `quer`), so the palette's
+ * rewrite (`queries` and `query` both fold to `quer`), so the search menu's
  * left-anchored highlight can always find the stem in the note. The same
  * function runs over the index and the query; it must not merge two different
  * words.

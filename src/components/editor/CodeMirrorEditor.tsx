@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
+import {
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type Ref,
+} from "react";
+import { createPortal } from "react-dom";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
@@ -14,7 +21,15 @@ import {
 } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { lintKeymap } from "@codemirror/lint";
-import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
+import {
+  closeSearchPanel,
+  highlightSelectionMatches,
+  openSearchPanel,
+  search,
+  selectNextOccurrence,
+  selectSelectionMatches,
+  setSearchQuery,
+} from "@codemirror/search";
 import { EditorState, Prec } from "@codemirror/state";
 import {
   crosshairCursor,
@@ -25,10 +40,44 @@ import {
   keymap,
   placeholder as placeholderExt,
   rectangularSelection,
+  type KeyBinding,
 } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
+import { stepCommand } from "@/lib/editor/find";
 import { uploadImage } from "@/lib/images/upload-client";
 import { isAllowedImageType } from "@/lib/images/upload-rules";
+import { FindPanel } from "./FindPanel";
+
+/**
+ * `searchKeymap` from @codemirror/search, with two departures.
+ *
+ * The step commands are [lib/editor/find]'s rather than the package's, so the
+ * keyboard and the widget's arrows walk the same list of matches — see there
+ * for why that matters.
+ *
+ * And `Mod-Alt-g` (go to line) is gone. It opens a *second* kind of panel, in
+ * the package's own unstyled markup, into a container this editor has restyled
+ * as a floating widget — and a line number is not something a note has. The
+ * two multi-cursor bindings stay: they belong to the editor, not to the panel.
+ */
+const findKeymap: KeyBinding[] = [
+  { key: "Mod-f", run: openSearchPanel },
+  { key: "Escape", run: closeSearchPanel },
+  {
+    key: "Mod-g",
+    run: stepCommand(1),
+    shift: stepCommand(-1),
+    preventDefault: true,
+  },
+  {
+    key: "F3",
+    run: stepCommand(1),
+    shift: stepCommand(-1),
+    preventDefault: true,
+  },
+  { key: "Mod-Shift-l", run: selectSelectionMatches },
+  { key: "Mod-d", run: selectNextOccurrence, preventDefault: true },
+];
 
 /**
  * `basicSetup` from the `codemirror` package, minus every gutter and the
@@ -53,7 +102,7 @@ const editorSetup = [
   keymap.of([
     ...closeBracketsKeymap,
     ...defaultKeymap,
-    ...searchKeymap,
+    ...findKeymap,
     ...historyKeymap,
     ...foldKeymap,
     ...lintKeymap,
@@ -66,7 +115,7 @@ const appTheme = EditorView.theme({
   "&": {
     color: "var(--ink)",
     backgroundColor: "transparent",
-    // Content-driven — the editor grows with its text, the pane scrolls.
+    // Content-driven — the editor grows with its text, the surface scrolls.
     height: "auto",
   },
   // Sans at 16px/1.75, matching the rendered side, so Split reads as one
@@ -84,7 +133,7 @@ const appTheme = EditorView.theme({
     fontFamily: "inherit",
     lineHeight: "inherit",
   },
-  // Undo the base theme's per-line padding so text sits in the pane's column.
+  // Undo the base theme's per-line padding so text sits in the content's column.
   ".cm-line": {
     padding: "0",
   },
@@ -92,7 +141,7 @@ const appTheme = EditorView.theme({
     borderLeftColor: "var(--accent)",
     borderLeftWidth: "2px",
   },
-  // No box on this pane, so no focus ring — the caret is the cue, as in the
+  // No box on this surface, so no focus ring — the caret is the cue, as in the
   // title field.
   "&.cm-focused": {
     outline: "none",
@@ -118,13 +167,41 @@ const appTheme = EditorView.theme({
   ".cm-selectionMatch": {
     backgroundColor: "color-mix(in srgb, var(--ink) 12%, transparent)",
   },
-  // The search panel, on the app's tokens so it follows the theme; no stroke.
-  ".cm-panels": {
-    backgroundColor: "var(--surface)",
+  // ── Where the find widget hangs ──────────────────────────────────────────
+  // CodeMirror puts a top panel in the flow above the text. In a content area that
+  // scrolls its whole document that would be a bar which scrolls away — so the
+  // container takes no height at all and sticks instead: the widget floats
+  // over the top of the column, centred, and stays there while the note moves
+  // under it, which is where an editor puts a find box.
+  //
+  // It has no material of its own; [FindPanel] is the glass. Selectors carry
+  // the extra class so they outrank the base theme's own `.cm-panels-top`.
+  ".cm-panels, .cm-panels.cm-panels-top": {
+    backgroundColor: "transparent",
     color: "var(--ink)",
+    border: "none",
+  },
+  ".cm-panels.cm-panels-top": {
+    position: "sticky",
+    // Measured from the scroller's *content* box, and [ContentBody] already
+    // pads that by --head-h to stand clear of the header — so this is the gap
+    // below the header, not the distance from the top of the content.
+    top: "12px",
+    // No height, so the text it floats over doesn't move to make room.
+    height: "0",
+    overflow: "visible",
+    // Under the header (20) and under every floating menu (50). CodeMirror's
+    // own default is 300, which would put a search box over the breadcrumb.
+    zIndex: "15",
+    display: "flex",
+    justifyContent: "center",
+  },
+  ".cm-panels .cm-panel": {
+    width: "min(400px, 100%)",
   },
   ".cm-searchMatch": {
     backgroundColor: "color-mix(in srgb, var(--accent) 22%, transparent)",
+    borderRadius: "2px",
   },
   ".cm-searchMatch.cm-searchMatch-selected": {
     backgroundColor: "color-mix(in srgb, var(--accent) 45%, transparent)",
@@ -132,7 +209,7 @@ const appTheme = EditorView.theme({
 });
 
 /**
- * Syntax colours for the source pane, on the app's tokens so it follows the
+ * Syntax colours for the source editor, on the app's tokens so it follows the
  * theme (unlike editorSetup's fixed-hex `defaultHighlightStyle`). Registered
  * without `fallback` so it takes precedence. Markdown tags first, embedded
  * fenced-code tags after — both hit the same element and the later rule wins.
@@ -152,7 +229,7 @@ const appHighlight = HighlightStyle.define([
   {
     tag: t.monospace,
     color: "var(--accent)",
-    // The pane is set in sans now, so code has to say so itself.
+    // The surface is set in sans now, so code has to say so itself.
     fontFamily: "var(--font-plex-mono), monospace",
   },
   { tag: t.escape, color: "var(--ink-faint)" },
@@ -317,7 +394,7 @@ export type AnswerPlacement = "replace" | "below";
 export type EditorHandle = {
   /** Scrolls the given 1-based source line into view at the top. */
   scrollToLine: (line: number) => void;
-  /** Re-measures after the pane goes from hidden back to visible. */
+  /** Re-measures after the editor goes from hidden back to visible. */
   remeasure: () => void;
   /** Puts the caret in the document — what ⌘K's "Write" command needs. */
   focus: () => void;
@@ -333,6 +410,15 @@ export type EditorHandle = {
   applyAnswer: (text: string, placement: AnswerPlacement) => void;
   /** Releases the claimed range without writing anything. */
   endAnswer: () => void;
+};
+
+/** What [FindPanel] is drawn into, and what it is drawn from. */
+type FindHost = {
+  view: EditorView;
+  /** The panel element CodeMirror opened — the portal's target. */
+  dom: HTMLElement;
+  /** Refreshed on every change the widget reads: text, selection, query. */
+  state: EditorState;
 };
 
 type Props = {
@@ -384,6 +470,17 @@ export function CodeMirrorEditor({
   // True between mousedown and mouseup in the editor — pointer selections are
   // reported once on release, not per mousemove.
   const draggingRef = useRef(false);
+
+  // The find widget, while it is up: the element CodeMirror opened for it, and
+  // the state it is drawing from. Null when closed — which is also what the
+  // ref says, so the update listener can leave the state alone the rest of the
+  // time rather than re-rendering this component on every keystroke.
+  const [find, setFind] = useState<FindHost | null>(null);
+  const findOpenRef = useRef(false);
+  // Both are the widget's, but they live here so they survive it: closing and
+  // reopening ⌘F shouldn't forget that you had the replace row out.
+  const [replaceOpen, setReplaceOpen] = useState(false);
+  const [preserveCase, setPreserveCase] = useState(false);
 
   // The range an answer under review belongs to (or null), mapped through
   // every doc change so a stale offset can't be used.
@@ -562,8 +659,41 @@ export function CodeMirrorEditor({
                 return true;
               },
             },
+            // Find, with the replace row already out — ⌥⌘F / Ctrl-Alt-F, as
+            // everywhere else. The caret still lands in the find field: you
+            // have to say what to replace before you can say what with.
+            {
+              key: "Mod-Alt-f",
+              preventDefault: true,
+              run(view) {
+                setReplaceOpen(true);
+                return openSearchPanel(view);
+              },
+            },
           ]),
         ),
+        // The find widget. CodeMirror owns the panel — opening it, closing it,
+        // seeding the field from the selection, and painting the matches —
+        // while [FindPanel] draws into the element it opens. `dom` is a bare
+        // div for exactly that reason: it is a mounting point, not markup.
+        search({
+          top: true,
+          createPanel(view) {
+            const dom = document.createElement("div");
+            return {
+              dom,
+              top: true,
+              mount() {
+                findOpenRef.current = true;
+                setFind({ view, dom, state: view.state });
+              },
+              destroy() {
+                findOpenRef.current = false;
+                setFind(null);
+              },
+            };
+          },
+        }),
         markdown({ codeLanguages: languages }),
         EditorView.lineWrapping,
         placeholderExt(placeholder ?? ""),
@@ -585,9 +715,35 @@ export function CodeMirrorEditor({
           },
         }),
         EditorView.updateListener.of((update) => {
+          // A selection the search moved is not one the reader made, so it
+          // must not raise the AI menu — stepping through eight matches would
+          // otherwise pop a menu at each one. Every dispatch in
+          // [lib/editor/find] is tagged for this.
+          const searchMoved = update.transactions.some(
+            (tr) =>
+              tr.isUserEvent("select.search") || tr.isUserEvent("input.replace"),
+          );
+
           // Keyboard selections land here; pointer ones via the mouseup listener.
-          if (update.selectionSet && !draggingRef.current) {
+          if (update.selectionSet && !draggingRef.current && !searchMoved) {
             reportSelection(update.view);
+          }
+
+          // Everything the find widget reads. Gated on the ref rather than on
+          // the state, so with the widget closed — which is nearly always —
+          // this costs one boolean per update instead of a React render per
+          // keystroke.
+          if (
+            findOpenRef.current &&
+            (update.docChanged ||
+              update.selectionSet ||
+              update.transactions.some((tr) =>
+                tr.effects.some((effect) => effect.is(setSearchQuery)),
+              ))
+          ) {
+            setFind((current) =>
+              current ? { ...current, state: update.state } : current,
+            );
           }
 
           if (update.docChanged) {
@@ -643,10 +799,26 @@ export function CodeMirrorEditor({
   }, [value]);
 
   return (
-    <div
-      ref={containerRef}
-      className={className}
-      onClick={() => viewRef.current?.focus()}
-    />
+    <>
+      <div
+        ref={containerRef}
+        className={className}
+        // Clicks inside the widget don't reach this: a portal's events travel
+        // the React tree, where it is this div's sibling, not its child.
+        onClick={() => viewRef.current?.focus()}
+      />
+      {find &&
+        createPortal(
+          <FindPanel
+            view={find.view}
+            state={find.state}
+            replaceOpen={replaceOpen}
+            onReplaceOpenChange={setReplaceOpen}
+            preserveCase={preserveCase}
+            onPreserveCaseChange={setPreserveCase}
+          />,
+          find.dom,
+        )}
+    </>
   );
 }

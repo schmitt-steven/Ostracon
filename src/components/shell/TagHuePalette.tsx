@@ -10,7 +10,7 @@ type Props = {
 };
 
 /**
- * The sixteen hue slots, shared by the rail's menu and the index heading's
+ * The sixteen hue slots, shared by the sidebar's menu and the index heading's
  * dot. Sixteen swatches, not a free-colour picker — an override is a move
  * between slots (see lib/tags/hue), and locked lightness is what keeps hues
  * readable in both themes. Picking doesn't dismiss the opener.

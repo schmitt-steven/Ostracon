@@ -1,6 +1,6 @@
 "use client";
 
-// "Open the file picker", held outside React (like lib/command/palette-state)
+// "Open the file picker", held outside React (like lib/search-menu/menu-state)
 // so the ⌘K row and [NoteImport]'s hidden input can talk without a path
 // between them. An event, not a value.
 

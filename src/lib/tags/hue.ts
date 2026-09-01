@@ -12,7 +12,8 @@ export const HUE_SLOTS: readonly number[] = Array.from(
 
 /**
  * FNV-1a, 32-bit. Pure and identical on both sides of the wire, so the
- * server-rendered rail and client-rendered palette agree without a colour table.
+ * server-rendered sidebar and client-rendered search menu agree without a
+ * colour table.
  */
 function hash(value: string): number {
   let h = 0x811c9dc5;

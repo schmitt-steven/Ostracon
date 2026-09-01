@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PaneScroller } from "@/components/shell/PaneScroller";
+import { ContentBody } from "@/components/shell/ContentBody";
 import type { StoredImage } from "@/lib/images/queries";
 import { IMAGE_SORT_LABEL, type ImageSortMode } from "@/lib/images/sort";
 import { ALL_NOTES_HREF } from "@/lib/tags/routes";
@@ -20,11 +20,11 @@ export function ImageBrowser({
   sort: ImageSortMode;
 }) {
   return (
-    // No wash vars — the gallery has no tag, so `.pane` is neutral.
-    <div className="pane h-full">
-      <PaneScroller
+    // No wash vars — the gallery has no tag, so `.content` is neutral.
+    <div className="content h-full">
+      <ContentBody
         head={
-          <header className="pane-head">
+          <header className="content-head">
             {/* min-h-[--head-h] so the empty gallery's header matches the others. */}
             <div className="mx-auto flex min-h-[var(--head-h)] max-w-[680px] items-center gap-4 px-6 py-4">
               {/* -ml-1.5 cancels the pill's padding so "All notes" lines up. */}
@@ -75,7 +75,7 @@ export function ImageBrowser({
         <p className="sr-only" role="status">
           Sorted by {IMAGE_SORT_LABEL[sort]}
         </p>
-      </PaneScroller>
+      </ContentBody>
     </div>
   );
 }

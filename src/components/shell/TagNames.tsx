@@ -7,9 +7,9 @@ import { createContext, useContext, type ReactNode } from "react";
  * the flattened tree) down to pages rendered as `children`. Empty outside the
  * shell (the login page).
  */
-const KnownTagsContext = createContext<string[]>([]);
+const TagNamesContext = createContext<string[]>([]);
 
-export function KnownTagsProvider({
+export function TagNamesProvider({
   tags,
   children,
 }: {
@@ -17,13 +17,13 @@ export function KnownTagsProvider({
   children: ReactNode;
 }) {
   return (
-    <KnownTagsContext.Provider value={tags}>
+    <TagNamesContext.Provider value={tags}>
       {children}
-    </KnownTagsContext.Provider>
+    </TagNamesContext.Provider>
   );
 }
 
 /** Every tag in use, as written — ancestors included, since the tree has rows for them. */
-export function useKnownTags(): string[] {
-  return useContext(KnownTagsContext);
+export function useTagNames(): string[] {
+  return useContext(TagNamesContext);
 }

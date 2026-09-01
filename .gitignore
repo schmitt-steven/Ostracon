@@ -29,6 +29,10 @@ updates.md
 RELEASING.md
 scripts/
 
+# agent instructions (local only)
+CLAUDE.md
+AGENTS.md
+
 # debug
 npm-debug.log*
 yarn-debug.log*

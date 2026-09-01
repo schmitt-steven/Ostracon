@@ -7,7 +7,7 @@ import {
   SEARCH_INDEX_OPTIONS,
   type NoteDoc,
 } from "@/lib/search/build-index";
-import type { PaletteScope } from "@/lib/command/scope";
+import type { SearchMenuScope } from "@/lib/search-menu/scope";
 import { loadCachedIndex, saveIndexCache } from "@/lib/search/indexeddb";
 import { countImages } from "@/lib/notes/text-length";
 import { byReason, reasonFrom, type MatchReason } from "@/lib/search/results";
@@ -36,13 +36,13 @@ export type NoteHit = {
 const EMPTY_SEARCH = Object.freeze({ hits: [] as NoteHit[], total: 0 });
 
 /**
- * Whether a note falls inside a scope. `subtags` is the palette's toggle for
- * whether `#infra` includes `#infra/ci`. The `tags` scope lets everything
- * through — it orders the list, doesn't narrow it (see [PaletteScope]).
+ * Whether a note falls inside a scope. `subtags` is the search menu's toggle
+ * for whether `#infra` includes `#infra/ci`. The `tags` scope lets everything
+ * through — it orders the list, doesn't narrow it (see [SearchMenuScope]).
  */
 function inScope(
   tags: readonly string[],
-  scope: PaletteScope | null,
+  scope: SearchMenuScope | null,
   subtags: boolean,
 ): boolean {
   if (!scope) return true;
@@ -137,7 +137,7 @@ export function useSearchIndex(enabled: boolean) {
   const search = useCallback(
     (
       query: string,
-      scope: PaletteScope | null = null,
+      scope: SearchMenuScope | null = null,
       limit = 6,
       subtags = true,
     ): { hits: NoteHit[]; total: number } => {
@@ -176,13 +176,13 @@ export function useSearchIndex(enabled: boolean) {
   );
 
   /**
-   * The most recently updated notes in a scope — what the palette shows before
-   * a query exists.
+   * The most recently updated notes in a scope — what the search menu shows
+   * before a query exists.
    */
   const recent = useCallback(
     (
       limit: number,
-      scope: PaletteScope | null = null,
+      scope: SearchMenuScope | null = null,
       subtags = true,
     ): NoteHit[] => {
       if (!corpus) return [];
@@ -210,8 +210,8 @@ export function useSearchIndex(enabled: boolean) {
   /**
    * Per-tag note count and last-used date, sub-tags counted in, built from the
    * ancestry of every tag in use so `#infra` has a count even when only
-   * `#infra/ci` is filed. One pass — the palette's tag rows report the count
-   * and default-sort on the date.
+   * `#infra/ci` is filed. One pass — the search menu's tag rows report the
+   * count and default-sort on the date.
    */
   const { tagCounts, tagLastUsed } = useMemo(() => {
     const counts = new Map<string, number>();

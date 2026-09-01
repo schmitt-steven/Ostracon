@@ -4,7 +4,7 @@ import { listStoredImages } from "@/lib/images/queries";
 import { parseImageSort, sortImages } from "@/lib/images/sort";
 
 /**
- * Every image in the collection. Its own route (the rail links to it); the
+ * Every image in the collection. Its own route (the sidebar links to it); the
  * sort order is a query string. Sorted here to keep the grid server-rendered
  * (see [ImageSortControl]).
  */

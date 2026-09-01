@@ -33,7 +33,7 @@ export function UpdateDialog({
   forkUrl,
   onClose,
 }: Props) {
-  // On the document, as the tag dialogs — this opens from a rail row, and
+  // On the document, as the tag dialogs — this opens from a sidebar row, and
   // focus is wherever that left it.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {

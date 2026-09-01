@@ -1,7 +1,7 @@
 /**
  * Turning "this note matched" into "here is the word that matched". Returns
- * spans (`{ text, hit }[]`), not marked-up strings — the palette renders them
- * as JSX siblings, so there's no HTML to inject into.
+ * spans (`{ text, hit }[]`), not marked-up strings — the search menu renders
+ * them as JSX siblings, so there's no HTML to inject into.
  */
 
 export type Span = {

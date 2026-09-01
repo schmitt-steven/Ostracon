@@ -9,7 +9,7 @@ Ostracon is a self-hosted Markdown knowledge base for one person.
 
 It runs on Next.js and hosting is free: one Vercel project holds the app, a Neon Postgres database, and a Blob store for images. All three have generous free tiers.
 
-<!-- TODO: screenshots — editor, tag tree, command palette, AI menu -->
+<!-- TODO: screenshots — editor, tag tree, search menu, AI menu -->
 
 ## Some Features
 

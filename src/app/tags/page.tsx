@@ -4,8 +4,8 @@ import { listNotesOverview, toLite } from "@/lib/notes/queries";
 import { buildTagTree, flattenTree } from "@/lib/tags/tree";
 
 /**
- * Every tag in the collection — where the rail's tag tree went (see
- * [TagDirectory]). Its own route (the rail links to it). The tree is built
+ * Every tag in the collection — where the sidebar's tag tree went (see
+ * [TagDirectory]). Its own route (the sidebar links to it). The tree is built
  * here, not shared from the layout, to avoid coupling.
  */
 export default async function TagsPage() {

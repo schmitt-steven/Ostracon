@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, type MouseEvent } from "react";
-import { PaneScroller } from "@/components/shell/PaneScroller";
+import { ContentBody } from "@/components/shell/ContentBody";
 import { TagMenu } from "@/components/shell/TagMenu";
 import { TagDeleteDialog } from "@/components/shell/TagDeleteDialog";
 import { TagRenameDialog } from "@/components/shell/TagRenameDialog";
@@ -31,12 +31,12 @@ type Props = {
 };
 
 /**
- * Every tag there is — the overview the rail's 240px column couldn't hold.
- * Adds what the rail lacked width for: each tag's last-used date (the default
- * sort) and, for a nested tag, its full path. One column in the index's 680px
- * measure, drawn as the index's row (display-face title, right-edge date),
- * just tighter vertically. No filter field — ⌘K covers the by-name case; this
- * view is for when you don't have a name to type.
+ * Every tag there is — the overview the sidebar's 240px column couldn't hold.
+ * Adds what the sidebar lacked width for: each tag's last-used date (the
+ * default sort) and, for a nested tag, its full path. One column in the index's
+ * 680px measure, drawn as the index's row (display-face title, right-edge
+ * date), just tighter vertically. No filter field — ⌘K covers the by-name case;
+ * this view is for when you don't have a name to type.
  */
 export function TagDirectory({
   tree,
@@ -91,11 +91,11 @@ export function TagDirectory({
   }
 
   return (
-    // No wash vars — the directory is about all tags at once; neutral `.pane`.
-    <div className="pane pane-etched h-full">
-      <PaneScroller
+    // No wash vars — the directory is about all tags at once; neutral `.content`.
+    <div className="content content-etched h-full">
+      <ContentBody
         head={
-          <header className="pane-head">
+          <header className="content-head">
             <div className="mx-auto flex min-h-[var(--head-h)] max-w-[680px] items-center gap-4 px-6 py-4">
               {/* Not a breadcrumb — tags aren't filed under notes. */}
               <p className="min-w-0 flex-1 truncate pr-1.5 text-[13px] text-ink">
@@ -122,7 +122,8 @@ export function TagDirectory({
               <h1 className="min-w-0 flex-1 font-display text-[28px] font-medium leading-tight text-ink">
                 All tags
               </h1>
-              {/* Tags first — the palette opens wearing the All tags chip. */}
+              {/* Tags first — the search menu opens wearing the All tags
+                  chip. */}
               <HeaderSearchButton
                 label="Search tags and notes"
                 hint="Tags first, then notes"
@@ -162,7 +163,7 @@ export function TagDirectory({
         <p className="sr-only" role="status">
           Sorted by {TAG_SORT_LABEL[sort]}
         </p>
-      </PaneScroller>
+      </ContentBody>
 
       {menu && (
         <TagMenu
@@ -172,7 +173,8 @@ export function TagDirectory({
           pinned={preferences.pinned.includes(menu.tag)}
           pinnedCount={preferences.pinned.length}
           hue={hueOf(menu.tag)}
-          // No move items — the pinned section's order is the rail's to know.
+          // No move items — the pinned section's order is the sidebar's to
+          // know.
           onRename={() => setRenaming(menu.tag)}
           onDelete={() => setDeleting(menu.tag)}
           onClose={() => setMenu(null)}
@@ -261,7 +263,7 @@ function TagRow({
       </Link>
 
       {/* Outside the link (no button inside an anchor), in the lane pr-11
-          holds. Always drawn, unlike the rail's — this is the only way to a
+          holds. Always drawn, unlike the sidebar's — this is the only way to a
           tag's options from here. Quiet at --ink-faint. */}
       <button
         type="button"

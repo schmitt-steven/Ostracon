@@ -22,19 +22,19 @@ import {
   getContextualCommands,
   getServerContextualCommands,
   subscribeContextualCommands,
-} from "@/lib/command/registry";
+} from "@/lib/search-menu/registry";
 import {
-  getPaletteEverOpened,
-  getServerPaletteEverOpened,
-  subscribePaletteOpen,
-} from "@/lib/command/palette-state";
+  getSearchMenuEverOpened,
+  getServerSearchMenuEverOpened,
+  subscribeSearchMenuOpen,
+} from "@/lib/search-menu/menu-state";
 import {
   scopeFromPath,
   scopeLabel,
   scopePrompt,
   scopeTag,
-  type PaletteScope,
-} from "@/lib/command/scope";
+  type SearchMenuScope,
+} from "@/lib/search-menu/scope";
 import { requestNoteImport } from "@/lib/notes/import-request";
 import {
   countMatches,
@@ -51,8 +51,8 @@ import {
   UNTAGGED_HREF,
 } from "@/lib/tags/routes";
 import { Highlighted } from "./Highlighted";
-import { PalettePreview } from "./PalettePreview";
-import type { ActionIcon, PaletteAction, Row, Section } from "./types";
+import { SearchMenuPreview } from "./SearchMenuPreview";
+import type { ActionIcon, SearchMenuAction, Row, Section } from "./types";
 
 type Props = {
   /** Every tag in use, for the Tags section and for a scope's sub-tags. */
@@ -80,7 +80,7 @@ const RECENT_EMPTY =
 /**
  * ⌘K: jump to a note or tag, and act on the note you're on (new note, suggest
  * tags, switch mode). Account actions (theme, log out) have no resting row —
- * they're in the rail — but land here once their name is typed.
+ * they're in the sidebar — but land here once their name is typed.
  *
  * Rules that hold the layout together:
  * - The frame never moves — two columns in every state, results or not.
@@ -95,7 +95,7 @@ const RECENT_EMPTY =
  * ⇥ or typing `#infra ` narrows to a tag; a `#` before anything else is just
  * stripped before matching.
  */
-export function CommandPalette({ tags, open, onOpenChange }: Props) {
+export function SearchMenu({ tags, open, onOpenChange }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const [query, setQuery] = useState("");
@@ -109,12 +109,12 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { hueOf } = useTagHues();
 
-  // The corpus fetch is deferred until the palette is first opened, latched in
-  // the store so opening doesn't round-trip through an effect.
+  // The corpus fetch is deferred until the search menu is first opened, latched
+  // in the store so opening doesn't round-trip through an effect.
   const everOpened = useSyncExternalStore(
-    subscribePaletteOpen,
-    getPaletteEverOpened,
-    getServerPaletteEverOpened,
+    subscribeSearchMenuOpen,
+    getSearchMenuEverOpened,
+    getServerSearchMenuEverOpened,
   );
   const { search, recent, tagCounts, tagLastUsed } = useSearchIndex(everOpened);
 
@@ -138,7 +138,7 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
   // What this opening did to the scope: `undefined` = untouched (falls back to
   // the route), `null` = dropped, a scope = picked. Three states so "dropped"
   // survives a re-render.
-  const [override, setOverride] = useState<PaletteScope | null | undefined>(
+  const [override, setOverride] = useState<SearchMenuScope | null | undefined>(
     undefined,
   );
   const scope = override === undefined ? routeScope : override;
@@ -275,12 +275,12 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
     return search(needle, null, 0).total;
   }, [needle, scope, tagsFirst, noteHits.length, search]);
 
-  const actions = useMemo<PaletteAction[]>(() => {
-    const list: PaletteAction[] = [];
+  const actions = useMemo<SearchMenuAction[]>(() => {
+    const list: SearchMenuAction[] = [];
 
     // Notes from outside — sits beside "New note"; the detail names the drag
     // gesture that does the same.
-    const importFiles: PaletteAction = {
+    const importFiles: SearchMenuAction = {
       id: "import",
       label: "Import files",
       detail: ".md or .txt files become notes · or drag & drop them",
@@ -297,8 +297,8 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
       );
 
     // Theme and log out — gated on `needle` with no fallback; their home is
-    // the rail.
-    const switchTheme: PaletteAction = {
+    // the sidebar.
+    const switchTheme: SearchMenuAction = {
       id: "theme",
       label: darkTheme ? "Switch to light theme" : "Switch to dark theme",
       detail: darkTheme
@@ -316,7 +316,7 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
         needle,
       );
 
-    const logOut: PaletteAction = {
+    const logOut: SearchMenuAction = {
       id: "log-out",
       label: "Log out",
       detail: "End this session and return to the sign-in screen",
@@ -373,7 +373,7 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
       });
     }
 
-    // The only way to browse tags now that the rail lists none.
+    // The only way to browse tags now that the sidebar lists none.
     if (
       !needle ||
       commandMatches("Go to all tags", "directory index", needle)
@@ -523,7 +523,7 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
         onOpenChange(!open);
         return;
       }
-      // `/` opens the palette (it used to focus the rail's tag filter).
+      // `/` opens the search menu (it used to focus the sidebar's tag filter).
       // Ignored while typing or with a modifier, so it can't steal a slash.
       if (open || event.key !== "/") return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
@@ -627,7 +627,7 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Command palette"
+        aria-label="Search menu"
         // Fixed size — every state fills this frame, so results arriving don't
         // move the row under the pointer.
         className="glass glass-dense lift-3 flex h-[36rem] max-h-full w-full max-w-[65rem] flex-col overflow-hidden rounded-[var(--radius-zone)]"
@@ -667,12 +667,14 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
             spellCheck={false}
             role="combobox"
             aria-expanded
-            aria-controls="palette-list"
+            aria-controls="search-menu-list"
             // The rows are driven from this field, so the highlight has to be
             // announced here for a screen reader.
-            aria-activedescendant={active ? `palette-${active.id}` : undefined}
+            aria-activedescendant={
+              active ? `search-menu-${active.id}` : undefined
+            }
             // The global :focus-visible ring is clipped by the dialog's radius
-            // into a stray line; the open palette is affordance enough. `!`
+            // into a stray line; the open search menu is affordance enough. `!`
             // beats the unlayered rule.
             className="min-w-0 flex-1 bg-transparent py-1 text-base text-ink outline-none placeholder:text-ink-faint focus-visible:outline-none!"
           />
@@ -690,7 +692,7 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
         <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(0,65fr)_minmax(0,35fr)]">
           <div
             ref={listRef}
-            id="palette-list"
+            id="search-menu-list"
             role="listbox"
             aria-label="Results"
             // A margin, not padding, so the scrollbar gutter comes with the
@@ -717,7 +719,7 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
                   </p>
                 )}
                 {section.rows.map((row) => (
-                  <PaletteRow
+                  <SearchMenuRow
                     key={row.id}
                     row={row}
                     active={row.id === active?.id}
@@ -730,7 +732,7 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
             ))}
           </div>
 
-          <PalettePreview
+          <SearchMenuPreview
             row={active}
             tags={tags}
             hueOf={hueOf}
@@ -760,10 +762,10 @@ export function CommandPalette({ tags, open, onOpenChange }: Props) {
 }
 
 /**
- * The chip above the field: what the search is pointed at, and the × that
- * drops it. A tag wears its hue; Untagged/All tags take the rail's neutral
- * `.rail-dot` ring on `.row-selected`. Only a tag gets the `+ sub` switch; the
- * × is on all three.
+ * The chip above the field: what the search is pointed at, and the × that drops
+ * it. A tag wears its hue; Untagged/All tags take the sidebar's neutral
+ * `.sidebar-dot` ring on `.row-selected`. Only a tag gets the `+ sub` switch;
+ * the × is on all three.
  */
 function ScopeChip({
   scope,
@@ -773,7 +775,7 @@ function ScopeChip({
   onToggleSubtags,
   onDrop,
 }: {
-  scope: PaletteScope;
+  scope: SearchMenuScope;
   hueOf: (name: string) => number;
   subtags: boolean;
   hasChildren: boolean;
@@ -786,7 +788,7 @@ function ScopeChip({
   return (
     <span
       style={tag ? ({ "--h": hueOf(tag) } as React.CSSProperties) : undefined}
-      // Not .tag-pill — this is filled at rest, in the rail's selected tint.
+      // Not .tag-pill — this is filled at rest, in the sidebar's selected tint.
       className={`flex h-7 shrink-0 items-center gap-1.5 rounded-full pl-2.5 pr-1 text-[13px] ${
         tag ? "hue-row-selected" : "row-selected"
       }`}
@@ -794,7 +796,7 @@ function ScopeChip({
       <span
         aria-hidden
         className={`size-[7px] shrink-0 rounded-full ${
-          tag ? "hue-dot" : "rail-dot"
+          tag ? "hue-dot" : "sidebar-dot"
         }`}
       />
       <span className={`max-w-40 truncate ${tag ? "hue-text" : "text-ink"}`}>
@@ -874,7 +876,7 @@ function Hint({
 
 /** One row — a `role="option"` div with no focus or key handling; the caret
  * stays in the field, arrow keys move `activeId`. */
-function PaletteRow({
+function SearchMenuRow({
   row,
   active,
   hueOf,
@@ -889,7 +891,7 @@ function PaletteRow({
 }) {
   return (
     <div
-      id={`palette-${row.id}`}
+      id={`search-menu-${row.id}`}
       data-row-id={row.id}
       role="option"
       aria-selected={active}
@@ -1048,13 +1050,13 @@ function commandMatches(
   );
 }
 
-/** "New note", carrying what the palette knows: the query becomes the title,
- * the scope its tag. */
+/** "New note", carrying what the search menu knows: the query becomes the
+ * title, the scope its tag. */
 function newNote(
   router: ReturnType<typeof useRouter>,
   title: string,
   scope: string | null,
-): PaletteAction {
+): SearchMenuAction {
   const params = new URLSearchParams();
   if (title) params.set("title", title);
   if (scope) params.set("tag", scope);
@@ -1127,7 +1129,7 @@ function ActionGlyph({ icon }: { icon: ActionIcon }) {
     );
   }
   if (icon === "image") {
-    // The rail's Images row, at this size: one frame, one sun, one hill.
+    // The sidebar's Images row, at this size: one frame, one sun, one hill.
     return (
       <svg {...common}>
         <rect x="3" y="4.5" width="18" height="15" rx="2.5" />

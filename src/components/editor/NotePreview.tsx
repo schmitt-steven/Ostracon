@@ -34,7 +34,7 @@ type Props = {
   ref?: Ref<PreviewHandle>;
 };
 
-export function PreviewPane({
+export function NotePreview({
   bodyMd,
   tags,
   initialHtml,
@@ -92,7 +92,7 @@ export function PreviewPane({
           if (Number(block.dataset.line) <= line) target = block;
           else break;
         }
-        // scrollIntoView, not scrollTo — the pane doesn't scroll itself.
+        // scrollIntoView, not scrollTo — the content doesn't scroll itself.
         target?.scrollIntoView({ block: "nearest", behavior: "smooth" });
       },
     }),

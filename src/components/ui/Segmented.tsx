@@ -18,7 +18,7 @@ type Props<V extends string> = {
    * buttons beside it, and the settings page does neither.
    */
   className?: string;
-  /** Anything a single segment needs — a minimum width, mainly. */
+  /** Anything a single segment needs — its side padding and a width floor. */
   segmentClassName?: string;
 };
 
@@ -27,7 +27,7 @@ type Props<V extends string> = {
  * not a row of loose buttons. Built from parts the app already has: the track
  * is a `.well`, the marker is `.row-selected`. The well is filled in
  * translucent ink (not --sunk) and uses `.well-shallow` lips, because it sits
- * over a pane's wash rather than the flat rail. Nothing here is coloured —
+ * over a content area's wash rather than the flat sidebar. Nothing here is coloured —
  * hue means "tag".
  */
 export function Segmented<V extends string>({
@@ -74,10 +74,10 @@ export function Segmented<V extends string>({
             type="button"
             onClick={() => onChange(option.value)}
             aria-pressed={active}
-            // No vertical padding: the grid stretches each segment to the
+            // No padding of its own: the grid stretches each segment to the
             // track, so the height is set in one place instead of being added
-            // up from three.
-            className={`relative rounded-[calc(var(--radius-control)-2px)] px-3 text-[13px] transition-colors duration-[var(--tint-motion)] motion-reduce:transition-none ${
+            // up from three, and the sides are the caller's to set.
+            className={`relative rounded-[calc(var(--radius-control)-2px)] text-[13px] transition-colors duration-[var(--tint-motion)] motion-reduce:transition-none ${
               active ? "text-ink" : "text-ink-faint hover:text-ink-muted"
             } ${segmentClassName}`}
           >

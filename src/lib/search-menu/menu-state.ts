@@ -1,6 +1,6 @@
 "use client";
 
-// Whether the command palette is open, held outside React so the scattered
+// Whether the search menu is open, held outside React so the scattered
 // things that open it (⌘K, header hints, the touch bottom bar) need no path
 // down to it.
 
@@ -10,32 +10,32 @@ let open = false;
 let everOpened = false;
 const listeners = new Set<() => void>();
 
-export function getPaletteOpen(): boolean {
+export function getSearchMenuOpen(): boolean {
   return open;
 }
 
-export function getPaletteEverOpened(): boolean {
+export function getSearchMenuEverOpened(): boolean {
   return everOpened;
 }
 
 /** Never on the server — nothing has been pressed yet. */
-export function getServerPaletteEverOpened(): boolean {
+export function getServerSearchMenuEverOpened(): boolean {
   return false;
 }
 
 /** Always closed on the server; nothing has been pressed yet. */
-export function getServerPaletteOpen(): boolean {
+export function getServerSearchMenuOpen(): boolean {
   return false;
 }
 
-export function subscribePaletteOpen(onChange: () => void): () => void {
+export function subscribeSearchMenuOpen(onChange: () => void): () => void {
   listeners.add(onChange);
   return () => {
     listeners.delete(onChange);
   };
 }
 
-export function setPaletteOpen(next: boolean): void {
+export function setSearchMenuOpen(next: boolean): void {
   if (open === next) return;
   open = next;
   if (next) everOpened = true;

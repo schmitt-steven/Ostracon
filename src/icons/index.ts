@@ -10,7 +10,7 @@ export { default as SearchIcon } from "./search.svg";
 export { default as TrashIcon } from "./trash.svg";
 export { default as EditIcon } from "./edit.svg";
 
-// The 16 box, stroke 1.3 — the rail set, drawn for 14px.
+// The 16 box, stroke 1.3 — the sidebar set, drawn for 14px.
 export { default as PlusIcon } from "./plus.svg";
 export { default as NotesIcon } from "./notes.svg";
 export { default as TagIcon } from "./tag.svg";
@@ -40,7 +40,16 @@ export { default as CloseSmallIcon } from "./close-small.svg";
 export { default as ChevronDownIcon } from "./chevron-down.svg";
 export { default as CheckIcon } from "./check.svg";
 
-// The sidebar glyph in its two states — filled while the rail shows, so it
+// The find widget's three verbs, in the same 12 box. The two arrows are drawn
+// rather than one rotated, on the principle above: an imported `.svg` is a
+// finished component, and a `-rotate-180` in the markup hides which direction
+// a button means behind a transform.
+export { default as ArrowUpIcon } from "./arrow-up.svg";
+export { default as ArrowDownIcon } from "./arrow-down.svg";
+/** A marquee round two lines of text — "select every match". */
+export { default as SelectAllIcon } from "./select-all.svg";
+
+// The sidebar glyph in its two states — filled while the sidebar shows, so it
 // pictures the current state. Two files, since an imported `.svg` is a
 // finished component with no way to swap a path inside it.
 export { default as PanelLeftIcon } from "./panel-left.svg";
@@ -51,5 +60,5 @@ export { default as PinOutlineIcon } from "./pin.svg";
 export { default as PinFilledIcon } from "./pin-filled.svg";
 
 /** The plus at 24/1.6, for the import drop zone, where it's drawn at 28px and
- *  the rail's hairline plus would vanish. */
+ *  the sidebar's hairline plus would vanish. */
 export { default as PlusLargeIcon } from "./plus-large.svg";

@@ -11,7 +11,8 @@ import {
 /**
  * The gallery's sort, kept in the URL — the grid stays server-rendered.
  * `replace`, not `push`, and `scroll: false`: re-sorting isn't somewhere you
- * were. The default mode drops the param, so the resting URL is the rail's link.
+ * were. The default mode drops the param, so the resting URL is the sidebar's
+ * link.
  */
 export function ImageSortControl({ value }: { value: ImageSortMode }) {
   const router = useRouter();

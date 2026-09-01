@@ -57,12 +57,14 @@ function restorePreferences(tag: string, cleared: ClearedPreferences): void {
 
 /**
  * Deleting a tag, both meanings. There's no tag row, only the notes: one
- * branch unfiles them (fully undoable, acts on its press), the other deletes
- * them (irreversible, opens a type-the-name screen). Nested tags come along in
+ * branch unfiles them (fully undoable), the other deletes them (irreversible).
+ * Neither acts on the press that chose it — the first screen picks a branch,
+ * the second approves it: one press to confirm for the undoable half, the
+ * tag's name typed out for the half that isn't. Nested tags come along in
  * both, or the parent would reappear in the tree.
  */
 export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
-  const [view, setView] = useState<"choose" | "confirm">("choose");
+  const [view, setView] = useState<"choose" | "unfile" | "delete">("choose");
   const [stats, setStats] = useState<TagDeletionStats | null>(null);
   const [typed, setTyped] = useState("");
   const [pending, startTransition] = useTransition();
@@ -111,15 +113,23 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
 
   // Opens the destructive screen, reading the numbers first so it arrives
   // complete.
-  function openConfirm() {
+  function openDelete() {
     startTransition(async () => {
       try {
         setStats(await tagDeletionStats({ tag }));
-        setView("confirm");
+        setView("delete");
       } catch {
         setError("Couldn't count what that would delete.");
       }
     });
+  }
+
+  // Back to the fork, from either confirmation. Clears what the screen being
+  // left had collected, so re-entering it starts clean.
+  function back() {
+    setView("choose");
+    setTyped("");
+    setError(null);
   }
 
   function deleteNotes() {
@@ -168,7 +178,7 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label={`Delete #${tag}`}
-      // Centred — the three screens are different heights.
+      // Centred — the four screens are different heights.
       className="scrim fixed inset-0 z-50 flex items-center justify-center p-6"
       onClick={(event) => {
         if (event.target === event.currentTarget) finish();
@@ -218,16 +228,50 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
               </button>
             </div>
           </>
-        ) : view === "confirm" ? (
+        ) : view === "unfile" ? (
+          <>
+            <p className="text-base text-ink">
+              Remove #{tag} from {noteCount}{" "}
+              {noteCount === 1 ? "note" : "notes"}?
+            </p>
+            <p className="mt-1 text-[13px] text-ink-muted">
+              {noteCount === 1 ? "The note stays" : "The notes stay"} — only the
+              tag comes off, along with any nested tags. Undo is offered right
+              after.
+            </p>
+            {error && <p className="mt-2 text-[13px] text-danger">{error}</p>}
+            {/* One press to approve: this branch is reversible, so it asks
+                rather than makes you type. Cancel first, as everywhere. */}
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={back}
+                className="row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] text-ink-muted hover:text-ink"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                autoFocus
+                onClick={unfile}
+                disabled={pending}
+                className={`row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] ${
+                  pending ? "text-ink-faint" : "row-selected text-ink"
+                }`}
+              >
+                {pending ? "Removing…" : "Remove the tag"}
+              </button>
+            </div>
+          </>
+        ) : view === "delete" ? (
           <>
             <p className="text-base text-ink">
               Delete #{tag} and {doomed} {doomed === 1 ? "note" : "notes"}
             </p>
             <p className="mt-1 text-[13px] text-ink-muted">
               {doomed === 1
-                ? "Permanently deletes the note, along with any images only it was using."
-                : `Permanently deletes all ${doomed}, along with any images only they were using.`}{" "}
-              This can&apos;t be undone.
+                ? "Permanently deletes the tag and its note. This can't be undone."
+                : `Permanently deletes the tag and all its ${doomed} notes. This can't be undone.`}{" "}
             </p>
             {/* The number the tag tree can't give — how many are also filed
                 elsewhere. */}
@@ -271,11 +315,7 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
               {/* Back, not Cancel — this is step two of two. */}
               <button
                 type="button"
-                onClick={() => {
-                  setView("choose");
-                  setTyped("");
-                  setError(null);
-                }}
+                onClick={back}
                 className="row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] text-ink-muted hover:text-ink"
               >
                 Back
@@ -307,13 +347,15 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
               nested tags are deleted too.
             </p>
 
-            {/* Two rows — two different things to do, each its own press. */}
-            <div className="mt-4 flex flex-col gap-1.5">
+            {/* Two buttons — two different things to do, each drawn as
+                something to press (see `.choice`) and each opening its own
+                confirmation rather than acting here. */}
+            <div className="mt-4 flex flex-col gap-2">
               <button
                 type="button"
-                onClick={unfile}
+                onClick={() => setView("unfile")}
                 disabled={pending}
-                className="row-tint w-full rounded-[var(--radius-control)] px-3 py-2.5 text-left"
+                className="row-tint choice w-full rounded-[var(--radius-control)] px-3 py-2.5 text-left"
               >
                 <span className="block text-[13px] text-ink">
                   Remove the tag
@@ -325,16 +367,17 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
 
               <button
                 type="button"
-                onClick={openConfirm}
+                onClick={openDelete}
                 disabled={pending}
-                className="row-tint w-full rounded-[var(--radius-control)] px-3 py-2.5 text-left hover:bg-danger-wash"
+                className="row-tint choice choice-danger w-full rounded-[var(--radius-control)] px-3 py-2.5 text-left"
               >
                 <span className="block text-[13px] text-danger">
                   Delete the tag and its notes
                 </span>
                 <span className="mt-0.5 block text-[13px] text-ink-muted">
-                  Permanently deletes  {noteCount}{" "}
-                  {noteCount === 1 ? "note" : "notes"}. This can&apos;t be undone.
+                  Permanently deletes {noteCount}{" "}
+                  {noteCount === 1 ? "note" : "notes"}. This can&apos;t be
+                  undone.
                 </span>
               </button>
             </div>

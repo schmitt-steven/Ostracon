@@ -37,8 +37,8 @@ const nextConfig: NextConfig = {
      * `src/icons/*.svg` are imported as React components, not as URLs.
      *
      * They have to be, because every glyph in this app is drawn in
-     * `currentColor` and takes its colour from the row it sits in — a rail row
-     * that goes from `--ink-muted` to `--ink` on hover, a chip whose ✕ is
+     * `currentColor` and takes its colour from the row it sits in — a sidebar
+     * row that goes from `--ink-muted` to `--ink` on hover, a chip whose ✕ is
      * `--ink-faint` until you're over it. An `<img src="/icons/tag.svg">` is a
      * separate document: `currentColor` there resolves against *its* root, not
      * against ours, so every one of those states would flatten to one fixed

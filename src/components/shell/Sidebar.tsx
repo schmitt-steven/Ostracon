@@ -5,8 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState, type MouseEvent } from "react";
 import icon from "@/assets/ostracon-icon.png";
-import { setPaletteOpen } from "@/lib/command/palette-state";
-import { scopeFromPath, scopePrompt } from "@/lib/command/scope";
+import { setSearchMenuOpen } from "@/lib/search-menu/menu-state";
+import { scopeFromPath, scopePrompt } from "@/lib/search-menu/scope";
 import type { PinnedNote } from "@/lib/notes/queries";
 import { flattenTree, type TagNode } from "@/lib/tags/tree";
 import { sortByPinOrder } from "@/lib/tags/pin-order";
@@ -37,14 +37,14 @@ import {
 import { useTagHues } from "@/hooks/use-tag-hues";
 import { LogOutButton } from "./LogOutButton";
 import { NoteMenu } from "./NoteMenu";
-import { RailRow } from "./RailRow";
+import { SidebarRow } from "./SidebarRow";
 import { SearchTrigger } from "./SearchTrigger";
 import { TagMenu } from "./TagMenu";
 import { TagDeleteDialog } from "./TagDeleteDialog";
 import { TagRenameDialog } from "./TagRenameDialog";
 import { UpdateRow } from "./UpdateRow";
 
-export type RailData = {
+export type SidebarData = {
   /** At most MAX_PINNED_NOTES, in the order they were pinned. */
   pinnedNotes: PinnedNote[];
   tree: TagNode[];
@@ -73,7 +73,7 @@ type NotePin = { key: string; note: PinnedNote };
 type TagPin = { key: string; node: TagNode };
 
 type Props = {
-  data: RailData;
+  data: SidebarData;
   /** Called on any click inside, so the touch drawer closes behind a link. */
   onNavigate?: () => void;
   /** Wide screens only: folded down to the icon strip. */
@@ -83,13 +83,13 @@ type Props = {
 };
 
 /**
- * The rail: search, the four non-tag places, then hand-pinned notes and
+ * The sidebar: search, the four non-tag places, then hand-pinned notes and
  * hand-pinned tags. The full tag tree moved to /tags ([TagDirectory]) — it
  * outgrew a 240px column — leaving one "All tags" row. No filter field either;
  * ⌘K took over searching. Sections are separated by --space-group alone.
  * Folded, it's the same column with the lists removed.
  */
-export function Rail({
+export function Sidebar({
   data,
   onNavigate,
   collapsed = false,
@@ -107,8 +107,9 @@ export function Rail({
     ? tagFromSegments(pathname.slice(3).split("/"))
     : null;
 
-  // The route as the palette reads it — for the folded strip's search button.
-  const railScope = scopeFromPath(pathname);
+  // The route as the search menu reads it — for the folded strip's search
+  // button.
+  const sidebarScope = scopeFromPath(pathname);
 
   // The tree isn't drawn here, but pinned tags are looked up in it for counts.
   const flat = useMemo(() => flattenTree(data.tree), [data.tree]);
@@ -200,10 +201,12 @@ export function Rail({
         <FoldButton collapsed onClick={onToggleCollapsed} />
         <button
           type="button"
-          onClick={() => setPaletteOpen(true)}
+          onClick={() => setSearchMenuOpen(true)}
           // The strip's [SearchTrigger] — the label states the scope.
           aria-label={
-            railScope ? `${scopePrompt(railScope)}…` : "Search, do, or jump to…"
+            sidebarScope
+              ? `${scopePrompt(sidebarScope)}…`
+              : "Search, do, or jump to…"
           }
           aria-keyshortcuts="Meta+K Control+K"
           className="row-tint flex size-7 items-center justify-center rounded-[var(--radius-control)] text-ink-muted hover:text-ink"
@@ -268,19 +271,19 @@ export function Rail({
       <SearchTrigger />
 
       {/* New note + the three non-tag places: four fixed rows, one section
-          under search, above the pins (which grow). New note is a [RailRow],
-          not a button — the rail has one box and it's the search field. */}
+          under search, above the pins (which grow). New note is a [SidebarRow],
+          not a button — the sidebar has one box and it's the search field. */}
       <nav
         className="mt-[var(--space-item)] flex flex-col gap-[var(--space-item)]"
         aria-label="Views"
       >
-        <RailRow
+        <SidebarRow
           href="/notes/new"
           label="New note"
           selected={pathname === "/notes/new"}
           icon={<PlusIcon className="size-3.5 shrink-0" />}
         />
-        <RailRow
+        <SidebarRow
           href={ALL_NOTES_HREF}
           label="All notes"
           count={data.allCount}
@@ -290,7 +293,7 @@ export function Rail({
         {/* Where the tag tree went (see [TagDirectory]). The count is every
             tag at every depth. Untagged is now a link under the All notes
             heading. */}
-        <RailRow
+        <SidebarRow
           href={TAGS_HREF}
           label="All tags"
           count={data.tagCount}
@@ -299,7 +302,7 @@ export function Rail({
         />
         {/* Counted from note bodies, not the bucket — listing blob storage
             would be a round trip on every page. */}
-        <RailRow
+        <SidebarRow
           href="/images"
           label="Images"
           count={data.imageCount}
@@ -321,7 +324,7 @@ export function Rail({
             {pinnedNoteItems.map((item) => (
               <li key={item.key}>
                 {/* No count, no `from` — the note opens under its own first tag. */}
-                <RailRow
+                <SidebarRow
                   href={noteHref(item.note.slug)}
                   label={item.note.title || "Untitled"}
                   selected={pathname === noteHref(item.note.slug)}
@@ -347,7 +350,7 @@ export function Rail({
           <ul className="flex flex-col gap-[var(--space-item)]">
             {pinnedTagItems.map((item) => (
               <li key={item.key}>
-                <RailRow
+                <SidebarRow
                   href={tagHref(item.node.name)}
                   label={item.node.name}
                   count={item.node.count}
@@ -366,13 +369,13 @@ export function Rail({
         </nav>
       )}
 
-      {/* mt-auto pins this to the foot. Settings is a [RailRow] (a place now),
-          where the theme toggle used to be — one row for all preferences. The
-          update row sits above it, absent almost always. */}
+      {/* mt-auto pins this to the foot. Settings is a [SidebarRow] (a place
+          now), where the theme toggle used to be — one row for all preferences.
+          The update row sits above it, absent almost always. */}
       <div className="mt-auto flex flex-col gap-[var(--space-item)] pt-[var(--space-group)]">
         {/* Only ever drawn when there is one, and only until it's waved away. */}
         <UpdateRow />
-        <RailRow
+        <SidebarRow
           href="/settings"
           label="Settings"
           selected={pathname === "/settings"}
@@ -426,7 +429,7 @@ export function Rail({
 }
 
 /**
- * Folds the rail away and brings it back — the same control in both states,
+ * Folds the sidebar away and brings it back — the same control in both states,
  * in the same place, with the panel glyph filling on the side that's showing.
  * Two separate buttons would have meant the one you press to reopen appearing
  * somewhere the one you pressed to close never was.

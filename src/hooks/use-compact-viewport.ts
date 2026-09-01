@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 
 // Whether the shell is in its narrow layout — same 1000px as the CSS (see
 // AppShell). For the few cases where the answer changes behaviour, not just
-// appearance, and a media query can't reach (the palette's command list).
+// appearance, and a media query can't reach (the search menu's command list).
 const QUERY = "(max-width: 999px)";
 
 let mql: MediaQueryList | null = null;

@@ -16,7 +16,7 @@ type Props<M extends string> = {
 };
 
 /**
- * A pane header's sort, at the right end of the header row; the default is the
+ * A content header's sort, at the right end of the header row; the default is the
  * first mode listed. A bare trigger — no fill, no outline — with a chevron,
  * which is the one cue that it's a control and not a status line. Opens a
  * [ContextMenu] (not a native `<select>`, whose OS styling clashed over
@@ -39,7 +39,7 @@ export function SortControl<M extends string>({
     const box = triggerRef.current?.getBoundingClientRect();
     if (!box) return;
     // Right edges flush, hanging a hair below — a menu wider than its trigger
-    // has to grow leftwards here, into the page, not off the pane's edge.
+    // has to grow leftwards here, into the page, not off the content's edge.
     setAnchor({ x: box.right, y: box.bottom + 6 });
   }
 

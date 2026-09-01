@@ -90,14 +90,9 @@ export function SessionsTable({ rows }: { rows: SessionRow[] }) {
                 </Cell>
 
                 {/* IP as the tooltip; promoted into the cell only when there's
-                    no location. */}
+                    no location — see [Address]. */}
                 <Cell title={row.location ? (row.ip ?? undefined) : undefined}>
-                  {row.location ??
-                    (row.ip ? (
-                      <span className="font-mono">{row.ip}</span>
-                    ) : (
-                      <Unknown label="Unknown location" />
-                    ))}
+                  {row.location ?? <Address ip={row.ip} />}
                 </Cell>
 
                 {/* Relative dates, full timestamp in the tooltip — the app's habit. */}
@@ -154,7 +149,7 @@ function SignOutButton({
   /**
    * Opens the dialog, measured against the button. `fixed` (set in the JSX),
    * because the table's `overflow-x-auto` box clips vertically too and the
-   * settings pane scrolls — an absolute popover would be cut off by one and
+   * settings content scrolls — an absolute popover would be cut off by one and
    * scrolled under by the other. Right-anchored: the button is in the last
    * column of a table that may be scrolled sideways.
    */
@@ -183,7 +178,7 @@ function SignOutButton({
     document.addEventListener("keydown", onKeyDown);
 
     // A fixed card doesn't follow the button — close it on any scroll or
-    // resize rather than re-measure. Captured, to hear the pane's own scroll.
+    // resize rather than re-measure. Captured, to hear the content's own scroll.
     window.addEventListener("scroll", close, true);
     window.addEventListener("resize", close);
     return () => {
@@ -276,6 +271,25 @@ function SignOutButton({
     </span>
   );
 }
+
+/**
+ * The location column when no place name was recorded — which is every session
+ * created against a local server, since the geolocation headers are Vercel's.
+ * A loopback address is the machine you're on, so it says that in words —
+ * keeping the address itself as the tooltip, the way a place name does. Any
+ * other address prints as itself, in mono.
+ */
+function Address({ ip }: { ip: string | null }) {
+  if (!ip) return <Unknown label="Unknown location" />;
+  if (LOOPBACK.has(ip)) return <span title={ip}>Localhost</span>;
+  return <span className="font-mono">{ip}</span>;
+}
+
+/**
+ * Loopback, in the spellings a header actually arrives in: IPv6, IPv4, and the
+ * IPv4-mapped IPv6 form a dual-stack listener reports.
+ */
+const LOOPBACK = new Set(["::1", "127.0.0.1", "::ffff:127.0.0.1"]);
 
 /**
  * The phone/computer glyph before a device's name. Faint 14px so it doesn't

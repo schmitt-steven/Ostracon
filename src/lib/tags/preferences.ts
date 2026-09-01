@@ -1,7 +1,7 @@
 "use client";
 
 // The two things about a tag the user can decide: whether it's pinned to the
-// top of the rail, and what hue it gets instead of its derived one.
+// top of the sidebar, and what hue it gets instead of its derived one.
 //
 // localStorage (a standing arrangement, not a session thing) and client-side
 // (neither answer is part of what a note is). An external store, like the AI
@@ -17,7 +17,7 @@ export type TagPreferences = {
   hues: Record<string, number>;
   /**
    * The pinned rows' order, as [notePinKey]/[tagPinKey] strings — one list for
-   * both rail sections, each reading the keys of its own kind. Newest pin
+   * both sidebar sections, each reading the keys of its own kind. Newest pin
    * first (see [recordPin]); advisory, so unknown keys are ignored and
    * unnamed-but-pinned rows sort to the end. The notes half lives only in the
    * browser — see [setPinnedOrder].
@@ -178,7 +178,7 @@ export function forgetPin(key: string): void {
 
 /**
  * Replaces the pinned order outright — both sections' keys in one call, since
- * the rail is the only thing that can see both. Keys for unpinned things are
+ * the sidebar is the only thing that can see both. Keys for unpinned things are
  * dropped. Makes note order device-local, unlike the pin itself.
  */
 export function setPinnedOrder(order: string[]): void {

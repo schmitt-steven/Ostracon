@@ -10,7 +10,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { PaneScroller } from "@/components/shell/PaneScroller";
+import { ContentBody } from "@/components/shell/ContentBody";
 import { RelativeDate } from "@/components/ui/RelativeDate";
 import { useAiCompletion, type AiRequest } from "@/hooks/use-ai-completion";
 import { useAutosave } from "@/hooks/use-autosave";
@@ -27,7 +27,7 @@ import {
   type AiAction,
   type ProviderInfo,
 } from "@/lib/ai/types";
-import { registerCommands } from "@/lib/command/registry";
+import { registerCommands } from "@/lib/search-menu/registry";
 import { registerImageTarget } from "@/lib/images/insert-target";
 import {
   describeSkippedImages,
@@ -43,7 +43,7 @@ import {
   resolveContextTag,
   tagHref,
 } from "@/lib/tags/routes";
-import { washLights, washVars } from "@/lib/tags/wash";
+import { washLights, washVars } from "@/lib/ui/wash";
 import { AiAnswerCard } from "./AiAnswerCard";
 import { AiMenu } from "./AiMenu";
 import {
@@ -54,7 +54,7 @@ import {
 } from "./CodeMirrorEditor";
 import { NoteDeleteButton } from "./NoteDeleteButton";
 import { NotePinButton } from "./NotePinButton";
-import { PreviewPane, type PreviewHandle } from "./PreviewPane";
+import { NotePreview, type PreviewHandle } from "./NotePreview";
 import { SaveToast } from "./SaveToast";
 import { TagBar } from "./TagBar";
 import { ViewModeToggle, type ViewMode } from "./ViewModeToggle";
@@ -88,7 +88,8 @@ type Props = {
   openedFrom?: string;
   /** Server-rendered HTML of `initialBodyMd`; empty for a brand-new note. */
   initialPreviewHtml?: string;
-  /** Whether the note is pinned to the rail. False for one not yet created. */
+  /** Whether the note is pinned to the sidebar. False for one not yet
+   * created. */
   pinned: boolean;
   /** Last save, as the server knows it. Refreshed locally after each save. */
   updatedAt: string;
@@ -112,8 +113,8 @@ function countWords(text: string): number {
 }
 
 /**
- * The single-note view. The pane is lit by the note's own tags (see
- * lib/tags/wash and `.pane` in globals.css). No card, no toolbar — title,
+ * The single-note view. The content is lit by the note's own tags (see
+ * lib/ui/wash and `.content` in globals.css). No card, no toolbar — title,
  * metadata line and body are three blocks of text on one surface.
  */
 export function NoteEditor({
@@ -175,10 +176,10 @@ export function NoteEditor({
     [openedFrom, tags],
   );
 
-  // The pane wash (see lib/tags/wash) — the note's tags in filed order. The
+  // The content wash (see lib/ui/wash) — the note's tags in filed order. The
   // context tag isn't promoted; it only reordered lights, never added a hue.
-  // `--h` rides along for the pane's per-tag pills and links.
-  const paneStyle = useMemo(() => {
+  // `--h` rides along for the content's per-tag pills and links.
+  const contentStyle = useMemo(() => {
     const vars: Record<string, string> = washVars(washLights(tags, hueOf));
     if (contextTag) vars["--h"] = String(hueOf(contextTag));
     return vars as React.CSSProperties;
@@ -360,10 +361,10 @@ export function NoteEditor({
     [bodyMd, scheduleSave, title],
   );
 
-  // A note seeded with a title or tag (palette "New note titled …", a broken
-  // wikilink) is written immediately — the naming was the act of creating it.
-  // A bare /notes/new stays lazy, so an opened-and-abandoned palette files
-  // nothing.
+  // A note seeded with a title or tag (search menu "New note titled …", a
+  // broken wikilink) is written immediately — the naming was the act of
+  // creating it. A bare /notes/new stays lazy, so an opened-and-abandoned
+  // search menu files nothing.
   const seededRef = useRef(false);
   useEffect(() => {
     if (seededRef.current) return;
@@ -446,7 +447,8 @@ export function NoteEditor({
           detail: "Upload images into this note · or drop them on it",
           keywords: "image images upload picture photo screenshot png jpg attach",
           icon: "image",
-          // Synchronous inside the palette's gesture, or the dialog won't open.
+          // Synchronous inside the search menu's gesture, or the dialog won't
+          // open.
           run: () => imageInputRef.current?.click(),
         },
       ]),
@@ -468,13 +470,13 @@ export function NoteEditor({
     bodyMd.trim().length > 0;
 
   return (
-    <div className="pane pane-etched h-full" style={paneStyle}>
+    <div className="content content-etched h-full" style={contentStyle}>
       {/* The header goes glass only once something scrolls behind it — over a
-          wash there's no flat tint to match. See .pane-head. */}
-      <PaneScroller
+          wash there's no flat tint to match. See .content-head. */}
+      <ContentBody
         onBlur={handleContainerBlur}
         head={
-          <header className="pane-head">
+          <header className="content-head">
             <div
               className={`mx-auto flex min-h-[var(--head-h)] items-center gap-3 px-6 py-4 ${COLUMN[mode]}`}
             >
@@ -685,7 +687,7 @@ export function NoteEditor({
               autoFocus={noteId !== null}
               className={`${mode === "preview" ? "hidden " : ""}min-w-0 flex-1`}
             />
-            <PreviewPane
+            <NotePreview
               ref={previewRef}
               bodyMd={bodyMd}
               tags={tags}
@@ -752,7 +754,7 @@ export function NoteEditor({
             onDiscard={discardAnswer}
           />
         )}
-      </PaneScroller>
+      </ContentBody>
     </div>
   );
 }

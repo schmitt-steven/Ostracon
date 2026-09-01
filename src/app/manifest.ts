@@ -50,8 +50,8 @@ export default function manifest(): MetadataRoute.Manifest {
 
     shortcuts: [
       { name: "New note", short_name: "New", url: "/notes/new" },
-      // Search is the ⌘K palette rather than a route — see PaletteLaunch for
-      // the bridge that turns this query back into an open palette.
+      // Search is the ⌘K search menu rather than a route — see SearchMenuLaunch
+      // for the bridge that turns this query back into an open search menu.
       { name: "Search", short_name: "Search", url: "/?search=1" },
       { name: "All tags", short_name: "Tags", url: "/tags" },
     ],

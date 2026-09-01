@@ -1,5 +1,5 @@
 /**
- * Reorders the rail's pinned rows by a saved list of names (see
+ * Reorders the sidebar's pinned rows by a saved list of names (see
  * notePinKey/tagPinKey), applied once per section. `order` is advisory:
  * unknown names are ignored, and anything it doesn't name keeps its arrival
  * position at the end — so an empty order means "leave it as it was". Both

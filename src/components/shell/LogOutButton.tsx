@@ -5,13 +5,13 @@ import { LogOutIcon } from "@/icons";
 import { LogOutDialog } from "./LogOutDialog";
 
 type Props = {
-  /** The folded rail's icon strip: glyph only, labelled by title/aria. */
+  /** The folded sidebar's icon strip: glyph only, labelled by title/aria. */
   compact?: boolean;
 };
 
 /**
- * Log out, behind a confirmation ([LogOutDialog], shared with the palette's
- * row). Clicks don't bubble — on touch, the rail's onClick closes the drawer
+ * Log out, behind a confirmation ([LogOutDialog], shared with the search menu's
+ * row). Clicks don't bubble — on touch, the sidebar's onClick closes the drawer
  * and would unmount the dialog.
  */
 export function LogOutButton({ compact = false }: Props) {
@@ -43,9 +43,9 @@ export function LogOutButton({ compact = false }: Props) {
             event.stopPropagation();
             setConfirming(true);
           }}
-          className="row-tint flex w-full items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1 text-left text-[13px] text-ink-muted hover:text-ink"
+          className="row-tint flex w-full items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1 text-left text-[14px] leading-[1.15] text-ink-muted hover:text-ink"
         >
-          {/* The 7px mark slot [RailRow] uses, so the name lines up. */}
+          {/* The 7px mark slot [SidebarRow] uses, so the name lines up. */}
           <span
             aria-hidden
             className="flex size-[7px] shrink-0 items-center justify-center"

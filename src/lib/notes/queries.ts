@@ -5,7 +5,7 @@ import { links, notes } from "@/db/schema";
 import { MAX_PINNED_NOTES } from "./pins";
 import { isUploadedBlobUrl, referencedUrls } from "@/lib/images/references";
 import {
-  knownTagSet,
+  tagNameSet,
   noteSnippet,
   resolveNoteTags,
   tagMatches,
@@ -119,7 +119,7 @@ export type PinnedNote = { id: string; slug: string; title: string };
 export async function listPinnedNotes(): Promise<PinnedNote[]> {
   return (
     db
-      // id for the rail's unpin, slug for the row link.
+      // id for the sidebar's unpin, slug for the row link.
       .select({ id: notes.id, slug: notes.slug, title: notes.title })
       .from(notes)
       .where(isNotNull(notes.pinnedAt))
@@ -154,9 +154,9 @@ export async function getNoteBySlug(slug: string): Promise<Note | undefined> {
  * `tags` column (fast, runs on every live-preview render); precision to the
  * last save is enough here. Ancestors are included.
  */
-export async function listKnownTags(): Promise<Set<string>> {
+export async function listTagNames(): Promise<Set<string>> {
   const rows = await db.select({ tags: notes.tags }).from(notes);
-  return knownTagSet(rows.map((row) => row.tags ?? []));
+  return tagNameSet(rows.map((row) => row.tags ?? []));
 }
 
 export type SearchCorpusNote = {

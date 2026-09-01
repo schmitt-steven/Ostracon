@@ -1,6 +1,6 @@
 /**
- * Which colours the four radial lights of the editor pane's wash are. The
- * gradients and strengths live in globals.css (`.pane`); this file only picks
+ * Which colours the four radial lights of the editor's wash are. The
+ * gradients and strengths live in globals.css (`.content`); this file only picks
  * hues. They come from the note's own tags — four-plus tags light it entirely,
  * fewer get the wheel filled in, none gets a near-neutral palette.
  */
@@ -21,7 +21,7 @@ const TAG_CHROMA = 1;
 const DERIVED_CHROMA = 0.55;
 
 /**
- * The untagged pane: silver, a cool grey, two quiet violet-blues. Not zero
+ * The untagged content: silver, a cool grey, two quiet violet-blues. Not zero
  * chroma — that reads as a vignette rather than a surface — just low enough to
  * barely register.
  */
@@ -65,7 +65,7 @@ function fillWheel(hues: number[]): number[] {
 
 /**
  * The wash for a note, in filed order — `tags[0]` is the top-left corner, the
- * colour the pane leads with. Duplicate hues are dropped rather than spent
+ * colour the content leads with. Duplicate hues are dropped rather than spent
  * twice.
  */
 export function washLights(
@@ -88,7 +88,7 @@ export function washLights(
 }
 
 /**
- * The lights as the custom properties `.pane` reads — raw numbers, not
+ * The lights as the custom properties `.content` reads — raw numbers, not
  * finished colours, so lightness/chroma/alpha stay in CSS. Both properties are
  * registered (globals.css) so navigating between notes cross-fades the wash.
  */

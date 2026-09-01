@@ -15,26 +15,26 @@ import Link from "next/link";
 import { tagHref } from "@/lib/tags/routes";
 
 type Props = {
-  /** The highlighted row. Never absent in practice — see [CommandPalette]. */
+  /** The highlighted row. Never absent in practice — see [SearchMenu]. */
   row: Row | undefined;
   /** Every tag in use, for listing a tag's children. */
   tags: string[];
   hueOf: (name: string) => number;
-  /** That the pane has sent you somewhere, the palette closes behind it. */
+  /** That the preview has sent you somewhere, the search menu closes behind it. */
   onNavigate: () => void;
 };
 
 /**
  * The right half, always present — a note, tag or action gets a summary here,
- * so the palette doesn't change width as you arrow down. Never empty: the
+ * so the search menu doesn't change width as you arrow down. Never empty: the
  * Actions section always has a row.
  */
-export function PalettePreview({ row, tags, hueOf, onNavigate }: Props) {
+export function SearchMenuPreview({ row, tags, hueOf, onNavigate }: Props) {
   return (
     <aside
       // Not a live region — the input's `aria-activedescendant` already
-      // announces this row. Held off the palette edges so it reads as a card
-      // on the panel; same --radius-zone.
+      // announces this row. Held off the search menu edges so it reads as a
+      // card on the panel; same --radius-zone.
       className="zone-step mb-3 mr-3 mt-3 hidden min-h-0 flex-col rounded-[var(--radius-zone)] px-5 py-4 md:flex"
     >
       {/* "Info" for an action (no look-before), "Preview" for notes and tags. */}
@@ -61,7 +61,7 @@ export function PalettePreview({ row, tags, hueOf, onNavigate }: Props) {
  * Every preview's shape: prose that scrolls, `meta` pinned to the foot so it
  * lands at the same height for every row and grows upward.
  */
-function Pane({
+function PreviewBody({
   children,
   meta,
 }: {
@@ -104,7 +104,7 @@ function NotePreview({
     body.source === "none" ? excerpt(note.text, [], 320) : body.spans;
 
   return (
-    <Pane
+    <PreviewBody
       meta={
         <>
           <Meta label="Edited">
@@ -150,7 +150,7 @@ function NotePreview({
         {/* A longer window than the row's, around the same match. */}
         <Highlighted spans={spans} />
       </p>
-    </Pane>
+    </PreviewBody>
   );
 }
 
@@ -170,7 +170,7 @@ function TagPreview({
   );
 
   return (
-    <Pane
+    <PreviewBody
       // Both keys spelled out — a tag's two verbs go to different places.
       meta={
         <>
@@ -215,13 +215,13 @@ function TagPreview({
           </p>
         )}
       </div>
-    </Pane>
+    </PreviewBody>
   );
 }
 
 function ActionPreview({ row }: { row: Extract<Row, { kind: "action" }> }) {
   return (
-    <Pane
+    <PreviewBody
       meta={
         row.action.shortcut ? (
           <Meta label={row.action.shortcut}>
@@ -236,7 +236,7 @@ function ActionPreview({ row }: { row: Extract<Row, { kind: "action" }> }) {
       <p className="text-[14px] leading-relaxed text-ink-muted">
         {row.action.detail}
       </p>
-    </Pane>
+    </PreviewBody>
   );
 }
 
@@ -281,7 +281,7 @@ function Meta({
   );
 }
 
-/** A tag in the preview, as a link. ⌘-click opens a new tab and the palette
+/** A tag in the preview, as a link. ⌘-click opens a new tab and the search menu
  * stays put. */
 function TagLink({
   name,

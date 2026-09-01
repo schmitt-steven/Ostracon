@@ -39,7 +39,7 @@ export function ThemeSetting() {
           // Paints, records, and notifies every subscriber.
           onChange={applyPreference}
           className="grid h-8 shrink-0"
-          segmentClassName="min-w-[64px]"
+          segmentClassName="min-w-[64px] px-3"
         />
       }
     />

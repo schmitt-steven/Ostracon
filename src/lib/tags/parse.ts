@@ -134,14 +134,14 @@ export function resolveNoteTags(
  * Every name that counts as existing: each tag in use plus its ancestors, so
  * `#infra` resolves when only `#infra/ci` is filed.
  */
-export function knownTagSet(tagLists: Iterable<string[]>): Set<string> {
-  const known = new Set<string>();
+export function tagNameSet(tagLists: Iterable<string[]>): Set<string> {
+  const names = new Set<string>();
   for (const tags of tagLists) {
     for (const tag of tags) {
-      for (const ancestor of tagAncestry(tag)) known.add(ancestor);
+      for (const ancestor of tagAncestry(tag)) names.add(ancestor);
     }
   }
-  return known;
+  return names;
 }
 
 /**
@@ -175,7 +175,7 @@ const SNIPPET_STRIP: [RegExp, string][] = [
 
 /**
  * A note's prose with markup, syntax and hashtags stripped, on one line. Split
- * from [noteSnippet] so the palette can window around a match without the
+ * from [noteSnippet] so the search menu can window around a match without the
  * truncation. Hashtags go because every surface renders the tags separately.
  */
 export function plainText(bodyMd: string): string {

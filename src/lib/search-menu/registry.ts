@@ -1,16 +1,16 @@
 "use client";
 
-// Commands the palette offers only while a particular view is on screen (the
-// editor's mode switches and "Suggest tags", today). A registry, not props or
-// context, because the palette sits in the shell above the router and the
-// editor is levels below it.
+// Commands the search menu offers only while a particular view is on screen
+// (the editor's mode switches and "Suggest tags", today). A registry, not props
+// or context, because the search menu sits in the shell above the router and
+// the editor is levels below it.
 
-import type { ActionIcon } from "@/components/command/types";
+import type { ActionIcon } from "@/components/search/types";
 
 export type Command = {
   id: string;
   label: string;
-  /** Groups the palette's list. Sentence case, like everything else. */
+  /** Groups the search menu's list. Sentence case, like everything else. */
   group: string;
   /** The muted line under the label; falls back to the group name. */
   detail?: string;
@@ -48,7 +48,7 @@ export function subscribeContextualCommands(onChange: () => void): () => void {
 
 /**
  * Publishes a view's commands and returns the teardown. Last registration
- * wins — there's only ever one view in the main pane.
+ * wins — there's only ever one view in the content area.
  */
 export function registerCommands(commands: Command[]): () => void {
   contextual = commands;

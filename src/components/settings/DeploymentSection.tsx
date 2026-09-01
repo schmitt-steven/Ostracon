@@ -19,7 +19,7 @@ import { SectionNote } from "./SectionNote";
  * bundle. Release facts render immediately; storage figures (two round trips,
  * one walking the whole blob store) stream in behind a same-height skeleton.
  *
- * Whether a *newer* version exists is not asked here — that's the rail's
+ * Whether a *newer* version exists is not asked here — that's the sidebar's
  * [UpdateRow], where it can be seen without opening this page.
  */
 export function DeploymentSection() {

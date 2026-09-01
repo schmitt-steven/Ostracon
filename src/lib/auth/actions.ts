@@ -147,7 +147,7 @@ export type RevokeSessionResult = { ok: true } | { ok: false; error: string };
  * Signs one device out, by the id the settings list gives. The id is
  * client-supplied — safe only because there's one account (a second user would
  * need an ownership check here). Validated as a uuid before the query.
- * Revoking your own session logs you out, like the rail's Log out button.
+ * Revoking your own session logs you out, like the sidebar's Log out button.
  */
 export async function revokeSessionAction(
   id: unknown,

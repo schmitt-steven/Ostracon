@@ -4,9 +4,9 @@ import { useEffect } from "react";
 import { logoutAction } from "@/lib/auth/actions";
 
 /**
- * The "Log out?" confirmation, shared by the rail's [LogOutButton] and the
- * palette's row (via [requestLogout] / [LogOutPrompt]). Clicks don't bubble —
- * on touch the rail's onClick would unmount this.
+ * The "Log out?" confirmation, shared by the sidebar's [LogOutButton] and the
+ * search menu's row (via [requestLogout] / [LogOutPrompt]). Clicks don't bubble
+ * — on touch the sidebar's onClick would unmount this.
  */
 export function LogOutDialog({ onClose }: { onClose: () => void }) {
   useEffect(() => {

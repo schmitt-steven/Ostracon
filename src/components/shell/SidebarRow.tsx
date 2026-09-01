@@ -28,11 +28,11 @@ type Props = {
 };
 
 /**
- * One rail line: dot or icon, name, count. Selected = the tag's hue at 16%
+ * One sidebar line: dot or icon, name, count. Selected = the tag's hue at 16%
  * with full-contrast name; hover = a neutral ink tint — two different kinds of
  * signal. A row with a menu trades its count for the ⋯ button on hover.
  */
-export function RailRow({
+export function SidebarRow({
   href,
   label,
   count,
@@ -61,7 +61,7 @@ export function RailRow({
             ? undefined
             : ({ "--h": hue } as React.CSSProperties)
         }
-        className={`row-tint flex min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1 text-[13px] ${
+        className={`row-tint flex min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1 text-[14px] leading-[1.15] ${
           selected
             ? // A tag lights in its hue; the fixed views take the neutral tint.
               `${hue === undefined ? "row-selected" : "hue-row-selected"} text-ink`
@@ -84,7 +84,7 @@ export function RailRow({
             aria-hidden
             className={`shrink-0 rounded-full ${
               hue === undefined
-                ? "rail-dot size-[7px]"
+                ? "sidebar-dot size-[7px]"
                 : child
                   ? "hue-dot-child size-[5px]"
                   : "hue-dot size-[7px]"
@@ -117,7 +117,7 @@ export function RailRow({
           aria-expanded={menuOpen}
           aria-label={`Options for ${label}`}
           // Swallowed so the toggle can close what it opened, and off the
-          // rail's click handler (which shuts the touch drawer).
+          // sidebar's click handler (which shuts the touch drawer).
           onPointerDown={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.preventDefault();

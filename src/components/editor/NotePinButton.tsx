@@ -9,7 +9,7 @@ import { forgetPin, notePinKey, recordPin } from "@/lib/tags/preferences";
 /**
  * Pin, left of the trash in the note's header. Seats itself in neutral ink
  * while on (pinning is a state, shown at rest). Pressed state is local, since
- * the route re-render that shows the rail section lands a moment later.
+ * the route re-render that shows the sidebar section lands a moment later.
  */
 export function NotePinButton({
   noteId,
@@ -81,7 +81,8 @@ export function NotePinButton({
         disabled={saving}
         onClick={toggle}
         // Neutral, not coloured — the header's one colour (--danger) belongs to
-        // the trash. Borrows the rail's translucent .row-tint / .row-selected.
+        // the trash. Borrows the sidebar's translucent .row-tint /
+        // .row-selected.
         className={`row-tint flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:text-ink ${
           pinned ? "row-selected text-ink" : "text-ink-faint"
         }`}

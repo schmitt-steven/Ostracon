@@ -21,7 +21,8 @@ export default async function NewNotePage({
   await requireAuth();
   const { title, tag, text, url } = await searchParams;
   const initialTitle = shared(title, MAX_SHARED_TITLE);
-  // The palette's "New note tagged #vercel" — validated, not trusted (query string).
+  // The search menu's "New note tagged #vercel" — validated, not trusted (query
+  // string).
   const normalized = typeof tag === "string" ? normalizeTag(tag) : "";
   const initialTags = isValidTag(normalized) ? [normalized] : [];
   // The OS share sheet's half of the manifest's share_target: a link, a

@@ -27,7 +27,7 @@ export default async function NotePage({
   const { data, body } = parseContentMd(note.contentMd);
   const tags = resolveNoteTags(data.tags, body);
   const [previewHtml, backlinks, overview] = await Promise.all([
-    // For the preview pane's first paint.
+    // For the preview's first paint.
     renderNoteHtml(body, tags),
     getBacklinks(note.id),
     // Every tag in the collection — the bar suggests from it.

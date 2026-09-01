@@ -1,7 +1,7 @@
 import type { TagNode } from "@/lib/tags/tree";
 
 /** The tag directory's sort modes; "Recently used" is first and the default,
- * matching the rail's tree. */
+ * matching the sidebar's tree. */
 export type TagSortMode = "recent" | "az" | "count";
 
 export const TAG_SORT_MODES: readonly TagSortMode[] = ["recent", "az", "count"];

@@ -1,6 +1,6 @@
 import "server-only";
-import { listKnownTags } from "@/lib/notes/queries";
-import { normalizeTagList, knownTagSet } from "@/lib/tags/parse";
+import { listTagNames } from "@/lib/notes/queries";
+import { normalizeTagList, tagNameSet } from "@/lib/tags/parse";
 import {
   extractWikilinkTitles,
   resolveWikilinkTitles,
@@ -21,9 +21,9 @@ export async function renderNoteHtml(
 ): Promise<string> {
   const [resolved, known] = await Promise.all([
     resolveWikilinkTitles(extractWikilinkTitles(bodyMd)),
-    listKnownTags(),
+    listTagNames(),
   ]);
-  const draft = knownTagSet([normalizeTagList(draftTags)]);
+  const draft = tagNameSet([normalizeTagList(draftTags)]);
 
   return renderMarkdown(bodyMd, {
     resolveWikilink: (title) => resolved.get(title.toLowerCase()),

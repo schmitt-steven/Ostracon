@@ -18,9 +18,9 @@ type Props = {
 };
 
 /**
- * The rail's update row.
- * It appears only when upstream is ahead and the reader hasn't waved this
- * version away, which is to say: almost never. Pressing it opens [UpdateDialog].
+ * The sidebar's update row. It appears only when upstream is ahead and the
+ * reader hasn't waved this version away, which is to say: almost never.
+ * Pressing it opens [UpdateDialog].
  */
 export function UpdateRow({ compact = false }: Props) {
   const [update, setUpdate] = useState<UpdateCheck | null>(null);
@@ -66,8 +66,8 @@ export function UpdateRow({ compact = false }: Props) {
             onClick={() => setOpen(true)}
             className="row-tint flex min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1 text-left text-[13px] text-action"
           >
-            {/* The rail's shared left edge: every row opens with a mark in the
-                dot's 7px footprint. */}
+            {/* The sidebar's shared left edge: every row opens with a mark in
+                the dot's 7px footprint. */}
             <span
               aria-hidden
               className="flex size-[7px] shrink-0 items-center justify-center"

@@ -16,8 +16,8 @@ import { deleteNote } from "@/lib/notes/actions";
 import { requestNoteImport } from "@/lib/notes/import-request";
 import type { NoteOverviewLite } from "@/lib/notes/queries";
 import { ALL_NOTES_HREF, noteHref, UNTAGGED_HREF } from "@/lib/tags/routes";
-import { washLights, washVars } from "@/lib/tags/wash";
-import { PaneScroller } from "@/components/shell/PaneScroller";
+import { washLights, washVars } from "@/lib/ui/wash";
+import { ContentBody } from "@/components/shell/ContentBody";
 import { TagDeleteDialog } from "@/components/shell/TagDeleteDialog";
 import { TagRenameDialog } from "@/components/shell/TagRenameDialog";
 import { Asterism } from "./Asterism";
@@ -152,9 +152,9 @@ export function IndexView({ notes, tag, heading }: Props) {
     [allNotes, liveNotes],
   );
 
-  // The editor pane's wash, from the same file — this view's one tag, or
+  // The editor's wash, from the same file — this view's one tag, or
   // neutral on All notes / Untagged.
-  const paneStyle = useMemo(() => {
+  const contentStyle = useMemo(() => {
     const vars: Record<string, string> = washVars(
       washLights(tag ? [tag] : [], hueOf),
     );
@@ -163,11 +163,11 @@ export function IndexView({ notes, tag, heading }: Props) {
   }, [tag, hue, hueOf]);
 
   return (
-    // pane-etched, matching the note — the two surfaces you read. See `.pane-etched`.
-    <div className="pane pane-etched h-full" style={paneStyle}>
-      <PaneScroller
+    // content-etched, matching the note — the two surfaces you read. See `.content-etched`.
+    <div className="content content-etched h-full" style={contentStyle}>
+      <ContentBody
         head={
-          <header className="pane-head">
+          <header className="content-head">
             <div className="mx-auto flex min-h-[var(--head-h)] max-w-[680px] items-center gap-4 px-6 py-4">
               {/* -ml-1.5 cancels the pill's padding so it lines up with the heading. */}
               <nav
@@ -213,7 +213,8 @@ export function IndexView({ notes, tag, heading }: Props) {
                 <>
                   <TagHueButton tag={tag} hue={hueOf(tag)} />
                   {/* The name is the rename control — clicking the word to
-                    change the word needs no glyph. Same dialog as the rail. */}
+                      change the word needs no glyph. Same dialog as the
+                      sidebar. */}
                   <button
                     type="button"
                     onClick={() => setRenaming(true)}
@@ -234,9 +235,9 @@ export function IndexView({ notes, tag, heading }: Props) {
               )}
             </h1>
 
-            {/* Search on every list (not just a tag's — it opens the palette);
-              pin and delete are tag-only. The label matches what the palette
-              opens wearing (see [scopeFromPath]). */}
+            {/* Search on every list (not just a tag's — it opens the search
+              menu); pin and delete are tag-only. The label matches what the
+              search menu opens wearing (see [scopeFromPath]). */}
             <HeaderSearchButton
               label={
                 tag
@@ -347,7 +348,7 @@ export function IndexView({ notes, tag, heading }: Props) {
                 <>
                   <ul ref={listRef} className="pt-[var(--space-block)]">
                     {sorted.map((note, index) => {
-                      // Inside a tag: that tag's hue (the pane's, and what the
+                      // Inside a tag: that tag's hue (the content's, and what the
                       // note keeps after the click). On all-notes: the note's
                       // own first tag, or the neutral tint when it has none.
                       const rowTag = tag ?? note.tags[0];
@@ -434,7 +435,7 @@ export function IndexView({ notes, tag, heading }: Props) {
         <p className="sr-only" role="status">
           Sorted by {SORT_LABEL[sort]}
         </p>
-      </PaneScroller>
+      </ContentBody>
     </div>
   );
 }

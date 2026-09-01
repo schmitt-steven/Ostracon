@@ -84,8 +84,8 @@ export function SettingsView({
   }
 
   return (
-    // No wash vars — this page belongs to no tag, so `.pane` is neutral.
-    <div className="pane pane-etched h-full">
+    // No wash vars — this page belongs to no tag, so `.content` is neutral.
+    <div className="content content-etched h-full">
       <div
         ref={scroller}
         onScroll={(event) => syncActive(event.currentTarget)}
@@ -117,7 +117,7 @@ export function SettingsView({
               </h1>
               <nav
                 aria-label="Settings sections"
-                // The rail's heading-over-list spacing (--space-item).
+                // The sidebar's heading-over-list spacing (--space-item).
                 className="mt-[var(--space-item)]"
               >
                 <ul className="flex flex-col gap-[var(--space-item)]">
@@ -133,7 +133,7 @@ export function SettingsView({
                           }}
                           // "true", not "page" — these point within the current page.
                           aria-current={here ? "true" : undefined}
-                          // The rail's row, to the pixel.
+                          // The sidebar's row, to the pixel.
                           className={`row-tint block truncate rounded-[var(--radius-control)] px-2.5 py-1 text-[13px] ${
                             here ? "row-selected text-ink" : "text-ink-muted"
                           }`}
@@ -167,8 +167,8 @@ export function SettingsView({
                     {section.label}
                   </h2>
                   {/* Controls stand on the page, no panel. 10px under the
-                      heading — 2px more than the rail's, for the display face's
-                      descenders. */}
+                      heading — 2px more than the sidebar's, for the display
+                      face's descenders. */}
                   <div className="mt-2.5">
                     {section.id === "appearance" ? (
                       <ThemeSetting />

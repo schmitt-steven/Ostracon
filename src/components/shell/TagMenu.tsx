@@ -13,8 +13,8 @@ type Props = {
   /** False at the top of the pinned section, which greys "Move up" out. */
   canMoveUp?: boolean;
   canMoveDown?: boolean;
-  /** The move belongs to the rail (see [Rail.moveProps]); omitted by the tag
-   * directory, which can't see the pinned order. */
+  /** The move belongs to the sidebar (see [Sidebar.moveProps]); omitted by the
+   * tag directory, which can't see the pinned order. */
   onMove?: (direction: -1 | 1) => void;
   onRename: () => void;
   onDelete: () => void;
@@ -24,8 +24,9 @@ type Props = {
   y: number;
 };
 
-/** The rail row's context menu — pin, move, rename, delete, and the hue
- * palette (its only home; a colour prompt at tag-creation would be too much). */
+/** The sidebar row's context menu — pin, move, rename, delete, and the hue
+ * palette (its only home; a colour prompt at tag-creation would be too
+ * much). */
 export function TagMenu({
   tag,
   pinned,

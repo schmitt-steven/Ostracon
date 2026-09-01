@@ -25,6 +25,35 @@ function rehypeLazyImages() {
 }
 
 /**
+ * Marks a paragraph that holds nothing but one image — `![alt](src)` sitting on
+ * its own, which is what the "opens full size" badge and the hover lift are
+ * drawn for (see globals.css). They can't key off `p:has(> img:only-child)`:
+ * CSS `:only-child` counts only elements, so that selector also matches
+ * `text\n![](img)` — one paragraph, image glued to a line of text — and there
+ * the badge, positioned from the paragraph's top, lands on the text above the
+ * picture instead of on its corner. An image beside text keeps the zoom cursor
+ * and the lift and goes without the badge; only a lone image gets the class.
+ * Runs after sanitize, like [rehypeLazyImages] — `className` on `p` isn't in
+ * the default schema.
+ */
+function rehypeLoneImageParagraphs() {
+  return (tree: Root) => {
+    visit(tree, "element", (node) => {
+      if (node.tagName !== "p") return;
+      const content = node.children.filter(
+        (child) => child.type !== "text" || child.value.trim() !== "",
+      );
+      const only = content.length === 1 ? content[0] : undefined;
+      if (!only || only.type !== "element" || only.tagName !== "img") return;
+      const className = node.properties.className;
+      node.properties.className = Array.isArray(className)
+        ? [...className, "image-block"]
+        : ["image-block"];
+    });
+  };
+}
+
+/**
  * Paints each inline hashtag in its tag's hue. Runs after sanitise — the hue
  * is an inline `style`, which rehype-sanitize strips; setting it downstream is
  * safe since it's derived only from the resolved tag name. `--h` alone, not a
@@ -137,6 +166,7 @@ export async function renderMarkdown(
     .use(rehypeSanitize, sanitizeSchema)
     .use(rehypeHashtagHue)
     .use(rehypeLazyImages)
+    .use(rehypeLoneImageParagraphs)
     .use(rehypeShikiLazy)
     .use(rehypeSourceLines)
     .use(rehypeStringify)

@@ -1,6 +1,7 @@
 /**
- * Why a note is in the list — every palette row has to say what put it there.
- * A tagged union, not a string: the reason drives ordering as well as wording.
+ * Why a note is in the list — every search menu row has to say what put it
+ * there. A tagged union, not a string: the reason drives ordering as well as
+ * wording.
  */
 export type MatchReason =
   | { kind: "title" }

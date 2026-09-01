@@ -1,5 +1,5 @@
 /**
- * How many notes may be pinned to the rail at once. Five — past that the
+ * How many notes may be pinned to the sidebar at once. Five — past that the
  * pinned section needs scanning, which defeats its purpose. Enforced in
  * [setNotePinned].
  */

@@ -110,7 +110,7 @@ export function ContextMenu({
     };
   }, [onClose, ignoreRef]);
 
-  // Into <body> — a scrolled [PaneScroller] header's backdrop-filter would
+  // Into <body> — a scrolled [ContentBody] header's backdrop-filter would
   // otherwise become the containing block for this `fixed` panel.
   return createPortal(
     <div

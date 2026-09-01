@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
 /**
- * PreviewPane's HTML is injected, so its wikilinks are plain <a> tags. This
+ * NotePreview's HTML is injected, so its wikilinks are plain <a> tags. This
  * delegated handler routes clicks on them through next/navigation instead of a
  * full page load.
  */

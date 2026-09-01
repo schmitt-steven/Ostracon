@@ -5,16 +5,17 @@ import { createPortal } from "react-dom";
 import { renameTag } from "@/lib/notes/actions";
 import {
   isValidTag,
-  knownTagSet,
+  tagNameSet,
   normalizeTag,
   tagMatches,
 } from "@/lib/tags/parse";
-import { useKnownTags } from "./KnownTags";
+import { useTagNames } from "./TagNames";
 
 type Props = {
   tag: string;
   /** Notes carrying this tag or any beneath it — what will be rewritten.
-   * Counted by whoever opened this (the rail/index already has the number). */
+   * Counted by whoever opened this (the sidebar/index already has the
+   * number). */
   noteCount: number;
   onClose: () => void;
 };
@@ -39,9 +40,9 @@ export function TagRenameDialog({ tag, noteCount, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const mergeNoticeId = useId();
-  const knownTags = useKnownTags();
+  const tagNames = useTagNames();
   // Ancestors expanded — a name is taken once anything is filed beneath it.
-  const existing = useMemo(() => knownTagSet([knownTags]), [knownTags]);
+  const existing = useMemo(() => tagNameSet([tagNames]), [tagNames]);
 
   const target = normalizeTag(name.trim());
   const valid = isValidTag(target) && target !== tag;
@@ -74,8 +75,8 @@ export function TagRenameDialog({ tag, noteCount, onClose }: Props) {
     });
   }
 
-  // Into <body> — `.pane > *` sets `position`, so a dialog rendered inside a
-  // pane (the tag directory) would lay out in flow.
+  // Into <body> — `.content > *` sets `position`, so a dialog rendered inside
+  // a content area (the tag directory) would lay out in flow.
   return createPortal(
     <div
       role="dialog"

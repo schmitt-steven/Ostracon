@@ -7,7 +7,7 @@ import { isValidTag, normalizeTag, tagMatches } from "./parse";
 
 export const ALL_NOTES_HREF = "/";
 export const UNTAGGED_HREF = "/untagged";
-/** The tag directory — every tag at once, which the rail no longer lists. */
+/** The tag directory — every tag at once, which the sidebar no longer lists. */
 export const TAGS_HREF = "/tags";
 
 /** `infra/ci` → `/t/infra/ci`. */
