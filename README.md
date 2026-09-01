@@ -57,7 +57,7 @@ Optionally add your `GEMINI_API_KEY` to enable the AI features.
 
 ### 5. Deploy the app
 
-Got to the **Deployments** tab.
+Go to the **Deployments** tab.
 If Vercel already tried to deploy, click the three dots of the last deployment and redeploy.
 Otherwise click the three dots in the top right corner and start a new deployment.
 
