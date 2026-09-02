@@ -9,7 +9,7 @@ Ostracon is a self-hosted Markdown knowledge base for one person.
 
 It runs on Next.js and hosting is free: one Vercel project holds the app, a Neon Postgres database, and a Blob store for images. All three have generous free tiers.
 
-<!-- TODO: screenshots — editor, tag tree, search menu, AI menu -->
+![Ostracon demo](ostracon-demo.gif)
 
 ## Some Features
 
@@ -18,6 +18,7 @@ It runs on Next.js and hosting is free: one Vercel project holds the app, a Neon
 - **All-in-one menu**: `⌘+K` / `Ctrl+K` for search, navigation, and context-aware actions. No mouse? No problem.
 - **Installable**: add it to your home screen or dock and it opens in its own window, with shortcuts and a share target. Open `.md` and `.txt` files directly in Ostracon. If you lose connection mid-work your edits are saved once you're back online.
 - **Full-text search**: instant and client-side over the whole corpus.
+- **Dark mode**: switch from settings or the menu.
 - **Images**: paste or drag-and-drop to upload; gallery browser with all uploaded images.
 - **AI Integration**: select text and Explain, Summarize, Rewrite, or Ask, via Gemini or local LLMs.
 - **Authentication**: signed sessions, per-device tracking, login throttling.
@@ -65,7 +66,7 @@ Once Vercel finished the deployment you can open your website and unlock Ostraco
 
 ## Updating
 
-Ostracon tells you when there is a new version is available. If an update is available, an Update button will appear in the side bar. Click it and follow the instructions to update.
+Ostracon tells you when a new release is available. An update button will appear in the side bar. Click it and follow the instructions to update.
 
 ## Running it locally
 
