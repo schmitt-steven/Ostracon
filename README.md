@@ -5,7 +5,7 @@
 
 
 
-Ostracon is a self-hosted Markdown knowledge base for one person.
+Ostracon is a tag-based Markdown notes app for one person.
 
 It runs on Next.js and hosting is free: one Vercel project holds the app, a Neon Postgres database, and a Blob store for images. All three have generous free tiers.
 
