@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { TagHuePalette } from "@/components/shell/TagHuePalette";
+import { TagHuePalette } from "@/components/tags/TagHuePalette";
 
 type Props = {
   tag: string;

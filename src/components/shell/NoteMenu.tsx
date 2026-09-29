@@ -48,8 +48,8 @@ export function NoteMenu({
           // No local pressed state — the action's revalidation removes the row.
           startTransition(async () => {
             const result = await setNotePinned({ id, pinned: false });
-            // Also drop the browser-held order key.
-            if (result.slug !== null) forgetPin(notePinKey(result.slug));
+            // Also drop its key from the stored order.
+            if (result.slug !== null) forgetPin(notePinKey(id));
             onClose();
           });
         }}

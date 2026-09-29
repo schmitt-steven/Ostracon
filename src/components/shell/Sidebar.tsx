@@ -9,7 +9,6 @@ import { setSearchMenuOpen } from "@/lib/search-menu/menu-state";
 import { scopeFromPath, scopePrompt } from "@/lib/search-menu/scope";
 import type { PinnedNote } from "@/lib/notes/queries";
 import { flattenTree, type TagNode } from "@/lib/tags/tree";
-import { sortByPinOrder } from "@/lib/tags/pin-order";
 import {
   ALL_NOTES_HREF,
   noteHref,
@@ -22,6 +21,7 @@ import {
   MAX_PINNED_TAGS,
   notePinKey,
   setPinnedOrder,
+  sortByPinOrder,
   tagPinKey,
 } from "@/lib/tags/preferences";
 import {
@@ -39,9 +39,9 @@ import { LogOutButton } from "./LogOutButton";
 import { NoteMenu } from "./NoteMenu";
 import { SidebarRow } from "./SidebarRow";
 import { SearchTrigger } from "./SearchTrigger";
-import { TagMenu } from "./TagMenu";
-import { TagDeleteDialog } from "./TagDeleteDialog";
-import { TagRenameDialog } from "./TagRenameDialog";
+import { TagMenu } from "@/components/tags/TagMenu";
+import { TagDeleteDialog } from "@/components/tags/TagDeleteDialog";
+import { TagRenameDialog } from "@/components/tags/TagRenameDialog";
 import { UpdateRow } from "./UpdateRow";
 
 export type SidebarData = {
@@ -127,7 +127,7 @@ export function Sidebar({
   // Two sections, one stored order read twice — each ignores keys not its own
   // (see [sortByPinOrder]).
   const pinnedNoteItems = sortByPinOrder<NotePin>(
-    data.pinnedNotes.map((note) => ({ key: notePinKey(note.slug), note })),
+    data.pinnedNotes.map((note) => ({ key: notePinKey(note.id), note })),
     preferences.order,
   );
 
@@ -404,7 +404,7 @@ export function Sidebar({
           title={menu.note.title || "Untitled"}
           x={menu.x}
           y={menu.y}
-          {...moveProps(notePinKey(menu.note.slug))}
+          {...moveProps(notePinKey(menu.note.id))}
           onClose={() => setMenu(null)}
         />
       )}

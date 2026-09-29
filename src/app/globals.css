@@ -159,9 +159,13 @@ body {
   }
 }
 
-/* The touch bottom bar, lifted off the home indicator. */
+/* The touch bottom bar. 
+   It overhangs the viewport by --bar-overhang because an installed iOS app can
+   ends its layout viewport above the home-indicator strip. */
 .bar-inset {
-  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  --bar-overhang: 120px;
+  bottom: calc(-1 * var(--bar-overhang));
+  padding-bottom: calc(max(0.5rem, env(safe-area-inset-bottom)) + var(--bar-overhang));
   padding-left: max(1rem, env(safe-area-inset-left));
   padding-right: max(1rem, env(safe-area-inset-right));
 }
@@ -357,6 +361,11 @@ html {
   vertical-align: 0.2em;
   border-radius: 50%;
   background: var(--accent);
+}
+
+/* Preflight strips list-style, so ol needs it back. */
+.markdown-body ol {
+  list-style: decimal;
 }
 
 .markdown-body ol > li::marker {
@@ -816,7 +825,7 @@ html {
 
 /* A child tag is its parent's hue, quieter and smaller. */
 .hue-dot-child {
-  background-color: oklch(var(--tag-l) var(--tag-c) var(--h) / 0.6);
+  background-color: oklch(var(--tag-l) var(--tag-c) var(--h) /0.9);
 }
 
 /* Same colour grown into a control — a tag's own index heading. 16px
@@ -866,6 +875,28 @@ html {
 }
 
 .hue-row-selected {
+  background-color: oklch(
+    var(--tag-l) var(--tag-c) var(--h) / var(--tint-selected)
+  );
+}
+
+/* A labelled action tinted at rest, so it outranks the bare icon controls
+   beside it. Neutral ink off a tag; the tag's hue on one. */
+.action-pill {
+  background-color: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.action-pill:hover,
+.action-pill:focus-visible {
+  background-color: color-mix(in srgb, var(--ink) 11%, transparent);
+}
+
+.action-pill[data-hued] {
+  background-color: oklch(var(--tag-l) var(--tag-c) var(--h) / var(--tint-row));
+}
+
+.action-pill[data-hued]:hover,
+.action-pill[data-hued]:focus-visible {
   background-color: oklch(
     var(--tag-l) var(--tag-c) var(--h) / var(--tint-selected)
   );

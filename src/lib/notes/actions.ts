@@ -108,7 +108,8 @@ const UpdateInput = NoteInput.extend({
   expectedVersion: z.number().int(),
   /**
    * False for an editor that swapped its own URL after creating its note (see
-   * NoteEditor's onCreated) — `refresh()` would then tear it down mid-sentence.
+   * NoteEditor's onCreated) — `refresh()` or `revalidatePath()` would then
+   * tear it down mid-sentence.
    * The save is unaffected; the shell update is collected on the next navigation.
    */
   canRefreshShell: z.boolean().default(true),
@@ -172,15 +173,15 @@ export async function updateNote(input: unknown): Promise<UpdateNoteResult> {
   }
 
   const affectedSlugs = await syncLinksForNote(id, bodyMd);
-  // Unconditional (unlike the refresh below) — only marks caches stale.
-  revalidatePath("/");
-  revalidatePath(`/notes/${updated.slug}`);
-  for (const s of affectedSlugs) revalidatePath(`/notes/${s}`);
-  if (
-    canRefreshShell &&
-    shellChanged(before, { title: finalTitle, tags, contentMd })
-  ) {
-    refresh();
+  // Gated like refresh(): in a server action any revalidatePath re-renders
+  // the current URL, which remounts a URL-swapped editor.
+  if (canRefreshShell) {
+    revalidatePath("/");
+    revalidatePath(`/notes/${updated.slug}`);
+    for (const s of affectedSlugs) revalidatePath(`/notes/${s}`);
+    if (shellChanged(before, { title: finalTitle, tags, contentMd })) {
+      refresh();
+    }
   }
   return { ok: true, version: updated.version, slug: updated.slug };
 }
@@ -222,7 +223,7 @@ export type PinNoteResult = {
   pinned: boolean;
   /** The pin was refused because MAX_PINNED_NOTES are already pinned. */
   full: boolean;
-  /** The note's slug (null if gone) — the caller names it in the browser-held
+  /** The note's slug (null if gone) — the caller names it in the stored
    * pinned order (see [notePinKey]). */
   slug: string | null;
 };

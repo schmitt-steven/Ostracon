@@ -1,7 +1,7 @@
 "use client";
 
 import { MAX_PINNED_TAGS, togglePinned } from "@/lib/tags/preferences";
-import { ContextMenu, menuItem } from "./ContextMenu";
+import { ContextMenu, menuItem } from "@/components/shell/ContextMenu";
 import { TagHuePalette } from "./TagHuePalette";
 
 type Props = {

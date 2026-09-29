@@ -10,12 +10,12 @@ import {
   unfileTag,
   type TagDeletionStats,
 } from "@/lib/notes/actions";
-import { tagRoot } from "@/lib/tags/hue";
-import { normalizeTag, tagMatches } from "@/lib/tags/parse";
+import { normalizeTag } from "@/lib/tags/parse";
 import {
+  clearTagFromPreferences,
   getTagPreferences,
-  setTagHue,
-  togglePinned,
+  restoreTagPreferences,
+  type TagPreferences,
 } from "@/lib/tags/preferences";
 import { ALL_NOTES_HREF, tagHref } from "@/lib/tags/routes";
 
@@ -26,34 +26,6 @@ type Props = {
   noteCount: number;
   onClose: () => void;
 };
-
-/** The localStorage tag prefs cleared on delete (no server action can reach
- * them), kept for undo — otherwise a deleted tag's name stays pinned forever. */
-type ClearedPreferences = {
-  /** Pinned names that were under the tag, including the tag itself. */
-  pinned: string[];
-  /** The hue override that was removed, if there was one. */
-  hue: number | null;
-};
-
-function clearPreferences(tag: string): ClearedPreferences {
-  const before = getTagPreferences();
-  const pinned = before.pinned.filter((name) => tagMatches(name, tag));
-  for (const name of pinned) togglePinned(name);
-
-  // Only when the tag is a root — hues are stored per root (see [setTagHue]).
-  const root = tagRoot(tag);
-  const hue = root === tag ? (before.hues[root] ?? null) : null;
-  if (hue !== null) setTagHue(tag, null);
-
-  return { pinned, hue };
-}
-
-function restorePreferences(tag: string, cleared: ClearedPreferences): void {
-  // Back to front — each pin prepends its name.
-  for (const name of [...cleared.pinned].reverse()) togglePinned(name);
-  if (cleared.hue !== null) setTagHue(tag, cleared.hue);
-}
 
 /**
  * Deleting a tag, both meanings. There's no tag row, only the notes: one
@@ -75,7 +47,10 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
     | { kind: "deleted"; count: number }
     | null
   >(null);
-  const [cleared, setCleared] = useState<ClearedPreferences | null>(null);
+  /** The pins and hues as they were before the tag went, for undo — the
+   * delete's own SQL can't reach them, they're the store's. Without this a
+   * deleted tag's name stays pinned forever. */
+  const [cleared, setCleared] = useState<TagPreferences | null>(null);
 
   const armId = useId();
   const router = useRouter();
@@ -99,7 +74,8 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
           setError("No notes carry that tag any more.");
           return;
         }
-        setCleared(clearPreferences(tag));
+        setCleared(getTagPreferences());
+        clearTagFromPreferences(tag);
         setDone({
           kind: "unfiled",
           count: result.unfiled.length,
@@ -141,7 +117,8 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
           setError("No notes carry that tag any more.");
           return;
         }
-        clearPreferences(tag);
+        // No snapshot — this branch has no undo to hand one back to.
+        clearTagFromPreferences(tag);
         setDone({ kind: "deleted", count: result.count });
       } catch {
         setError("Couldn't delete those notes. Nothing was changed.");
@@ -153,7 +130,7 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
     if (!done || done.kind !== "unfiled") return;
     startTransition(async () => {
       await restoreNoteTags({ entries: done.undo });
-      if (cleared) restorePreferences(tag, cleared);
+      if (cleared) restoreTagPreferences(cleared);
       // [onClose], not [finish] — the tag is back, nothing to navigate from.
       onClose();
     });

@@ -124,7 +124,7 @@ const appTheme = EditorView.theme({
     fontFamily: "var(--font-plex-sans), system-ui, sans-serif",
     fontSize: "16px",
     lineHeight: "1.75",
-    caretColor: "var(--accent)",
+    caretColor: "var(--caret, var(--accent))",
     padding: "0",
   },
   // Must not scroll itself, or the content-driven height means nothing.
@@ -138,7 +138,7 @@ const appTheme = EditorView.theme({
     padding: "0",
   },
   "&.cm-focused .cm-cursor": {
-    borderLeftColor: "var(--accent)",
+    borderLeftColor: "var(--caret, var(--accent))",
     borderLeftWidth: "2px",
   },
   // No box on this surface, so no focus ring — the caret is the cue, as in the

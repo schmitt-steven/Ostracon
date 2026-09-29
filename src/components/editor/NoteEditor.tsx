@@ -45,6 +45,7 @@ import {
 } from "@/lib/tags/routes";
 import { washLights, washVars } from "@/lib/ui/wash";
 import { AiAnswerCard } from "./AiAnswerCard";
+import { BacklinksMenu } from "./BacklinksMenu";
 import { AiMenu } from "./AiMenu";
 import {
   CodeMirrorEditor,
@@ -151,7 +152,6 @@ export function NoteEditor({
   // A narrow screen has no room for split — derived, not written back, so a
   // window widened again returns to the chosen mode.
   const mode = compact && chosenMode === "split" ? "write" : chosenMode;
-  const [showBacklinks, setShowBacklinks] = useState(false);
 
   const editorRef = useRef<EditorHandle>(null);
   const previewRef = useRef<PreviewHandle>(null);
@@ -182,6 +182,11 @@ export function NoteEditor({
   const contentStyle = useMemo(() => {
     const vars: Record<string, string> = washVars(washLights(tags, hueOf));
     if (contextTag) vars["--h"] = String(hueOf(contextTag));
+    // The caret follows the first tag; the editor falls back to --accent.
+    if (tags[0]) {
+      vars["--caret"] =
+        `oklch(var(--tag-text-l) var(--tag-text-c) ${hueOf(tags[0])})`;
+    }
     return vars as React.CSSProperties;
   }, [contextTag, hueOf, tags]);
 
@@ -361,16 +366,17 @@ export function NoteEditor({
     [bodyMd, scheduleSave, title],
   );
 
-  // A note seeded with a title or tag (search menu "New note titled …", a
+  // A note seeded with a title (search menu "New note titled …", a
   // broken wikilink) is written immediately — the naming was the act of
   // creating it. A bare /notes/new stays lazy, so an opened-and-abandoned
-  // search menu files nothing.
+  // search menu files nothing. A seeded tag is only where you came from, so
+  // it waits for typing too.
   const seededRef = useRef(false);
   useEffect(() => {
     if (seededRef.current) return;
     seededRef.current = true;
     if (noteId !== null) return;
-    if (!initialTitle && initialTags.length === 0) return;
+    if (!initialTitle) return;
     scheduleSave({
       title: initialTitle,
       bodyMd: initialBodyMd,
@@ -558,7 +564,7 @@ export function NoteEditor({
           />
 
           {/* One plain line — the note's facts as a sentence, no badges. */}
-          <p className="mt-[var(--space-hair)] text-[13px] text-ink-muted">
+          <div className="mt-[var(--space-hair)] text-[13px] text-ink-muted">
             Edited <RelativeDate date={editedAt} long />
             <span aria-hidden className="px-1.5 text-ink-faint">
               ·
@@ -569,34 +575,10 @@ export function NoteEditor({
                 <span aria-hidden className="px-1.5 text-ink-faint">
                   ·
                 </span>
-                <button
-                  type="button"
-                  aria-expanded={showBacklinks}
-                  onClick={() => setShowBacklinks((v) => !v)}
-                  className="underline-offset-2 hover:text-ink hover:underline"
-                >
-                  {backlinks.length}{" "}
-                  {backlinks.length === 1 ? "backlink" : "backlinks"}
-                </button>
+                <BacklinksMenu backlinks={backlinks} />
               </>
             )}
-          </p>
-
-          {showBacklinks && (
-            <ul className="mt-[var(--space-item)] flex flex-col gap-[var(--space-item)]">
-              {backlinks.map((backlink) => (
-                <li key={backlink.slug}>
-                  <Link
-                    // No `from` — a link between notes leaves the index behind.
-                    href={noteHref(backlink.slug)}
-                    className="row-tint block rounded-[var(--radius-control)] px-2 py-1 text-[13px] text-ink-muted hover:text-ink"
-                  >
-                    {backlink.title || "Untitled"}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
+          </div>
 
           {showTagNudge && (
             // Muted text, not a banner — untagged isn't an error.

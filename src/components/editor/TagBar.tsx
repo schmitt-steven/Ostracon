@@ -31,13 +31,13 @@ const LONG_PRESS_MS = 450;
 
 // Capped width — a deeply nested name would otherwise throw the list across
 // the window.
-const DROPDOWN =
+export const DROPDOWN =
   "glass lift-2 absolute top-full left-0 z-30 mt-1.5 max-h-72 w-max max-w-[min(20rem,calc(100vw-3rem))] overflow-y-auto rounded-[var(--radius-zone)] p-1.5";
 
 const DROPDOWN_ROW =
   "hue-row block w-full truncate rounded-[var(--radius-control)] px-3 py-1.5 text-left text-[13px] text-ink";
 
-const GROUP_LABEL = "px-3 pt-1.5 pb-1 text-[11px] text-ink-faint";
+export const GROUP_LABEL = "px-3 pt-1.5 pb-1 text-[11px] text-ink-faint";
 
 /** One row of the completion list. */
 type Option = { tag: string; suggested: boolean };
@@ -190,7 +190,7 @@ export function TagBar({ tags, allTags, onChange, onSuggest }: Props) {
       ) : (
         <span className={`${ROW_ITEM} relative`}>
           {/* A wash, not a border — findable without putting a box on the row. */}
-          <span className="inline-flex items-center rounded-full bg-action-wash px-2.5 py-1 text-[13px] leading-none">
+          <span className="inline-flex items-center rounded-full bg-sunk px-2.5 py-1 text-[13px] leading-none">
             <span aria-hidden className="text-ink-faint">
               #
             </span>

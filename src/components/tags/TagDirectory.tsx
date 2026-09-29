@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useMemo, useState, type MouseEvent } from "react";
 import { ContentBody } from "@/components/shell/ContentBody";
-import { TagMenu } from "@/components/shell/TagMenu";
-import { TagDeleteDialog } from "@/components/shell/TagDeleteDialog";
-import { TagRenameDialog } from "@/components/shell/TagRenameDialog";
+import { TagMenu } from "./TagMenu";
+import { TagDeleteDialog } from "./TagDeleteDialog";
+import { TagRenameDialog } from "./TagRenameDialog";
 import { HeaderSearchButton } from "@/components/ui/HeaderSearchButton";
 import { RelativeDate } from "@/components/ui/RelativeDate";
 import { SortControl } from "@/components/ui/SortControl";
@@ -246,7 +246,7 @@ function TagRow({
         />
         <span
           className={`min-w-0 truncate font-display text-base font-medium ${
-            root ? "text-ink" : "text-ink-muted"
+            root ? "text-ink" : "text-ink/85"
           }`}
         >
           {node.leaf}

@@ -7,8 +7,8 @@ import { MAX_PINNED_TAGS, togglePinned } from "@/lib/tags/preferences";
 
 /**
  * Pin, at the right end of a tag index's heading row. Same shape as
- * [NotePinButton], but no local optimism — pinning a tag is a synchronous
- * localStorage write.
+ * [NotePinButton], but no local optimism — the store commits synchronously and
+ * mirrors the write to the server behind it.
  */
 export function TagPinButton({ tag }: { tag: string }) {
   const { preferences } = useTagHues();

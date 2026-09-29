@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
+import { useStoredTagPreferences } from "@/components/shell/TagPreferencesProvider";
 import { tagHue, tagRoot } from "@/lib/tags/hue";
 import {
-  getServerTagPreferences,
   getTagPreferences,
   subscribeTagPreferences,
   type TagPreferences,
@@ -20,10 +20,14 @@ export type TagHues = {
  * their parent's hue.
  */
 export function useTagHues(): TagHues {
+  // The server and hydration snapshots come from context rather than the store
+  // — see [TagPreferencesProvider]. Both answer with the row the page was
+  // rendered from, so there is nothing to reconcile.
+  const stored = useStoredTagPreferences();
   const preferences = useSyncExternalStore(
     subscribeTagPreferences,
     getTagPreferences,
-    getServerTagPreferences,
+    () => stored,
   );
 
   const hueOf = useCallback(

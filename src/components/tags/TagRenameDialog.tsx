@@ -9,7 +9,13 @@ import {
   normalizeTag,
   tagMatches,
 } from "@/lib/tags/parse";
-import { useTagNames } from "./TagNames";
+import {
+  getTagPreferences,
+  renameTagInPreferences,
+  restoreTagPreferences,
+  type TagPreferences,
+} from "@/lib/tags/preferences";
+import { useTagNames } from "@/components/shell/TagNames";
 
 type Props = {
   tag: string;
@@ -21,11 +27,12 @@ type Props = {
 };
 
 /**
- * Renaming a tag is a find-and-replace across the notes that carry it — the
- * name is stored nowhere else. The count is on the dialog's face because a
- * two-note tidy-up and a hundred-note migration are different decisions. Undo
- * is exact (the action returns the notes it touched). Renaming onto an
- * existing name merges the two — warned about, not blocked; see `merging`.
+ * Renaming a tag is a find-and-replace across the notes that carry it, plus the
+ * pin and hue the store holds under the old name. The count is on the dialog's
+ * face because a two-note tidy-up and a hundred-note migration are different
+ * decisions. Undo is exact (the action returns the notes it touched, and the
+ * preferences are restored from a snapshot). Renaming onto an existing name
+ * merges the two — warned about, not blocked; see `merging`.
  */
 export function TagRenameDialog({ tag, noteCount, onClose }: Props) {
   // Never carries the `#` — the field shows one as a fixture.
@@ -36,6 +43,9 @@ export function TagRenameDialog({ tag, noteCount, onClose }: Props) {
     noteIds: string[];
     /** Captured at the press — the field can change after. */
     merged: boolean;
+    /** The pins and hues as they were. A merge loses which row was which, so
+     * undo replays the snapshot rather than renaming back. */
+    preferences: TagPreferences;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,13 +64,24 @@ export function TagRenameDialog({ tag, noteCount, onClose }: Props) {
   function submit() {
     if (!valid) return;
     startTransition(async () => {
+      // Before the action, so an undo has the pins and hues as the press found
+      // them.
+      const preferences = getTagPreferences();
       try {
         const result = await renameTag({ from: tag, to: target });
         if (result.noteIds.length === 0) {
           setError("No notes carry that tag any more.");
           return;
         }
-        setUndo({ to: target, noteIds: result.noteIds, merged: merging });
+        // Only once the notes have moved — a rename that changed nothing must
+        // not leave the sidebar pointing at a name that doesn't exist.
+        renameTagInPreferences(tag, target);
+        setUndo({
+          to: target,
+          noteIds: result.noteIds,
+          merged: merging,
+          preferences,
+        });
       } catch {
         setError("Couldn't rename that tag. Nothing was changed.");
       }
@@ -71,6 +92,7 @@ export function TagRenameDialog({ tag, noteCount, onClose }: Props) {
     if (!undo) return;
     startTransition(async () => {
       await renameTag({ from: undo.to, to: tag, onlyIds: undo.noteIds });
+      restoreTagPreferences(undo.preferences);
       onClose();
     });
   }

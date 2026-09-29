@@ -9,7 +9,7 @@ import {
   type UpdateNoteResult,
 } from "@/lib/notes/actions";
 
-const DEBOUNCE_MS = 800;
+const DEBOUNCE_MS = 1000;
 
 export type SaveStatus = "idle" | "saving" | "saved" | "conflict" | "error";
 

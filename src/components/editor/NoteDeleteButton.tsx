@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteNote } from "@/lib/notes/actions";
+import { forgetPin, notePinKey } from "@/lib/tags/preferences";
 import { TrashIcon } from "@/icons";
 
 /**
@@ -47,6 +48,9 @@ export function NoteDeleteButton({
   function confirmDelete() {
     startTransition(async () => {
       await deleteNote(noteId);
+      // A deleted note can't be pinned, so its place in the order goes too —
+      // otherwise the key sits there naming nothing.
+      forgetPin(notePinKey(noteId));
       router.push("/");
     });
   }

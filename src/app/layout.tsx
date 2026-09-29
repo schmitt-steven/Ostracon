@@ -10,6 +10,7 @@ import {
   listPinnedNotes,
   toLite,
 } from "@/lib/notes/queries";
+import { loadTagPreferences } from "@/lib/tags/preferences-store";
 import { buildTagTree, flattenTree } from "@/lib/tags/tree";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
@@ -77,13 +78,14 @@ export const viewport: Viewport = {
  * its counts on every navigation as each page recomputed it.
  */
 async function loadSidebar() {
-  // Two reads rather than one filtered pass over the overview: see
-  // [listPinnedNotes] for why the pins are asked for separately, and they are
-  // asked for at the same time so the pair costs one round trip's worth of
-  // waiting rather than two.
-  const [all, pinnedNotes] = await Promise.all([
+  // Separate reads rather than one filtered pass over the overview: see
+  // [listPinnedNotes] for why the pins are asked for separately, and they all
+  // go at once so the set costs one round trip's worth of waiting rather than
+  // three.
+  const [all, pinnedNotes, tagPreferences] = await Promise.all([
     listNotesOverview(),
     listPinnedNotes(),
+    loadTagPreferences(),
   ]);
   const notes = all.map(toLite);
   const tree = buildTagTree(notes);
@@ -101,6 +103,10 @@ async function loadSidebar() {
       imageCount: new Set(all.flatMap((note) => note.imageUrls)).size,
     },
     tagNames: flat.map((node) => node.name),
+    // The pinned tags and the hue overrides. Rendered from here rather than
+    // read on the client so the pinned section is right in the first paint —
+    // and so it is the same on every device (see [tagPreferences]).
+    tagPreferences,
     // `notes` is already updatedAt-desc — enough rows that a scoped search
     // menu still has some to show before the corpus fetch lands.
     recentNotes: notes.slice(0, 24),
@@ -141,6 +147,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           <AppShell
             sidebar={shell.sidebar}
             tagNames={shell.tagNames}
+            tagPreferences={shell.tagPreferences}
             recentNotes={shell.recentNotes}
           >
             {children}

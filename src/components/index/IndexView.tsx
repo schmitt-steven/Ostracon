@@ -15,11 +15,12 @@ import { useTagHues } from "@/hooks/use-tag-hues";
 import { deleteNote } from "@/lib/notes/actions";
 import { requestNoteImport } from "@/lib/notes/import-request";
 import type { NoteOverviewLite } from "@/lib/notes/queries";
+import { forgetPin, notePinKey } from "@/lib/tags/preferences";
 import { ALL_NOTES_HREF, noteHref, UNTAGGED_HREF } from "@/lib/tags/routes";
 import { washLights, washVars } from "@/lib/ui/wash";
 import { ContentBody } from "@/components/shell/ContentBody";
-import { TagDeleteDialog } from "@/components/shell/TagDeleteDialog";
-import { TagRenameDialog } from "@/components/shell/TagRenameDialog";
+import { TagDeleteDialog } from "@/components/tags/TagDeleteDialog";
+import { TagRenameDialog } from "@/components/tags/TagRenameDialog";
 import { Asterism } from "./Asterism";
 import { DeleteRowButton } from "./DeleteRowButton";
 import { TagHueButton } from "./TagHueButton";
@@ -32,7 +33,7 @@ import {
   SORT_MODES,
   type SortMode,
 } from "./note-sort";
-import { EditIcon, TrashIcon } from "@/icons";
+import { EditIcon, PlusIcon, TrashIcon } from "@/icons";
 
 type Props = {
   notes: NoteOverviewLite[];
@@ -81,6 +82,8 @@ export function IndexView({ notes, tag, heading }: Props) {
     startTransition(async () => {
       try {
         await deleteNote(id);
+        // As [NoteDeleteButton]: the order stops naming a note that's gone.
+        forgetPin(notePinKey(id));
       } catch {
         setDeletedIds((prev) => {
           const next = new Set(prev);
@@ -240,6 +243,23 @@ export function IndexView({ notes, tag, heading }: Props) {
               )}
             </h1>
 
+            {/* On a tag, the new note starts filed under it. */}
+            <Link
+              href={
+                tag
+                  ? `/notes/new?${new URLSearchParams({ tag })}`
+                  : "/notes/new"
+              }
+              data-hued={tag ? "" : undefined}
+              title={tag ? `New note in ${title}` : "New note"}
+              className={`action-pill flex h-7 shrink-0 items-center gap-1.5 rounded-full pl-2 pr-3 text-[13px] font-medium transition-colors ${
+                tag ? "hue-text" : "text-ink"
+              }`}
+            >
+              <PlusIcon aria-hidden className="size-3.5 shrink-0" />
+              New note
+            </Link>
+
             {/* Search on every list (not just a tag's — it opens the search
               menu); pin and delete are tag-only. The label matches what the
               search menu opens wearing (see [scopeFromPath]). */}
@@ -377,49 +397,50 @@ export function IndexView({ notes, tag, heading }: Props) {
                                   } as React.CSSProperties)
                                 : undefined
                             }
-                            className={`bleed-row flex items-start gap-4 py-1.5 group-has-[[data-row-delete-trigger]:hover]/row:!bg-danger-wash ${
+                            className={`bleed-row block py-1.5 group-has-[[data-row-delete-trigger]:hover]/row:!bg-danger-wash ${
                               rowTag ? "hue-row" : "row-tint"
                             }`}
                           >
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate font-display text-base font-medium text-ink group-has-[[data-row-delete-trigger]:hover]/row:text-danger group-has-[[data-row-delete-trigger]:hover]/row:line-through">
+                            <span className="flex items-baseline gap-4">
+                              <span className="min-w-0 flex-1 truncate font-display text-base font-medium text-ink group-has-[[data-row-delete-trigger]:hover]/row:text-danger group-has-[[data-row-delete-trigger]:hover]/row:line-through">
                                 {note.title || "Untitled"}
                               </span>
-                              {/* Always rendered, even when empty, so rows stay
-                          the same height. */}
-                              <span className="mt-[var(--space-hair)] flex min-w-0 items-baseline gap-1.5 text-[13px] text-ink-muted">
-                                {/* Not flex-1 — the snippet truncates first,
-                            keeping the tags visible. */}
-                                <span className="min-w-0 truncate">
-                                  {note.snippet}
-                                </span>
-                                {note.tags
-                                  // Not this list's own tag.
-                                  .filter((name) => name !== tag)
-                                  .slice(0, 3)
-                                  .map((name) => (
-                                    <span
-                                      key={name}
-                                      style={
-                                        {
-                                          "--h": hueOf(name),
-                                        } as React.CSSProperties
-                                      }
-                                      className="hue-text shrink-0"
-                                    >
-                                      #{name}
-                                    </span>
-                                  ))}
-                              </span>
+                              <RelativeDate
+                                date={note[SORT_DATE_FIELD[sort]]}
+                                // Yields the corner to the delete control on hover.
+                                className="shrink-0 whitespace-nowrap text-[13px] tabular-nums text-ink-muted transition-opacity group-hover/row:opacity-0"
+                              />
                             </span>
-                            <RelativeDate
-                              date={note[SORT_DATE_FIELD[sort]]}
-                              // Yields the corner to the delete control on hover.
-                              className="shrink-0 whitespace-nowrap pt-0.5 text-[13px] text-ink-muted transition-opacity group-hover/row:opacity-0"
-                            />
+                            {/* Always rendered, even when empty, so rows stay
+                          the same height. */}
+                            <span className="mt-[var(--space-hair)] flex min-w-0 items-baseline gap-1.5 text-[13px] text-ink-muted">
+                              {/* flex-1 pushes the tags flush right, under the
+                          date; it still truncates first. */}
+                              <span className="min-w-0 flex-1 truncate">
+                                {note.snippet}
+                              </span>
+                              {note.tags
+                                // Not this list's own tag.
+                                .filter((name) => name !== tag)
+                                .slice(0, 3)
+                                .map((name) => (
+                                  <span
+                                    key={name}
+                                    style={
+                                      {
+                                        "--h": hueOf(name),
+                                      } as React.CSSProperties
+                                    }
+                                    className="hue-text shrink-0"
+                                  >
+                                    #{name}
+                                  </span>
+                                ))}
+                            </span>
                           </Link>
-                          {/* A sibling of the Link (no button inside an anchor). */}
-                          <div className="absolute right-0 top-1/2 -translate-y-1/2">
+                          {/* A sibling of the Link (no button inside an anchor).
+                            On the title line, clear of the tags. */}
+                          <div className="absolute right-0 top-1">
                             <DeleteRowButton
                               title={note.title}
                               onConfirm={() => handleDelete(note.id)}

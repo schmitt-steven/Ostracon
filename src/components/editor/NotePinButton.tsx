@@ -60,10 +60,11 @@ export function NotePinButton({
       // The server holds the cap — a refused pin snaps the button back.
       setPinned(result.pinned);
       setFull(result.full);
-      // The row's position is the browser's half of a pin (see [recordPin]),
-      // following what happened, not what was pressed.
+      // The row's position is the store's half of a pin (see [recordPin]),
+      // following what happened, not what was pressed. A null slug means the
+      // note is gone, so there is no pin either way.
       if (result.slug !== null) {
-        const key = notePinKey(result.slug);
+        const key = notePinKey(noteId);
         if (result.pinned) recordPin(key);
         else forgetPin(key);
       }

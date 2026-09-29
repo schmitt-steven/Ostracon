@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -24,8 +25,9 @@ export const notes = pgTable(
     /**
      * When the note was pinned to the sidebar; null means it isn't. A
      * timestamp, not a boolean, so the pinned section keeps its order across a
-     * reload. A column, not localStorage like tag pins, because the sidebar
-     * needs the title and that only lives here.
+     * reload. A column because the sidebar needs the title and that only lives
+     * here; [tagPreferences] carries the rest of a pin for the same reason a
+     * pin is stored at all — it should be the same on every device.
      */
     pinnedAt: timestamp("pinned_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -70,6 +72,38 @@ export const aiSettings = pgTable("ai_settings", {
   providerId: text("provider_id").primaryKey(),
   /** The model to generate with, or null to keep taking the environment's. */
   model: text("model"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/**
+ * The tag half of the sidebar: which tags are pinned, what hue each root tag
+ * was given, and the order the pinned rows sit in (notes included — see
+ * [TagPreferences.order]). At most one row, fixed id, like [appPassword].
+ *
+ * A table rather than the localStorage it used to be: a pin is a standing
+ * decision about the sidebar, and a sidebar that differs between a phone and a
+ * desktop is the bug this replaced. Written whole on every change, which is
+ * what makes a reorder one statement rather than a read-modify-write.
+ */
+export const tagPreferences = pgTable("tag_preferences", {
+  id: text("id").primaryKey(),
+  /** Pinned tag names, newest pin first. */
+  pinned: text("pinned")
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
+  /** Root tag name → hue in degrees. */
+  hues: jsonb("hues")
+    .notNull()
+    .$type<Record<string, number>>()
+    .default(sql`'{}'::jsonb`),
+  /** `pin_order`, not `order` — the bare word is SQL. */
+  order: text("pin_order")
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
