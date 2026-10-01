@@ -84,7 +84,7 @@ export function NotePinButton({
         // Neutral, not coloured — the header's one colour (--danger) belongs to
         // the trash. Borrows the sidebar's translucent .row-tint /
         // .row-selected.
-        className={`row-tint flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:text-ink ${
+        className={`row-tint flex tap items-center justify-center rounded-full transition-colors hover:text-ink ${
           pinned ? "row-selected text-ink" : "text-ink-faint"
         }`}
       >
@@ -94,7 +94,7 @@ export function NotePinButton({
       {full && (
         <p
           role="status"
-          className="glass lift-2 absolute right-0 top-full z-40 mt-2 w-56 rounded-[var(--radius-zone)] p-3 text-[13px] text-ink"
+          className="glass lift-2 absolute right-0 top-full z-40 mt-2 w-56 rounded-[var(--radius-zone)] p-3 text-ui text-ink"
         >
           {MAX_PINNED_NOTES} notes are already pinned. Unpin one to make room
           for this.

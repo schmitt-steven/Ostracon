@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 type Props = {
@@ -39,8 +39,9 @@ export function ContextMenu({
     top: y,
   });
 
-  // Flipped inside the viewport once its real size is known.
-  useEffect(() => {
+  // Flipped inside the viewport once its real size is known — before paint, so
+  // it never shows at the unflipped spot and jumps.
+  useLayoutEffect(() => {
     const box = ref.current?.getBoundingClientRect();
     if (!box) return;
     const wanted = align === "end" ? x - box.width : x;
@@ -118,7 +119,7 @@ export function ContextMenu({
       role="menu"
       aria-label={label}
       style={{ left: placement.left, top: placement.top }}
-      className="glass lift-2 fixed z-50 w-52 rounded-[var(--radius-zone)] p-1.5"
+      className="glass lift-2 menu-enter fixed z-50 w-52 max-[999px]:w-64 rounded-[var(--radius-zone)] p-1.5"
     >
       {children}
     </div>,
@@ -139,4 +140,4 @@ function itemsOf(root: HTMLElement | null) {
 /** One menu row's classes, exported so the menus can't drift. Disabled stays
  * in the list (so verbs don't shift) but goes faint and inert. */
 export const menuItem =
-  "row-tint w-full rounded-[var(--radius-control)] px-3 py-1.5 text-left text-[13px] text-ink-muted hover:text-ink disabled:pointer-events-none disabled:text-ink-faint";
+  "row-tint w-full rounded-[var(--radius-control)] px-3 py-1.5 max-[999px]:py-2.5 text-left text-ui text-ink-muted hover:text-ink disabled:pointer-events-none disabled:text-ink-faint";

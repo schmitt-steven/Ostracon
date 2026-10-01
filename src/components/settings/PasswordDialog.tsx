@@ -92,7 +92,7 @@ export function PasswordDialog({ onClose }: Props) {
         {done ? (
           <>
             <p className="text-base text-ink">Password changed.</p>
-            <p className="mt-1 text-[13px] text-ink-muted">
+            <p className="mt-1 text-ui text-ink-muted">
               {done.signedOut === 0
                 ? "This is the only device signed in, so nothing else had to be signed out."
                 : `Signed out ${done.signedOut} other ${
@@ -104,7 +104,7 @@ export function PasswordDialog({ onClose }: Props) {
                 type="button"
                 autoFocus
                 onClick={onClose}
-                className="row-tint row-selected rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] text-ink"
+                className="row-tint row-selected rounded-[var(--radius-control)] px-3 py-1.5 text-ui text-ink"
               >
                 Done
               </button>
@@ -114,7 +114,7 @@ export function PasswordDialog({ onClose }: Props) {
           <>
             <p className="text-base text-ink">Change password</p>
             {/* Said before the press, since it's the unexpected part. */}
-            <p className="mt-1 text-[13px] text-ink-muted">
+            <p className="mt-1 text-ui text-ink-muted">
               Your other devices will be signed out. This one stays signed in.
             </p>
 
@@ -145,7 +145,7 @@ export function PasswordDialog({ onClose }: Props) {
                 // Under its own field — a rule being explained as it's broken.
                 note={
                   tooShort ? (
-                    <span id={shortId} className="text-[12px] text-ink-faint">
+                    <span id={shortId} className="text-meta text-ink-faint">
                       At least {MIN_PASSWORD_LENGTH} characters.
                     </span>
                   ) : null
@@ -160,7 +160,7 @@ export function PasswordDialog({ onClose }: Props) {
                 describedBy={mismatch ? mismatchId : undefined}
                 note={
                   mismatch ? (
-                    <span id={mismatchId} className="text-[12px] text-accent">
+                    <span id={mismatchId} className="text-meta text-accent">
                       These don&apos;t match.
                     </span>
                   ) : null
@@ -169,7 +169,7 @@ export function PasswordDialog({ onClose }: Props) {
 
               {/* --danger: this says the press didn't take. */}
               {failure && (
-                <p role="alert" className="text-[13px] text-danger">
+                <p role="alert" className="text-ui text-danger">
                   {failure.error}
                   {locked && ` Try again in ${formatCountdown(cooldown)}.`}
                 </p>
@@ -180,7 +180,7 @@ export function PasswordDialog({ onClose }: Props) {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] text-ink-muted hover:text-ink"
+                  className="row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-ui text-ink-muted hover:text-ink"
                 >
                   Cancel
                 </button>
@@ -188,7 +188,7 @@ export function PasswordDialog({ onClose }: Props) {
                   type="submit"
                   disabled={!ready}
                   // Seated only while it can be pressed.
-                  className={`row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] ${
+                  className={`row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-ui ${
                     ready ? "row-selected text-ink" : "text-ink-faint"
                   }`}
                 >
@@ -227,7 +227,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[13px] text-ink-muted">{label}</span>
+      <span className="text-ui text-ink-muted">{label}</span>
       {/* `.well` is the field's edge — same construction as the tag rename field. */}
       <input
         type="password"

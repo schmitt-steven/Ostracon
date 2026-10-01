@@ -36,7 +36,7 @@ function ExportSetting() {
         <a
           href="/api/data/export"
           download
-          className="row-tint row-selected flex h-8 shrink-0 items-center rounded-[var(--radius-control)] px-3 text-[13px] text-ink"
+          className="row-tint row-selected flex h-8 max-[999px]:h-10 shrink-0 items-center rounded-[var(--radius-control)] px-3 text-ui text-ink"
         >
           Download archive
         </a>
@@ -50,7 +50,7 @@ async function ExportNote() {
   const { notes, images } = await archiveContents();
 
   return (
-    <p className="text-[13px] text-ink-faint">
+    <p className="text-ui text-ink-faint">
       {count(notes, "note")} and {count(images, "image")}, as Markdown files in
       a .zip. No password, sessions or API keys — only what you wrote.
     </p>
@@ -64,7 +64,7 @@ function count(n: number, noun: string): string {
 /** The same line with nothing in it yet — one line tall, so nothing shifts. */
 function NoteSkeleton() {
   return (
-    <p aria-hidden className="text-[13px] text-ink-faint">
+    <p aria-hidden className="text-ui text-ink-faint">
       —
     </p>
   );

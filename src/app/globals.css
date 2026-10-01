@@ -133,6 +133,53 @@
   --font-display: var(--font-fraunces);
 }
 
+/* Not inline: the utilities read the variable, so the touch override below
+   can change them. */
+@theme {
+  --text-ui: 13px;
+  --text-ui-lg: 15px;
+  --text-meta: 12px;
+}
+
+:root {
+  --icon-sm: 12px;
+  --icon: 14px;
+  --tap: 28px;
+}
+
+/* Touch sizing. 16px keeps iOS from zooming into a focused field. */
+@media (max-width: 999px) {
+  :root {
+    --text-ui: 16px;
+    --text-ui-lg: 16px;
+    --text-meta: 14px;
+    --icon-sm: 16px;
+    --icon: 18px;
+    --tap: 44px;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+}
+
+@utility icon-sm {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+}
+
+@utility icon {
+  width: var(--icon);
+  height: var(--icon);
+}
+
+@utility tap {
+  width: var(--tap);
+  height: var(--tap);
+}
+
 body {
   background-color: var(--paper);
   color: var(--ink);
@@ -151,11 +198,8 @@ body {
 }
 
 @media (max-width: 999px) {
-  /* No bottom padding — content runs under the touch bar, which insets
-     itself. */
   .shell-inset {
-    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 0
-      max(8px, env(safe-area-inset-left));
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
   }
 }
 
@@ -168,6 +212,14 @@ body {
   padding-bottom: calc(max(0.5rem, env(safe-area-inset-bottom)) + var(--bar-overhang));
   padding-left: max(1rem, env(safe-area-inset-left));
   padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+/* iOS 26 standalone bug: dvh/svh/% come up short by the top inset, leaving
+   the home-indicator strip empty. Only lvh reaches the screen's bottom edge. */
+@media (display-mode: standalone) {
+  html {
+    height: 100lvh;
+  }
 }
 
 /* Body doesn't scroll (see layout) — this stops content areas inside it
@@ -274,12 +326,40 @@ html {
   }
 }
 
+@keyframes menu-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.menu-enter {
+  animation: menu-in 120ms ease-out;
+}
+
 .toast-enter {
   animation: toast-in 180ms ease-out;
 }
 
+@keyframes drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(-1.5rem);
+  }
+}
+
+.drawer-scrim-enter {
+  animation: menu-in 220ms ease-out;
+}
+
+.drawer-enter {
+  animation: drawer-in 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .toast-enter {
+  .toast-enter,
+  .menu-enter,
+  .drawer-scrim-enter,
+  .drawer-enter {
     animation: none;
   }
 }
@@ -522,7 +602,7 @@ html {
 /* An emphasised line right after an image block is its caption. */
 .markdown-body p.image-block + p > em:only-child {
   display: block;
-  font-size: 12px;
+  font-size: var(--text-meta);
   color: var(--ink-muted);
   font-style: normal;
 }
@@ -1084,7 +1164,7 @@ html {
    a fold cut-off ambiguous. */
 .asterism {
   color: var(--ink-faint);
-  font-size: 13px;
+  font-size: var(--text-ui);
   letter-spacing: 0.3em;
   text-align: center;
   /* letter-spacing tracks after the glyph too, which would push a centred

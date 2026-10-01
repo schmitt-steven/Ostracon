@@ -38,7 +38,7 @@ function Thumbnail({ image, eager }: { image: StoredImage; eager: boolean }) {
       <p className="mt-[var(--space-item)] truncate font-display text-base font-medium text-ink">
         {image.note.title || "Untitled"}
       </p>
-      <p className="mt-[var(--space-hair)] truncate text-[13px] text-ink-muted">
+      <p className="mt-[var(--space-hair)] truncate text-ui text-ink-muted">
         <LocalDate date={image.uploadedAt} options={{ dateStyle: "medium" }} />
         <span aria-hidden> · </span>
         {formatSize(image.size)}

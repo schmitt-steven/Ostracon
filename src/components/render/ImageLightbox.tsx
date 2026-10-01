@@ -55,7 +55,7 @@ export function ImageLightbox({ src, alt, onClose }: Props) {
         // A corner target too — on a phone the image fills the backdrop.
         className="glass lift-2 absolute right-4 top-4 grid size-9 place-items-center rounded-full text-ink-muted hover:text-ink"
       >
-        <CloseIcon aria-hidden className="size-4" />
+        <CloseIcon aria-hidden className="icon" />
       </button>
 
       {/* object-contain, never cropped. A plain <img>, not next/image — this
@@ -68,7 +68,7 @@ export function ImageLightbox({ src, alt, onClose }: Props) {
         className="lift-3 max-h-[86vh] max-w-full rounded-[var(--radius-control)] object-contain"
       />
       {alt && (
-        <p className="max-w-[60ch] text-center text-[13px] text-ink-muted">
+        <p className="max-w-[60ch] text-center text-ui text-ink-muted">
           {alt}
         </p>
       )}

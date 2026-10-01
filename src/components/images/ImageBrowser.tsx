@@ -30,7 +30,7 @@ export function ImageBrowser({
               {/* -ml-1.5 cancels the pill's padding so "All notes" lines up. */}
               <nav
                 aria-label="Breadcrumb"
-                className="-ml-1.5 min-w-0 flex-1 text-[13px]"
+                className="-ml-1.5 min-w-0 flex-1 text-ui"
               >
                 <Link
                   href={ALL_NOTES_HREF}
@@ -51,10 +51,10 @@ export function ImageBrowser({
       >
         <div className="mx-auto max-w-[680px] px-6 pb-24">
           <div className="pt-2">
-            <h1 className="font-display text-[28px] font-medium leading-tight text-ink">
+            <h1 className="font-display text-[28px] max-[999px]:text-[32px] font-medium leading-tight text-ink">
               Images
             </h1>
-            <p className="mt-[var(--space-hair)] text-[13px] text-ink-muted">
+            <p className="mt-[var(--space-hair)] text-ui text-ink-muted">
               {images.length} {images.length === 1 ? "image" : "images"} across
               your notes
             </p>

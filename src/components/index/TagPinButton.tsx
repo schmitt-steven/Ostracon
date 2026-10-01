@@ -40,7 +40,7 @@ export function TagPinButton({ tag }: { tag: string }) {
           setFull(false);
           togglePinned(tag);
         }}
-        className={`row-tint flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:text-ink ${
+        className={`row-tint flex tap items-center justify-center rounded-full transition-colors hover:text-ink ${
           pinned ? "row-selected text-ink" : "text-ink-faint"
         }`}
       >
@@ -51,7 +51,7 @@ export function TagPinButton({ tag }: { tag: string }) {
         <p
           role="status"
           // font-* restated — this hangs off the 28px display heading.
-          className="glass lift-2 absolute right-0 top-full z-40 mt-2 w-56 rounded-[var(--radius-zone)] p-3 font-sans text-[13px] font-normal leading-normal text-ink"
+          className="glass lift-2 absolute right-0 top-full z-40 mt-2 w-56 rounded-[var(--radius-zone)] p-3 font-sans text-ui font-normal leading-normal text-ink"
         >
           {MAX_PINNED_TAGS} tags are already pinned. Unpin one to make room for
           this.

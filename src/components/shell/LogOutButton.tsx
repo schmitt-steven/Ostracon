@@ -30,9 +30,9 @@ export function LogOutButton({ compact = false }: Props) {
             event.stopPropagation();
             setConfirming(true);
           }}
-          className="row-tint flex size-7 items-center justify-center rounded-[var(--radius-control)] text-ink-muted hover:text-ink"
+          className="row-tint flex tap items-center justify-center rounded-[var(--radius-control)] text-ink-muted hover:text-ink"
         >
-          <LogOutIcon aria-hidden className="size-3.5 shrink-0" />
+          <LogOutIcon aria-hidden className="icon shrink-0" />
         </button>
       ) : (
         <button
@@ -43,14 +43,14 @@ export function LogOutButton({ compact = false }: Props) {
             event.stopPropagation();
             setConfirming(true);
           }}
-          className="row-tint flex w-full items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1.5 text-left text-[14px] leading-[1.15] text-ink-muted hover:text-ink"
+          className="row-tint flex w-full items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1.5 text-left text-ui-lg leading-[1.15] text-ink-muted hover:text-ink"
         >
           {/* The 7px mark slot [SidebarRow] uses, so the name lines up. */}
           <span
             aria-hidden
             className="flex size-[7px] shrink-0 items-center justify-center"
           >
-            <LogOutIcon className="size-3.5 shrink-0" />
+            <LogOutIcon className="icon shrink-0" />
           </span>
           Log out
         </button>

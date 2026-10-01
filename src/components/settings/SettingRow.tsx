@@ -20,7 +20,7 @@ export function SettingRow({
   if (!note) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        <p className="min-w-0 text-[15px] leading-tight text-ink">{name}</p>
+        <p className="min-w-0 text-ui-lg leading-tight text-ink">{name}</p>
         {control}
       </div>
     );
@@ -28,7 +28,7 @@ export function SettingRow({
 
   return (
     <div>
-      <p className="text-[15px] leading-tight text-ink">{name}</p>
+      <p className="text-ui-lg leading-tight text-ink">{name}</p>
 
       {/* Note at the top of the row; control offset up (`-mt-1.5`) to sit on
           its first line rather than centred against the whole block. gap-y-3.5

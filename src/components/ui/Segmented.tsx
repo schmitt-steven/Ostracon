@@ -77,7 +77,7 @@ export function Segmented<V extends string>({
             // No padding of its own: the grid stretches each segment to the
             // track, so the height is set in one place instead of being added
             // up from three, and the sides are the caller's to set.
-            className={`relative rounded-[calc(var(--radius-control)-2px)] text-[13px] transition-colors duration-[var(--tint-motion)] motion-reduce:transition-none ${
+            className={`relative rounded-[calc(var(--radius-control)-2px)] text-ui transition-colors duration-[var(--tint-motion)] motion-reduce:transition-none ${
               active ? "text-ink" : "text-ink-faint hover:text-ink-muted"
             } ${segmentClassName}`}
           >

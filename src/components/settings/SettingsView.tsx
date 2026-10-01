@@ -111,7 +111,7 @@ export function SettingsView({
               <h1
                 // Pulled up 6px to sit on the first section heading's baseline
                 // rather than its top edge.
-                className="-mt-1.5 font-display text-[28px] font-medium leading-tight text-ink"
+                className="-mt-1.5 font-display text-[28px] max-[999px]:text-[32px] font-medium leading-tight text-ink"
               >
                 Settings
               </h1>
@@ -134,7 +134,7 @@ export function SettingsView({
                           // "true", not "page" — these point within the current page.
                           aria-current={here ? "true" : undefined}
                           // The sidebar's row, to the pixel.
-                          className={`row-tint block truncate rounded-[var(--radius-control)] px-2.5 py-1 text-[13px] ${
+                          className={`row-tint block truncate rounded-[var(--radius-control)] px-2.5 py-1 text-ui ${
                             here ? "row-selected text-ink" : "text-ink-muted"
                           }`}
                         >
@@ -181,7 +181,7 @@ export function SettingsView({
                     ) : section.id === "deployment" ? (
                       deployment
                     ) : (
-                      <p className="text-[13px] text-ink-faint">
+                      <p className="text-ui text-ink-faint">
                         Nothing to set here yet.
                       </p>
                     )}

@@ -180,7 +180,7 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
             {/* A reassurance, said afterwards — a `#{tag}` in prose stays as
                 an unresolved reference (see remarkHashtag). */}
             {done.kind === "unfiled" && (
-              <p className="mt-1 text-[13px] text-ink-muted">
+              <p className="mt-1 text-ui text-ink-muted">
                 Their text is unchanged — any #{tag} written into a sentence
                 stays as it was, no longer a link.
               </p>
@@ -191,7 +191,7 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
                   type="button"
                   onClick={undo}
                   disabled={pending}
-                  className="row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] text-ink-muted hover:text-ink"
+                  className="row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-ui text-ink-muted hover:text-ink"
                 >
                   Undo
                 </button>
@@ -199,7 +199,7 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
               <button
                 type="button"
                 onClick={finish}
-                className="row-tint row-selected rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] text-ink"
+                className="row-tint row-selected rounded-[var(--radius-control)] px-3 py-1.5 text-ui text-ink"
               >
                 Done
               </button>
@@ -211,19 +211,19 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
               Remove #{tag} from {noteCount}{" "}
               {noteCount === 1 ? "note" : "notes"}?
             </p>
-            <p className="mt-1 text-[13px] text-ink-muted">
+            <p className="mt-1 text-ui text-ink-muted">
               {noteCount === 1 ? "The note stays" : "The notes stay"} — only the
               tag comes off, along with any nested tags. Undo is offered right
               after.
             </p>
-            {error && <p className="mt-2 text-[13px] text-danger">{error}</p>}
+            {error && <p className="mt-2 text-ui text-danger">{error}</p>}
             {/* One press to approve: this branch is reversible, so it asks
                 rather than makes you type. Cancel first, as everywhere. */}
             <div className="mt-5 flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={back}
-                className="row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] text-ink-muted hover:text-ink"
+                className="row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-ui text-ink-muted hover:text-ink"
               >
                 Back
               </button>
@@ -232,7 +232,7 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
                 autoFocus
                 onClick={unfile}
                 disabled={pending}
-                className={`row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] ${
+                className={`row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-ui ${
                   pending ? "text-ink-faint" : "row-selected text-ink"
                 }`}
               >
@@ -245,7 +245,7 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
             <p className="text-base text-ink">
               Delete #{tag} and {doomed} {doomed === 1 ? "note" : "notes"}
             </p>
-            <p className="mt-1 text-[13px] text-ink-muted">
+            <p className="mt-1 text-ui text-ink-muted">
               {doomed === 1
                 ? "Permanently deletes the tag and its note. This can't be undone."
                 : `Permanently deletes the tag and all its ${doomed} notes. This can't be undone.`}{" "}
@@ -253,7 +253,7 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
             {/* The number the tag tree can't give — how many are also filed
                 elsewhere. */}
             {stats && stats.alsoTagged > 0 && (
-              <p className="mt-2 text-[13px] text-danger">
+              <p className="mt-2 text-ui text-danger">
                 {stats.alsoTagged === 1
                   ? "One of them is also filed under other tags — it goes too."
                   : `${stats.alsoTagged} of them are also filed under other tags — they go too.`}
@@ -262,7 +262,7 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
             {/* Typed, not pressed twice — this is an unseen batch with no undo. */}
             <label
               htmlFor={armId}
-              className="mt-4 block text-[13px] text-ink-muted"
+              className="mt-4 block text-ui text-ink-muted"
             >
               Type the tag&apos;s name to confirm
             </label>
@@ -287,13 +287,13 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
                 className="min-w-0 flex-1 bg-transparent text-base text-ink outline-none focus-visible:outline-none!"
               />
             </div>
-            {error && <p className="mt-2 text-[13px] text-danger">{error}</p>}
+            {error && <p className="mt-2 text-ui text-danger">{error}</p>}
             <div className="mt-5 flex items-center justify-end gap-2">
               {/* Back, not Cancel — this is step two of two. */}
               <button
                 type="button"
                 onClick={back}
-                className="row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] text-ink-muted hover:text-ink"
+                className="row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-ui text-ink-muted hover:text-ink"
               >
                 Back
               </button>
@@ -303,7 +303,7 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
                 disabled={!armed || pending}
                 // Unseated, in --danger — the one button that shouldn't look
                 // like the obvious press.
-                className={`rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] ${
+                className={`rounded-[var(--radius-control)] px-3 py-1.5 text-ui ${
                   armed && !pending
                     ? "bg-danger-wash text-danger hover:text-danger-hover"
                     : "text-ink-faint"
@@ -319,7 +319,7 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
           <>
             <p className="text-base text-ink">Delete #{tag}</p>
             {/* The count first, as the rename dialog. */}
-            <p className="mt-1 text-[13px] text-ink-muted">
+            <p className="mt-1 text-ui text-ink-muted">
               Filed on {noteCount} {noteCount === 1 ? "note" : "notes"}. Any
               nested tags are deleted too.
             </p>
@@ -334,10 +334,10 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
                 disabled={pending}
                 className="row-tint choice w-full rounded-[var(--radius-control)] px-3 py-2.5 text-left"
               >
-                <span className="block text-[13px] text-ink">
+                <span className="block text-ui text-ink">
                   Remove the tag
                 </span>
-                <span className="mt-0.5 block text-[13px] text-ink-muted">
+                <span className="mt-0.5 block text-ui text-ink-muted">
                   Notes stay, but stop being filed under #{tag}.
                 </span>
               </button>
@@ -348,10 +348,10 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
                 disabled={pending}
                 className="row-tint choice choice-danger w-full rounded-[var(--radius-control)] px-3 py-2.5 text-left"
               >
-                <span className="block text-[13px] text-danger">
+                <span className="block text-ui text-danger">
                   Delete the tag and its notes
                 </span>
-                <span className="mt-0.5 block text-[13px] text-ink-muted">
+                <span className="mt-0.5 block text-ui text-ink-muted">
                   Permanently deletes {noteCount}{" "}
                   {noteCount === 1 ? "note" : "notes"}. This can&apos;t be
                   undone.
@@ -359,12 +359,12 @@ export function TagDeleteDialog({ tag, noteCount, onClose }: Props) {
               </button>
             </div>
 
-            {error && <p className="mt-2 text-[13px] text-danger">{error}</p>}
+            {error && <p className="mt-2 text-ui text-danger">{error}</p>}
             <div className="mt-5 flex items-center justify-end">
               <button
                 type="button"
                 onClick={finish}
-                className="row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] text-ink-muted hover:text-ink"
+                className="row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-ui text-ink-muted hover:text-ink"
               >
                 Cancel
               </button>

@@ -63,7 +63,7 @@ export function SortControl<M extends string>({
         // Text left-aligned because the chevron leads it: the mark stays put
         // while the labels change length behind it, so the one fixed thing in
         // the corner is the part that says this is a control.
-        className="row-tint group flex cursor-pointer items-center gap-2 rounded-[var(--radius-control)] px-2 py-1 text-left text-[13px] text-ink-muted outline-none hover:text-ink aria-expanded:text-ink"
+        className="row-tint group flex cursor-pointer items-center gap-2 rounded-[var(--radius-control)] px-2 py-1 text-left text-ui text-ink-muted outline-none hover:text-ink aria-expanded:text-ink"
       >
         {/* A sibling of the label, not a background image: it has to inherit
             the trigger's colour so both halves lighten together on hover, and
@@ -104,9 +104,9 @@ export function SortControl<M extends string>({
                 {/* The tick's slot is held open whether or not it's drawn:
                     labels that shifted sideways as the choice moved would make
                     the list look like it re-sorted itself. */}
-                <span aria-hidden className="size-3 shrink-0">
+                <span aria-hidden className="icon-sm shrink-0">
                   {chosen && (
-                    <CheckIcon className="size-3" />
+                    <CheckIcon className="icon-sm" />
                   )}
                 </span>
                 {labels[mode]}

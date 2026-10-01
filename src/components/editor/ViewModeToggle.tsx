@@ -44,9 +44,9 @@ export function ViewModeToggle({ mode, onChange }: Props) {
       <button
         type="button"
         onClick={() => onChange(previewing ? "write" : "preview")}
-        className="row-tint flex h-7 shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] px-2 text-[13px] text-ink-muted min-[1000px]:hidden"
+        className="row-tint flex h-10 shrink-0 items-center gap-1.5 rounded-[var(--radius-control)] px-2 text-ui-lg text-ink-muted min-[1000px]:hidden"
       >
-        {previewing ? <PencilIcon aria-hidden className="size-3.5 shrink-0" /> : <EyeIcon aria-hidden className="size-3.5 shrink-0" />}
+        {previewing ? <PencilIcon aria-hidden className="icon shrink-0" /> : <EyeIcon aria-hidden className="icon shrink-0" />}
         {previewing ? "Edit" : "Preview"}
       </button>
     </>

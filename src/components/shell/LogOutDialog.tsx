@@ -33,7 +33,7 @@ export function LogOutDialog({ onClose }: { onClose: () => void }) {
     >
       <div className="glass lift-3 w-full max-w-md rounded-[var(--radius-zone)] p-6">
         <p className="text-base text-ink">Log out?</p>
-        <p className="mt-1 text-[13px] text-ink-muted">
+        <p className="mt-1 text-ui text-ink-muted">
           You&apos;ll need to sign in again to get back to your notes.
         </p>
         {/* A form posting to the action. */}
@@ -41,7 +41,7 @@ export function LogOutDialog({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={onClose}
-            className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-[13px] text-ink-muted hover:text-ink"
+            className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-ui text-ink-muted hover:text-ink"
           >
             Stay
           </button>
@@ -49,7 +49,7 @@ export function LogOutDialog({ onClose }: { onClose: () => void }) {
           <button
             type="submit"
             autoFocus
-            className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-[13px] text-danger hover:text-danger-hover"
+            className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-ui text-danger hover:text-danger-hover"
           >
             Log out
           </button>

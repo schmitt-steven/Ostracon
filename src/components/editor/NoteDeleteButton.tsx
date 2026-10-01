@@ -63,11 +63,11 @@ export function NoteDeleteButton({
         aria-label={`Delete ${name}`}
         aria-expanded={confirming}
         onClick={() => setConfirming((open) => !open)}
-        className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-danger-wash hover:text-danger ${
+        className={`flex tap items-center justify-center rounded-full transition-colors hover:bg-danger-wash hover:text-danger ${
           confirming ? "bg-danger-wash text-danger" : "text-ink-faint"
         }`}
       >
-        <TrashIcon aria-hidden className="h-4 w-4" />
+        <TrashIcon aria-hidden className="icon" />
       </button>
 
       {confirming && (
@@ -76,7 +76,7 @@ export function NoteDeleteButton({
           aria-label={`Delete ${name}?`}
           className="glass lift-2 absolute right-0 top-full z-40 mt-2 w-56 rounded-[var(--radius-zone)] p-3"
         >
-          <p className="text-[13px] text-ink">
+          <p className="text-ui text-ink">
             Delete <span className="font-medium">{name}</span>? This can&apos;t
             be undone.
           </p>
@@ -84,7 +84,7 @@ export function NoteDeleteButton({
             <button
               type="button"
               onClick={() => setConfirming(false)}
-              className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-[13px] text-ink-muted hover:text-ink"
+              className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-ui text-ink-muted hover:text-ink"
             >
               Keep
             </button>
@@ -94,7 +94,7 @@ export function NoteDeleteButton({
               autoFocus
               onClick={confirmDelete}
               disabled={pending}
-              className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-[13px] text-danger hover:text-danger-hover"
+              className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-ui text-danger hover:text-danger-hover"
             >
               {pending ? "Deleting…" : "Delete"}
             </button>

@@ -27,7 +27,7 @@ export function OfflineToast() {
     >
       <p
         role="status"
-        className="glass lift-2 toast-enter rounded-[var(--radius-control)] px-4 py-2.5 text-[13px] text-ink"
+        className="glass lift-2 toast-enter rounded-[var(--radius-control)] px-4 py-2.5 text-ui text-ink"
       >
         Offline.{" "}
         <span className="text-ink-muted">

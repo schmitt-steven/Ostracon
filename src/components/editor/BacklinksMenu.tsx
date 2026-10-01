@@ -79,7 +79,7 @@ export function BacklinksMenu({ backlinks }: { backlinks: Backlink[] }) {
                 onClick={() => setOpen(false)}
                 title={backlink.title || "Untitled"}
                 // The row tint is the focus mark; `!` beats the unlayered rule.
-                className="row-tint block truncate rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] text-ink focus-visible:outline-none!"
+                className="row-tint block truncate rounded-[var(--radius-control)] px-3 py-1.5 text-ui text-ink focus-visible:outline-none!"
               >
                 {backlink.title || "Untitled"}
               </Link>

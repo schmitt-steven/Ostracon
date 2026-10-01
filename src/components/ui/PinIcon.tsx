@@ -7,5 +7,5 @@ import { PinFilledIcon, PinOutlineIcon } from "@/icons";
  */
 export function PinIcon({ filled }: { filled: boolean }) {
   const Glyph = filled ? PinFilledIcon : PinOutlineIcon;
-  return <Glyph aria-hidden className="h-4 w-4" />;
+  return <Glyph aria-hidden className="icon" />;
 }

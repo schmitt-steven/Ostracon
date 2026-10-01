@@ -77,7 +77,7 @@ export function ImportSetting() {
             type="button"
             disabled={busy}
             onClick={() => inputRef.current?.click()}
-            className="row-tint row-selected flex h-8 shrink-0 items-center rounded-[var(--radius-control)] px-3 text-[13px] text-ink disabled:opacity-50"
+            className="row-tint row-selected flex h-8 max-[999px]:h-10 shrink-0 items-center rounded-[var(--radius-control)] px-3 text-ui text-ink disabled:opacity-50"
           >
             Choose archive
           </button>
@@ -111,7 +111,7 @@ function Report({
 }) {
   if (stage.kind === "idle") {
     return (
-      <p className="text-[13px] text-ink-faint">
+      <p className="text-ui text-ink-faint">
         A .zip exported from here, or any folder of Markdown files zipped up.
         Everything in it is added; nothing already here is replaced.
       </p>
@@ -119,24 +119,24 @@ function Report({
   }
 
   if (stage.kind === "reading") {
-    return <p className="text-[13px] text-ink-faint">Opening the archive…</p>;
+    return <p className="text-ui text-ink-faint">Opening the archive…</p>;
   }
 
   if (stage.kind === "refused") {
-    return <p className="text-[13px] text-danger">{stage.reason}</p>;
+    return <p className="text-ui text-danger">{stage.reason}</p>;
   }
 
   if (stage.kind === "ready") {
     const { reading } = stage;
     return (
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <p className="text-[13px] text-ink-faint">
+        <p className="text-ui text-ink-faint">
           {describe(reading)} Nothing is written until you say so.
         </p>
         <button
           type="button"
           onClick={() => onImport(reading)}
-          className="row-tint row-selected flex h-7 shrink-0 items-center rounded-[var(--radius-control)] px-2.5 text-[13px] text-ink"
+          className="row-tint row-selected flex h-7 max-[999px]:h-9 shrink-0 items-center rounded-[var(--radius-control)] px-2.5 text-ui text-ink"
         >
           Import
         </button>
@@ -146,14 +146,14 @@ function Report({
 
   if (stage.kind === "working") {
     return (
-      <p role="status" className="text-[13px] text-ink-faint">
+      <p role="status" className="text-ui text-ink-faint">
         {progressLine(stage.progress)}
       </p>
     );
   }
 
   return (
-    <p role="status" className="text-[13px] text-ink-faint">
+    <p role="status" className="text-ui text-ink-faint">
       {outcomeLine(stage.outcome)}
     </p>
   );

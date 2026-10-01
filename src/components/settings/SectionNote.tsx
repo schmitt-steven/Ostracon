@@ -6,5 +6,5 @@ import type { ReactNode } from "react";
  * far for a 13px line — so keep it in sync if that value changes.
  */
 export function SectionNote({ children }: { children: ReactNode }) {
-  return <p className="-mt-2.5 text-[13px] text-ink-faint">{children}</p>;
+  return <p className="-mt-2.5 text-ui text-ink-faint">{children}</p>;
 }

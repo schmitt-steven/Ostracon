@@ -49,7 +49,7 @@ const LOCAL_UNAVAILABLE =
   "Local model servers are only reachable when the app runs on your own machine.";
 
 /** Its status line, for a deployment that can't reach loopback at all. */
-const LOCAL_UNAVAILABLE_STATUS = "Not reachable from here";
+const LOCAL_UNAVAILABLE_STATUS = "Only reachable on localhost";
 
 /**
  * Why a hosted provider with no key can't run, naming the right place to set

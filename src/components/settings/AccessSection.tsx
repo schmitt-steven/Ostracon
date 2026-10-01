@@ -32,7 +32,7 @@ async function PasswordNote() {
 
   if (!changedAt) {
     return (
-      <p className="text-[13px] text-ink-faint">
+      <p className="text-ui text-ink-faint">
         Never changed — still the password this deployment was set up with.
       </p>
     );
@@ -40,7 +40,7 @@ async function PasswordNote() {
 
   const iso = changedAt.toISOString();
   return (
-    <p className="text-[13px] text-ink-faint">
+    <p className="text-ui text-ink-faint">
       Last changed{" "}
       <LocalDate
         date={iso}
@@ -54,7 +54,7 @@ async function PasswordNote() {
 /** The same line with nothing in it yet — one line tall, so nothing shifts. */
 function NoteSkeleton() {
   return (
-    <p aria-hidden className="text-[13px] text-ink-faint">
+    <p aria-hidden className="text-ui text-ink-faint">
       —
     </p>
   );

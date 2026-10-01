@@ -38,7 +38,7 @@ export function SearchMenuPreview({ row, tags, hueOf, onNavigate }: Props) {
       className="zone-step mb-3 mr-3 mt-3 hidden min-h-0 flex-col rounded-[var(--radius-zone)] px-5 py-4 md:flex"
     >
       {/* "Info" for an action (no look-before), "Preview" for notes and tags. */}
-      <p className="shrink-0 pb-3 text-[11px] uppercase tracking-wider text-ink-faint">
+      <p className="shrink-0 pb-3 text-meta uppercase tracking-wider text-ink-faint">
         {row?.kind === "action" ? "Info" : "Preview"}
       </p>
       {row?.kind === "note" && (
@@ -78,7 +78,7 @@ function PreviewBody({
         {children}
       </div>
       {meta && (
-        <dl className="mt-4 flex shrink-0 flex-col gap-1.5 text-[12px] [overflow-wrap:anywhere]">
+        <dl className="mt-4 flex shrink-0 flex-col gap-1.5 text-meta [overflow-wrap:anywhere]">
           {meta}
         </dl>
       )}
@@ -140,7 +140,7 @@ function NotePreview({
       {note.tags.length > 0 && (
         // `-my-0.5` gives back the pill padding so the row measures as bare
         // text; width is handled on the scroll container a level up.
-        <p className="-my-0.5 flex flex-wrap gap-x-1 gap-y-0.5 text-[12px]">
+        <p className="-my-0.5 flex flex-wrap gap-x-1 gap-y-0.5 text-meta">
           {note.tags.map((name) => (
             <TagLink
               key={name}
@@ -152,7 +152,7 @@ function NotePreview({
         </p>
       )}
 
-      <p className="text-[14px] leading-relaxed text-ink-muted">
+      <p className="text-ui-lg leading-relaxed text-ink-muted">
         {/* A longer window than the row's, around the same match. */}
         <Highlighted spans={spans} />
       </p>
@@ -203,13 +203,13 @@ function TagPreview({
             #{row.name}
           </Link>
         </h2>
-        <p className="text-[14px] text-ink-muted">
+        <p className="text-ui-lg text-ink-muted">
           {row.count} {row.count === 1 ? "note" : "notes"}
           {children.length > 0 && ", sub-tags counted in"}
         </p>
 
         {children.length > 0 && (
-          <p className="-my-0.5 flex flex-wrap gap-x-1 gap-y-0.5 text-[12px]">
+          <p className="-my-0.5 flex flex-wrap gap-x-1 gap-y-0.5 text-meta">
             {children.map((name) => (
               <TagLink
                 key={name}
@@ -239,7 +239,7 @@ function ActionPreview({ row }: { row: Extract<Row, { kind: "action" }> }) {
       <h2 className="font-display text-[19px] leading-snug text-ink">
         {row.action.label}
       </h2>
-      <p className="text-[14px] leading-relaxed text-ink-muted">
+      <p className="text-ui-lg leading-relaxed text-ink-muted">
         {row.action.detail}
       </p>
     </PreviewBody>

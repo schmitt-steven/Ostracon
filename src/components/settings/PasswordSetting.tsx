@@ -24,7 +24,7 @@ export function PasswordSetting({ note }: { note: ReactNode }) {
             aria-expanded={changing}
             onClick={() => setChanging(true)}
             // Seated, at the theme track's height, so the column reads as one.
-            className="row-tint row-selected flex h-8 shrink-0 items-center rounded-[var(--radius-control)] px-3 text-[13px] text-ink"
+            className="row-tint row-selected flex h-8 max-[999px]:h-10 shrink-0 items-center rounded-[var(--radius-control)] px-3 text-ui text-ink"
           >
             Change password
           </button>

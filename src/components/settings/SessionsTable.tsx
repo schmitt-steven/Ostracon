@@ -48,7 +48,7 @@ export function SessionsTable({ rows }: { rows: SessionRow[] }) {
 
   if (rows.length === 0) {
     return (
-      <p className="text-[13px] text-ink-faint">
+      <p className="text-ui text-ink-faint">
         No devices are signed in right now.
       </p>
     );
@@ -59,7 +59,7 @@ export function SessionsTable({ rows }: { rows: SessionRow[] }) {
       <div className="overflow-x-auto">
         {/* w-full to spread when there's room, nowrap so past that the box
             above scrolls. */}
-        <table className="w-full text-[13px]">
+        <table className="w-full text-ui">
           <thead>
             {/* The only rule in the table — columns from contents. */}
             <tr className="border-b border-line">
@@ -78,11 +78,13 @@ export function SessionsTable({ rows }: { rows: SessionRow[] }) {
               <tr key={row.id}>
                 <Cell className="text-ink">
                   {/* Flex so the glyph centres against the name, not its baseline. */}
-                  <span className="flex items-center gap-2">
+                  <span className="grid grid-cols-[auto_1fr] items-center gap-x-2">
                     <DeviceMark kind={row.kind} />
-                    {row.device ?? <Unknown label="Unknown device" />}
+                    <span className="col-start-2">
+                      {row.device ?? <Unknown label="Unknown device" />}
+                    </span>
                     {row.current && (
-                      <span className="text-[11px] uppercase tracking-wider text-ink-faint">
+                      <span className="col-start-2 text-meta text-ink-faint">
                         This device
                       </span>
                     )}
@@ -115,7 +117,7 @@ export function SessionsTable({ rows }: { rows: SessionRow[] }) {
       {error && (
         <p
           role="alert"
-          className="mt-[var(--space-item)] text-[13px] text-danger"
+          className="mt-[var(--space-item)] text-ui text-danger"
         >
           {error}
         </p>
@@ -230,11 +232,11 @@ function SignOutButton({
         title={pending ? "Signing out…" : label}
         // Danger only on hover and while confirming — a column of red at rest
         // reads as a warning about the table, not the press.
-        className={`row-tint inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-control)] hover:text-danger disabled:text-ink-faint disabled:hover:text-ink-faint ${
+        className={`row-tint inline-flex tap items-center justify-center rounded-[var(--radius-control)] hover:text-danger disabled:text-ink-faint disabled:hover:text-ink-faint ${
           confirming ? "text-danger" : "text-ink-muted"
         }`}
       >
-        <TrashIcon aria-hidden className="h-4 w-4" />
+        <TrashIcon aria-hidden className="icon" />
       </button>
 
       {anchor && (
@@ -246,12 +248,12 @@ function SignOutButton({
           // it sidesteps the nowrap inherited from [Cell].
           className="glass lift-2 fixed z-40 w-max rounded-[var(--radius-zone)] p-3 text-left"
         >
-          <p className="text-[13px] text-ink">Log out of this device?</p>
+          <p className="text-ui text-ink">Log out of this device?</p>
           <div className="mt-2.5 flex justify-end gap-1.5">
             <button
               type="button"
               onClick={() => setAnchor(null)}
-              className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-[13px] text-ink-muted hover:text-ink"
+              className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-ui text-ink-muted hover:text-ink"
             >
               Stay
             </button>
@@ -261,7 +263,7 @@ function SignOutButton({
               autoFocus
               disabled={pending}
               onClick={revoke}
-              className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-[13px] text-danger hover:text-danger-hover"
+              className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-ui text-danger hover:text-danger-hover"
             >
               {pending ? "Logging out…" : "Log out"}
             </button>
@@ -299,7 +301,7 @@ const LOOPBACK = new Set(["::1", "127.0.0.1", "::ffff:127.0.0.1"]);
 function DeviceMark({ kind }: { kind: DeviceKind | null }) {
   if (!kind) return null;
   const Glyph = kind === "mobile" ? PhoneIcon : DesktopIcon;
-  return <Glyph aria-hidden className="size-3.5 shrink-0 text-ink-faint" />;
+  return <Glyph aria-hidden className="icon shrink-0 text-ink-faint" />;
 }
 
 /** A column heading: the caption style the deployment groups use. */
@@ -307,7 +309,7 @@ function Column({ children }: { children: ReactNode }) {
   return (
     <th
       scope="col"
-      className="whitespace-nowrap pb-[var(--space-item)] pr-6 text-left text-[11px] font-normal uppercase tracking-wider text-ink-faint last:pr-0"
+      className="whitespace-nowrap pb-[var(--space-item)] pr-6 text-left text-meta font-normal uppercase tracking-wider text-ink-faint last:pr-0"
     >
       {children}
     </th>

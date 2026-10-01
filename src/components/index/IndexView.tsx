@@ -180,11 +180,11 @@ export function IndexView({ notes, tag, heading }: Props) {
               {/* -ml-1.5 cancels the pill's padding so it lines up with the heading. */}
               <nav
                 aria-label="Breadcrumb"
-                className="-ml-1.5 min-w-0 flex-1 text-[13px]"
+                className="-ml-1.5 flex min-w-0 flex-1 items-center text-ui"
               >
                 <Link
                   href={ALL_NOTES_HREF}
-                  className="tag-pill tag-pill-ink rounded-full px-1.5 py-1 text-ink-muted"
+                  className="tag-pill tag-pill-ink shrink-0 whitespace-nowrap rounded-full px-1.5 py-1 text-ink-muted"
                 >
                   All notes
                 </Link>
@@ -193,7 +193,9 @@ export function IndexView({ notes, tag, heading }: Props) {
                     <span aria-hidden className="text-ink-faint">
                       /
                     </span>
-                    <span className="px-1.5 text-ink">{title}</span>
+                    <span className="min-w-0 truncate px-1.5 text-ink">
+                      {title}
+                    </span>
                   </>
                 )}
               </nav>
@@ -215,8 +217,10 @@ export function IndexView({ notes, tag, heading }: Props) {
         <div className="mx-auto max-w-[680px] px-6 pb-24">
           {/* On a tag view: swatch, name (the rename control), search, pin —
               each its own target. */}
-          <div className="flex items-center gap-2 pt-2">
-            <h1 className="flex min-w-0 flex-1 items-center gap-1 font-display text-[28px] font-medium leading-tight text-ink">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-3 pt-2">
+            <h1
+              className={`flex min-w-0 flex-1 items-center gap-1 font-display text-[28px] max-[999px]:text-[32px] ${tag ? "max-[999px]:basis-full" : ""} font-medium leading-tight text-ink`}
+            >
               {tag ? (
                 <>
                   <TagHueButton tag={tag} hue={hueOf(tag)} />
@@ -234,7 +238,7 @@ export function IndexView({ notes, tag, heading }: Props) {
                     {/* Held in layout, revealed on reach. */}
                     <EditIcon
                       aria-hidden
-                      className="size-4 shrink-0 text-ink-faint opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none"
+                      className="icon shrink-0 text-ink-faint opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none"
                     />
                   </button>
                 </>
@@ -252,11 +256,11 @@ export function IndexView({ notes, tag, heading }: Props) {
               }
               data-hued={tag ? "" : undefined}
               title={tag ? `New note in ${title}` : "New note"}
-              className={`action-pill flex h-7 shrink-0 items-center gap-1.5 rounded-full pl-2 pr-3 text-[13px] font-medium transition-colors ${
+              className={`action-pill flex h-7 max-[999px]:h-9 shrink-0 items-center gap-1.5 rounded-full pl-2 pr-3 text-ui font-medium transition-colors ${
                 tag ? "hue-text" : "text-ink"
               }`}
             >
-              <PlusIcon aria-hidden className="size-3.5 shrink-0" />
+              <PlusIcon aria-hidden className="icon shrink-0" />
               New note
             </Link>
 
@@ -284,9 +288,9 @@ export function IndexView({ notes, tag, heading }: Props) {
                   aria-label={`Delete ${title}`}
                   aria-haspopup="dialog"
                   title={`Delete ${title}`}
-                  className="row-tint flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-danger-wash hover:text-danger"
+                  className="row-tint flex tap shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-danger-wash hover:text-danger"
                 >
-                  <TrashIcon aria-hidden className="size-4" />
+                  <TrashIcon aria-hidden className="icon" />
                 </button>
               </>
             )}
@@ -295,7 +299,7 @@ export function IndexView({ notes, tag, heading }: Props) {
           {/* How the collection breaks down — the count appears only while
               there's something behind it. One link (untagged); no `/tagged`. */}
           {allNotes && (
-            <p className="mt-[var(--space-hair)] text-[13px] text-ink-muted">
+            <p className="mt-[var(--space-hair)] text-ui text-ink-muted">
               {liveNotes.length} {liveNotes.length === 1 ? "note" : "notes"}
               {untaggedCount > 0 && (
                 <>
@@ -402,18 +406,18 @@ export function IndexView({ notes, tag, heading }: Props) {
                             }`}
                           >
                             <span className="flex items-baseline gap-4">
-                              <span className="min-w-0 flex-1 truncate font-display text-base font-medium text-ink group-has-[[data-row-delete-trigger]:hover]/row:text-danger group-has-[[data-row-delete-trigger]:hover]/row:line-through">
+                              <span className="min-w-0 flex-1 truncate font-display text-base max-[999px]:text-xl font-medium text-ink group-has-[[data-row-delete-trigger]:hover]/row:text-danger group-has-[[data-row-delete-trigger]:hover]/row:line-through">
                                 {note.title || "Untitled"}
                               </span>
                               <RelativeDate
                                 date={note[SORT_DATE_FIELD[sort]]}
                                 // Yields the corner to the delete control on hover.
-                                className="shrink-0 whitespace-nowrap text-[13px] tabular-nums text-ink-muted transition-opacity group-hover/row:opacity-0"
+                                className="shrink-0 whitespace-nowrap text-ui tabular-nums text-ink-muted transition-opacity group-hover/row:opacity-0"
                               />
                             </span>
                             {/* Always rendered, even when empty, so rows stay
                           the same height. */}
-                            <span className="mt-[var(--space-hair)] flex min-w-0 items-baseline gap-1.5 text-[13px] text-ink-muted">
+                            <span className="mt-[var(--space-hair)] flex min-w-0 items-baseline gap-1.5 text-ui text-ink-muted">
                               {/* flex-1 pushes the tags flush right, under the
                           date; it still truncates first. */}
                               <span className="min-w-0 flex-1 truncate">

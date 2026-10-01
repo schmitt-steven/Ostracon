@@ -55,16 +55,16 @@ export function UpdateRow({ compact = false }: Props) {
           onClick={() => setOpen(true)}
           aria-label={label}
           title={label}
-          className="row-tint flex size-7 items-center justify-center rounded-[var(--radius-control)] text-action hover:text-action-hover"
+          className="row-tint flex tap items-center justify-center rounded-[var(--radius-control)] text-action hover:text-action-hover"
         >
-          <DownloadIcon aria-hidden className="size-3.5 shrink-0" />
+          <DownloadIcon aria-hidden className="icon shrink-0" />
         </button>
       ) : (
         <div className="row-tint-host group relative flex items-center">
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="row-tint flex min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1.5 text-left text-[13px] text-action"
+            className="row-tint flex min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1.5 text-left text-ui text-action"
           >
             {/* The sidebar's shared left edge: every row opens with a mark in
                 the dot's 7px footprint. */}
@@ -72,7 +72,7 @@ export function UpdateRow({ compact = false }: Props) {
               aria-hidden
               className="flex size-[7px] shrink-0 items-center justify-center"
             >
-              <DownloadIcon className="size-3.5 shrink-0" />
+              <DownloadIcon className="icon shrink-0" />
             </span>
             <span className="min-w-0 flex-1 truncate">Update available</span>
           </button>
@@ -87,9 +87,9 @@ export function UpdateRow({ compact = false }: Props) {
               event.stopPropagation();
               dismissUpdate(update.latest);
             }}
-            className="row-tint absolute right-1 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-[var(--radius-control)] text-ink-faint hover:text-ink"
+            className="row-tint absolute right-1 top-1/2 flex size-5 max-[999px]:size-8 -translate-y-1/2 items-center justify-center rounded-[var(--radius-control)] text-ink-faint hover:text-ink"
           >
-            <CloseSmallIcon aria-hidden className="size-3" />
+            <CloseSmallIcon aria-hidden className="icon-sm" />
           </button>
         </div>
       )}

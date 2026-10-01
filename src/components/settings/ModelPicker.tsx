@@ -52,10 +52,10 @@ export function ModelPicker({
         onClick={() => (anchor ? setAnchor(null) : open())}
         // max-w so a long local model id can't push the row past the section;
         // it truncates here and shows in full in the menu.
-        className="row-tint row-selected flex h-8 max-w-[min(280px,60%)] items-center gap-1.5 rounded-[var(--radius-control)] px-3 text-[13px] text-ink disabled:opacity-50"
+        className="row-tint row-selected flex h-8 max-[999px]:h-10 max-w-[min(280px,60%)] items-center gap-1.5 rounded-[var(--radius-control)] px-3 text-ui text-ink disabled:opacity-50"
       >
         <span className="truncate font-mono">{value}</span>
-        <ChevronDownIcon aria-hidden className="size-3 shrink-0 text-ink-faint" />
+        <ChevronDownIcon aria-hidden className="icon-sm shrink-0 text-ink-faint" />
       </button>
 
       {anchor && (

@@ -26,8 +26,7 @@ export const notes = pgTable(
      * When the note was pinned to the sidebar; null means it isn't. A
      * timestamp, not a boolean, so the pinned section keeps its order across a
      * reload. A column because the sidebar needs the title and that only lives
-     * here; [tagPreferences] carries the rest of a pin for the same reason a
-     * pin is stored at all — it should be the same on every device.
+     * here.
      */
     pinnedAt: timestamp("pinned_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -48,12 +47,12 @@ export const notes = pgTable(
 /**
  * The password the app is unlocked with, once its owner has changed it. At
  * most one row, fixed id (upsert with no prior read). No row means
- * APP_PASSWORD from the environment is still in force. Only the scrypt hash is
- * kept — see lib/auth/password.
+ * APP_PASSWORD from the environment is still in use. Only the scrypt hash is
+ * kept, see lib/auth/password.
  */
 export const appPassword = pgTable("app_password", {
   id: text("id").primaryKey(),
-  /** `scrypt$N$r$p$salt$key`, hex — self-describing so old rows keep verifying
+  /** `scrypt$N$r$p$salt$key`, hex,self-describing so old rows keep verifying
    *  after the cost parameters are raised. */
   hash: text("hash").notNull(),
   changedAt: timestamp("changed_at", { withTimezone: true })
@@ -89,17 +88,15 @@ export const aiSettings = pgTable("ai_settings", {
  */
 export const tagPreferences = pgTable("tag_preferences", {
   id: text("id").primaryKey(),
-  /** Pinned tag names, newest pin first. */
+  /** Newest pin first. */
   pinned: text("pinned")
     .array()
     .notNull()
     .default(sql`'{}'::text[]`),
-  /** Root tag name → hue in degrees. */
   hues: jsonb("hues")
     .notNull()
     .$type<Record<string, number>>()
     .default(sql`'{}'::jsonb`),
-  /** `pin_order`, not `order` — the bare word is SQL. */
   order: text("pin_order")
     .array()
     .notNull()

@@ -64,7 +64,7 @@ export function SaveToast({ status, onSave }: Props) {
       {failed && (
         <p
           role="alert"
-          className="glass lift-2 toast-enter pointer-events-auto rounded-[var(--radius-control)] px-4 py-2.5 text-[13px] text-ink"
+          className="glass lift-2 toast-enter pointer-events-auto rounded-[var(--radius-control)] px-4 py-2.5 text-ui text-ink"
         >
           Couldn&apos;t save this note.{" "}
           <button
@@ -79,13 +79,13 @@ export function SaveToast({ status, onSave }: Props) {
       {waiting && (
         <p
           role="status"
-          className="glass lift-2 toast-enter rounded-[var(--radius-control)] px-4 py-2.5 text-[13px] text-ink"
+          className="glass lift-2 toast-enter rounded-[var(--radius-control)] px-4 py-2.5 text-ui text-ink"
         >
           Saving when you&apos;re back online.
         </p>
       )}
       {showHint && (
-        <p className="glass lift-2 toast-enter rounded-[var(--radius-control)] px-4 py-2.5 text-[13px] text-ink-muted">
+        <p className="glass lift-2 toast-enter rounded-[var(--radius-control)] px-4 py-2.5 text-ui text-ink-muted">
           No need — this note saves itself as you type.
         </p>
       )}

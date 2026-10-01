@@ -120,7 +120,7 @@ function ProviderBlock({
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
         {/* Muted when the provider can't answer, so state reads down the left edge. */}
         <p
-          className={`min-w-0 truncate text-[15px] font-medium ${
+          className={`min-w-0 truncate text-ui-lg font-medium ${
             provider.available ? "text-ink" : "text-ink-muted"
           }`}
         >
@@ -131,7 +131,7 @@ function ProviderBlock({
 
         {fallback ? (
           // Not a pill — this is a tie-break, not a state.
-          <span className="shrink-0 text-[11px] uppercase tracking-wider text-ink-faint">
+          <span className="shrink-0 text-meta uppercase tracking-wider text-ink-faint">
             Default
           </span>
         ) : null}
@@ -150,7 +150,7 @@ function ProviderBlock({
           ) : (
             // One answer, so no chevron. Faint while the provider is dark.
             <span
-              className={`truncate font-mono text-[13px] ${
+              className={`truncate font-mono text-ui ${
                 provider.available ? "text-ink" : "text-ink-faint"
               }`}
             >
@@ -164,18 +164,18 @@ function ProviderBlock({
       {provider.kind === "hosted" &&
       !provider.available &&
       provider.unavailableReason ? (
-        <p className="text-[13px] text-ink-faint">
+        <p className="text-ui text-ink-faint">
           {provider.unavailableReason}
         </p>
       ) : null}
 
       {provider.modelsError ? (
-        <p className="text-[13px] text-ink-faint">{provider.modelsError}</p>
+        <p className="text-ui text-ink-faint">{provider.modelsError}</p>
       ) : null}
 
       {/* Under the control — it's a reply to the press that just happened. */}
       {failure ? (
-        <p role="alert" className="text-[13px] text-danger">
+        <p role="alert" className="text-ui text-danger">
           {failure}
         </p>
       ) : null}
@@ -220,7 +220,7 @@ function Pill({
   return (
     <span
       title={title}
-      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${className}`}
+      className={`shrink-0 rounded-full px-2 py-0.5 text-meta ${className}`}
     >
       {children}
     </span>
@@ -232,7 +232,7 @@ function Pill({
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-      <span className="min-w-0 shrink-0 text-[13px] text-ink-muted">
+      <span className="min-w-0 shrink-0 text-ui text-ink-muted">
         {label}
       </span>
       <span className="flex min-w-0 flex-1 justify-end">{children}</span>
@@ -249,7 +249,7 @@ export function ProviderListSkeleton() {
     <div aria-hidden className="flex flex-col gap-4">
       {PROVIDER_IDS.map((id) => (
         <div key={id} className="flex items-center gap-x-2.5">
-          <p className="min-w-0 truncate text-[15px] font-medium text-ink-muted">
+          <p className="min-w-0 truncate text-ui-lg font-medium text-ink-muted">
             {PROVIDER_IDENTITIES[id].label}
           </p>
           {/* The pill's shape, empty — no "Checking" claim. */}

@@ -38,7 +38,7 @@ export function ThemeSetting() {
           options={THEME_PREFERENCES}
           // Paints, records, and notifies every subscriber.
           onChange={applyPreference}
-          className="grid h-8 shrink-0"
+          className="grid h-8 max-[999px]:h-10 shrink-0"
           segmentClassName="min-w-[64px] px-3"
         />
       }

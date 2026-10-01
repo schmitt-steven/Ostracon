@@ -24,7 +24,7 @@ const OPTION_LIMIT = 8;
 
 /** Row item height — on the items, not the row, so it holds per line once tags
  * wrap and the row doesn't jump when `+ tag` opens. */
-const ROW_ITEM = "flex h-7 items-center";
+const ROW_ITEM = "flex h-7 max-[999px]:h-9 items-center";
 
 /** How long a touch has to be held before it means "remove this". */
 const LONG_PRESS_MS = 450;
@@ -35,9 +35,9 @@ export const DROPDOWN =
   "glass lift-2 absolute top-full left-0 z-30 mt-1.5 max-h-72 w-max max-w-[min(20rem,calc(100vw-3rem))] overflow-y-auto rounded-[var(--radius-zone)] p-1.5";
 
 const DROPDOWN_ROW =
-  "hue-row block w-full truncate rounded-[var(--radius-control)] px-3 py-1.5 text-left text-[13px] text-ink";
+  "hue-row block w-full truncate rounded-[var(--radius-control)] px-3 py-1.5 text-left text-ui text-ink";
 
-export const GROUP_LABEL = "px-3 pt-1.5 pb-1 text-[11px] text-ink-faint";
+export const GROUP_LABEL = "px-3 pt-1.5 pb-1 text-meta text-ink-faint";
 
 /** One row of the completion list. */
 type Option = { tag: string; suggested: boolean };
@@ -183,14 +183,14 @@ export function TagBar({ tags, allTags, onChange, onSuggest }: Props) {
         <button
           type="button"
           onClick={open}
-          className={`${ROW_ITEM} text-[13px] text-ink-faint transition-colors hover:text-action`}
+          className={`${ROW_ITEM} text-ui text-ink-faint transition-colors hover:text-action`}
         >
           + tag
         </button>
       ) : (
         <span className={`${ROW_ITEM} relative`}>
           {/* A wash, not a border — findable without putting a box on the row. */}
-          <span className="inline-flex items-center rounded-full bg-sunk px-2.5 py-1 text-[13px] leading-none">
+          <span className="inline-flex items-center rounded-full bg-sunk px-2.5 py-1 text-ui leading-none">
             <span aria-hidden className="text-ink-faint">
               #
             </span>
@@ -213,7 +213,7 @@ export function TagBar({ tags, allTags, onChange, onSuggest }: Props) {
               onKeyDown={onKeyDown}
               // The wash is the affordance; `!` beats the unlayered
               // :focus-visible rule.
-              className="bg-transparent text-[13px] text-ink outline-none focus-visible:outline-none!"
+              className="bg-transparent text-ui text-ink outline-none focus-visible:outline-none!"
             />
           </span>
 
@@ -250,7 +250,7 @@ export function TagBar({ tags, allTags, onChange, onSuggest }: Props) {
               ))}
               {isNew && (
                 // Spelled out — a new word is entering the vocabulary.
-                <li className="truncate px-3 py-1.5 text-[13px] text-ink-faint">
+                <li className="truncate px-3 py-1.5 text-ui text-ink-faint">
                   {options.length > 0 && (
                     <span className="mr-1.5" aria-hidden>
                       ↵
@@ -328,7 +328,7 @@ function TagName({
           held.current = false;
         }}
         // The pill is the affordance (:focus-within); `!` beats the unlayered rule.
-        className="tag-name hue-text text-[13px] font-medium focus-visible:outline-none!"
+        className="tag-name hue-text text-ui font-medium focus-visible:outline-none!"
       >
         #{tag}
       </Link>
@@ -344,7 +344,7 @@ function TagName({
         // 16px wide (held in layout always, so nothing shifts) — every px here
         // is permanent gap between tags. Grey until hovered; red only then,
         // since "there's a control" and "this deletes" are separate moments.
-        className="tag-remove grid h-7 w-4 place-items-center rounded-full text-ink-faint hover:text-danger focus-visible:text-danger focus-visible:outline-none!"
+        className="tag-remove grid h-7 max-[999px]:h-9 w-4 place-items-center rounded-full text-ink-faint hover:text-danger focus-visible:text-danger focus-visible:outline-none!"
       >
         {/* A drawn cross, not the × glyph — hairline strokes vanish at this size. */}
         <CloseSmallIcon aria-hidden className="size-[11px]" />

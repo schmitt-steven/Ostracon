@@ -19,7 +19,6 @@ export default async function TagsPage() {
     <TagDirectory
       tree={tree}
       tagCount={flattenTree(tree).length}
-      taggedCount={tagged}
       untaggedCount={notes.length - tagged}
     />
   );

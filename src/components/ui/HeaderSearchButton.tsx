@@ -24,9 +24,9 @@ export function HeaderSearchButton({
       aria-label={label}
       aria-keyshortcuts="Meta+K Control+K"
       title={hint}
-      className="row-tint flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:text-ink"
+      className="row-tint flex tap shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:text-ink"
     >
-      <SearchIcon aria-hidden className="size-4" />
+      <SearchIcon aria-hidden className="icon" />
     </button>
   );
 }

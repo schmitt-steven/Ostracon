@@ -53,8 +53,9 @@ export function TagHueButton({ tag, hue }: Props) {
         <div
           role="dialog"
           aria-label={`Colour of #${tag}`}
-          // Anchored to the swatch. Fonts restated — this hangs off an h1.
-          className="glass lift-2 absolute left-1/2 top-full z-20 mt-3 w-max -translate-x-1/2 rounded-[var(--radius-zone)] p-3 font-sans text-[13px] font-normal leading-normal"
+          // Centred on the swatch; left-aligned on narrow screens, where the
+          // swatch sits at the left edge. Fonts restated — this hangs off an h1.
+          className="glass lift-2 absolute left-1/2 top-full z-20 mt-3 w-max -translate-x-1/2 max-[999px]:left-0 max-[999px]:translate-x-0 rounded-[var(--radius-zone)] p-3 font-sans text-ui font-normal leading-normal"
         >
           <TagHuePalette tag={tag} hue={hue} />
         </div>

@@ -24,9 +24,7 @@ type Props = {
   tree: TagNode[];
   /** Every tag at every depth — the tree's node count. */
   tagCount: number;
-  /** How many notes carry at least one tag. */
-  taggedCount: number;
-  /** How many carry none. */
+  /** How many notes carry no tag. */
   untaggedCount: number;
 };
 
@@ -41,7 +39,6 @@ type Props = {
 export function TagDirectory({
   tree,
   tagCount,
-  taggedCount,
   untaggedCount,
 }: Props) {
   const { preferences, hueOf } = useTagHues();
@@ -98,7 +95,7 @@ export function TagDirectory({
           <header className="content-head">
             <div className="mx-auto flex min-h-[var(--head-h)] max-w-[680px] items-center gap-4 px-6 py-4">
               {/* Not a breadcrumb — tags aren't filed under notes. */}
-              <p className="min-w-0 flex-1 truncate pr-1.5 text-[13px] text-ink">
+              <p className="min-w-0 flex-1 truncate pr-1.5 text-ui text-ink">
                 All tags
               </p>
               {/* Nothing to order in an empty collection. */}
@@ -119,7 +116,7 @@ export function TagDirectory({
           <div className="pt-2">
             {/* The same magnifier the note lists carry, next to the title. */}
             <div className="flex items-center gap-2">
-              <h1 className="min-w-0 flex-1 font-display text-[28px] font-medium leading-tight text-ink">
+              <h1 className="min-w-0 flex-1 font-display text-[28px] max-[999px]:text-[32px] font-medium leading-tight text-ink">
                 All tags
               </h1>
               {/* Tags first — the search menu opens wearing the All tags
@@ -129,9 +126,8 @@ export function TagDirectory({
                 hint="Tags first, then notes"
               />
             </div>
-            <p className="mt-[var(--space-hair)] text-[13px] text-ink-muted">
-              {tagCount} {tagCount === 1 ? "tag" : "tags"} across {taggedCount}{" "}
-              {taggedCount === 1 ? "note" : "notes"}
+            <p className="mt-[var(--space-hair)] text-ui text-ink-muted">
+              {tagCount} {tagCount === 1 ? "tag" : "tags"} across all notes
               {/* The rest of the collection, on the page about how it's filed. */}
               {untaggedCount > 0 && (
                 <>
@@ -252,13 +248,13 @@ function TagRow({
           {node.leaf}
         </span>
         {/* Against the name, dimmed, at metadata size — about the name. */}
-        <span className="shrink-0 tabular-nums text-[13px] text-ink-faint">
+        <span className="shrink-0 tabular-nums text-ui text-ink-faint">
           {node.count}
         </span>
         {/* The default sort key; keeps its place (the menu has its own lane). */}
         <RelativeDate
           date={node.lastUsed}
-          className="ml-auto shrink-0 whitespace-nowrap text-[13px] text-ink-faint"
+          className="ml-auto shrink-0 whitespace-nowrap text-ui text-ink-faint"
         />
       </Link>
 
@@ -278,11 +274,11 @@ function TagRow({
           const box = event.currentTarget.getBoundingClientRect();
           onOpenMenu({ x: box.right - 4, y: box.bottom + 4 });
         }}
-        className={`row-tint absolute right-1 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-[var(--radius-control)] transition-colors duration-150 hover:text-ink motion-reduce:transition-none ${
+        className={`row-tint absolute right-1 top-1/2 flex size-5 max-[999px]:size-8 -translate-y-1/2 items-center justify-center rounded-[var(--radius-control)] transition-colors duration-150 hover:text-ink motion-reduce:transition-none ${
           menuOpen ? "text-ink" : "text-ink-faint"
         }`}
       >
-        <DotsIcon aria-hidden className="size-3.5" />
+        <DotsIcon aria-hidden className="icon" />
       </button>
     </div>
   );

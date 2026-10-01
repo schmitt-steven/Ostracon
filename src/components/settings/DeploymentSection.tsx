@@ -198,7 +198,7 @@ function RegionText({ region }: { region: Region }) {
 function Group({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <p className="text-[11px] uppercase tracking-wider text-ink-faint">
+      <p className="text-meta uppercase tracking-wider text-ink-faint">
         {label}
       </p>
       <dl className="mt-[var(--space-item)] flex flex-col gap-[var(--space-item)]">
@@ -221,11 +221,11 @@ function Fact({
 }) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-6">
-      <dt className="text-[13px] text-ink-muted">{label}</dt>
-      <dd className="min-w-0 text-right text-[13px] text-ink">
+      <dt className="text-ui text-ink-muted">{label}</dt>
+      <dd className="min-w-0 text-right text-ui text-ink">
         <span className="block truncate">{children}</span>
         {hint ? (
-          <span className="block truncate text-[12px] text-ink-faint">
+          <span className="block truncate text-meta text-ink-faint">
             {hint}
           </span>
         ) : null}

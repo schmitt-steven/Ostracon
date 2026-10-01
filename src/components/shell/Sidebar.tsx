@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState, type MouseEvent } from "react";
+import { useMemo, useRef, useState, type MouseEvent } from "react";
 import icon from "@/assets/ostracon-icon.png";
 import { setSearchMenuOpen } from "@/lib/search-menu/menu-state";
 import { scopeFromPath, scopePrompt } from "@/lib/search-menu/scope";
@@ -97,6 +97,7 @@ export function Sidebar({
 }: Props) {
   const pathname = usePathname();
   const [menu, setMenu] = useState<MenuState | null>(null);
+  const menuWasOpenRef = useRef(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const { preferences, hueOf } = useTagHues();
@@ -209,16 +210,16 @@ export function Sidebar({
               : "Search, do, or jump to…"
           }
           aria-keyshortcuts="Meta+K Control+K"
-          className="row-tint flex size-7 items-center justify-center rounded-[var(--radius-control)] text-ink-muted hover:text-ink"
+          className="row-tint flex tap items-center justify-center rounded-[var(--radius-control)] text-ink-muted hover:text-ink"
         >
-          <SearchIcon aria-hidden className="size-3.5 shrink-0" />
+          <SearchIcon aria-hidden className="icon shrink-0" />
         </button>
         <Link
           href="/notes/new"
           aria-label="New note"
-          className="row-tint flex size-7 items-center justify-center rounded-[var(--radius-control)] text-ink-muted hover:text-ink"
+          className="row-tint flex tap items-center justify-center rounded-[var(--radius-control)] text-ink-muted hover:text-ink"
         >
-          <PlusIcon aria-hidden className="size-3.5 shrink-0" />
+          <PlusIcon aria-hidden className="icon shrink-0" />
         </Link>
 
         <div className="mt-auto flex flex-col items-start gap-[var(--space-item)]">
@@ -228,11 +229,11 @@ export function Sidebar({
             aria-label="Settings"
             title="Settings"
             aria-current={pathname === "/settings" ? "page" : undefined}
-            className={`row-tint flex size-7 items-center justify-center rounded-[var(--radius-control)] hover:text-ink ${
+            className={`row-tint flex tap items-center justify-center rounded-[var(--radius-control)] hover:text-ink ${
               pathname === "/settings" ? "text-ink" : "text-ink-muted"
             }`}
           >
-            <GearIcon aria-hidden className="size-3.5 shrink-0" />
+            <GearIcon aria-hidden className="icon shrink-0" />
           </Link>
           <LogOutButton compact />
         </div>
@@ -242,8 +243,20 @@ export function Sidebar({
 
   return (
     <div
-      className="flex h-full flex-col overflow-y-auto px-3 py-4"
-      onClick={onNavigate}
+      className="flex h-full flex-col overflow-y-auto px-3 py-4 max-[999px]:pt-6 max-[999px]:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+      // Before the menu's own outside-press closes it.
+      onPointerDownCapture={() => {
+        menuWasOpenRef.current = menu !== null;
+      }}
+      onClick={(event) => {
+        // A press that only dismissed a menu isn't navigation.
+        if (menuWasOpenRef.current) {
+          menuWasOpenRef.current = false;
+          return;
+        }
+        // Portaled menus and dialogs bubble here through React too.
+        if (event.currentTarget.contains(event.target as Node)) onNavigate?.();
+      }}
     >
       {/* Wordmark left, fold control right. */}
       {onToggleCollapsed && (
@@ -281,14 +294,14 @@ export function Sidebar({
           href="/notes/new"
           label="New note"
           selected={pathname === "/notes/new"}
-          icon={<PlusIcon className="size-3.5 shrink-0" />}
+          icon={<PlusIcon className="icon shrink-0" />}
         />
         <SidebarRow
           href={ALL_NOTES_HREF}
           label="All notes"
           count={data.allCount}
           selected={pathname === ALL_NOTES_HREF}
-          icon={<NotesIcon className="size-3.5 shrink-0" />}
+          icon={<NotesIcon className="icon shrink-0" />}
         />
         {/* Where the tag tree went (see [TagDirectory]). The count is every
             tag at every depth. Untagged is now a link under the All notes
@@ -298,7 +311,7 @@ export function Sidebar({
           label="All tags"
           count={data.tagCount}
           selected={pathname === TAGS_HREF}
-          icon={<TagIcon className="size-3.5 shrink-0" />}
+          icon={<TagIcon className="icon shrink-0" />}
         />
         {/* Counted from note bodies, not the bucket — listing blob storage
             would be a round trip on every page. */}
@@ -307,7 +320,7 @@ export function Sidebar({
           label="Images"
           count={data.imageCount}
           selected={pathname === "/images"}
-          icon={<ImagesIcon className="size-3.5 shrink-0" />}
+          icon={<ImagesIcon className="icon shrink-0" />}
         />
       </nav>
 
@@ -317,7 +330,7 @@ export function Sidebar({
           empty. */}
       {pinnedNoteItems.length > 0 && (
         <nav className="mt-[var(--space-group)]" aria-label="Pinned notes">
-          <p className="px-2.5 pb-[var(--space-item)] text-[13px] text-ink-faint">
+          <p className="px-2.5 pb-[var(--space-item)] text-ui text-ink-faint">
             Pinned notes
           </p>
           <ul className="flex flex-col gap-1">
@@ -344,7 +357,7 @@ export function Sidebar({
 
       {pinnedTagItems.length > 0 && (
         <nav className="mt-[var(--space-group)]" aria-label="Pinned tags">
-          <p className="px-2.5 pb-[var(--space-item)] text-[13px] text-ink-faint">
+          <p className="px-2.5 pb-[var(--space-item)] text-ui text-ink-faint">
             Pinned tags
           </p>
           <ul className="flex flex-col gap-1">
@@ -379,7 +392,7 @@ export function Sidebar({
           href="/settings"
           label="Settings"
           selected={pathname === "/settings"}
-          icon={<GearIcon className="size-3.5 shrink-0" />}
+          icon={<GearIcon className="icon shrink-0" />}
         />
         <LogOutButton />
       </div>
@@ -449,9 +462,9 @@ function FoldButton({
       aria-expanded={!collapsed}
       aria-label={collapsed ? "Show the sidebar" : "Hide the sidebar"}
       title={collapsed ? "Show the sidebar" : "Hide the sidebar"}
-      className="row-tint flex size-7 items-center justify-center rounded-[var(--radius-control)] text-ink-faint hover:text-ink-muted"
+      className="row-tint flex tap items-center justify-center rounded-[var(--radius-control)] text-ink-faint hover:text-ink-muted"
     >
-      <Glyph aria-hidden className="size-4" />
+      <Glyph aria-hidden className="icon" />
     </button>
   );
 }

@@ -61,7 +61,7 @@ export function SidebarRow({
             ? undefined
             : ({ "--h": hue } as React.CSSProperties)
         }
-        className={`row-tint flex min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1.5 text-[14px] leading-[1.15] ${
+        className={`row-tint flex min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 py-1.5 max-[999px]:py-2.5 text-ui-lg leading-[1.15] ${
           selected
             ? // A tag lights in its hue; the fixed views take the neutral tint.
               `${hue === undefined ? "row-selected" : "hue-row-selected"} text-ink`
@@ -100,7 +100,7 @@ export function SidebarRow({
               onOpenMenu
                 ? menuOpen
                   ? "opacity-0"
-                  : "group-hover:opacity-0"
+                  : "group-hover:opacity-0 pointer-coarse:opacity-0"
                 : ""
             }`}
           >
@@ -126,7 +126,7 @@ export function SidebarRow({
             const box = event.currentTarget.getBoundingClientRect();
             onOpenMenu({ x: box.right - 4, y: box.bottom + 4 });
           }}
-          className={`row-tint absolute right-1 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-[var(--radius-control)] text-ink-faint transition-opacity duration-150 hover:text-ink motion-reduce:transition-none ${
+          className={`row-tint absolute right-1 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-[var(--radius-control)] text-ink-faint transition-opacity duration-150 before:absolute before:-inset-1.5 before:content-[''] hover:text-ink motion-reduce:transition-none ${
             menuOpen
               ? "opacity-100"
               : // Hidden by opacity (not visibility) so focus can summon it;
@@ -134,7 +134,7 @@ export function SidebarRow({
                 "pointer-events-none opacity-0 focus-visible:pointer-events-auto focus-visible:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 pointer-coarse:pointer-events-auto pointer-coarse:opacity-100"
           }`}
         >
-          <DotsIcon aria-hidden className="size-3.5" />
+          <DotsIcon aria-hidden className="icon" />
         </button>
       )}
     </div>

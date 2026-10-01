@@ -678,7 +678,7 @@ export function SearchMenu({ tags, recentNotes, open, onOpenChange }: Props) {
           {/* Counted by kind, not totalled — a note and a tag aren't
               interchangeable. Actions are uncounted. */}
           {needle && (
-            <span className="shrink-0 whitespace-nowrap text-[13px] tabular-nums text-ink-faint">
+            <span className="shrink-0 whitespace-nowrap text-ui tabular-nums text-ink-faint">
               {countLine(total, tagTotal)}
             </span>
           )}
@@ -697,7 +697,7 @@ export function SearchMenu({ tags, recentNotes, open, onOpenChange }: Props) {
             className="mr-3 min-h-0 overflow-y-auto pb-4 pl-3"
           >
             {emptyLine && (
-              <p className="px-3 pb-1 pt-6 text-center text-[13px] text-ink-faint">
+              <p className="px-3 pb-1 pt-6 text-center text-ui text-ink-faint">
                 {emptyLine}
               </p>
             )}
@@ -707,11 +707,11 @@ export function SearchMenu({ tags, recentNotes, open, onOpenChange }: Props) {
                 role="group"
                 aria-label={section.heading}
               >
-                <p className="px-3 pb-1 pt-4 text-[11px] uppercase tracking-wider text-ink-faint">
+                <p className="px-3 pb-1 pt-4 text-meta uppercase tracking-wider text-ink-faint">
                   {section.heading}
                 </p>
                 {section.rows.length === 0 && section.empty && (
-                  <p className="px-3 pb-1 pt-1 text-[13px] text-ink-faint">
+                  <p className="px-3 pb-1 pt-1 text-ui text-ink-faint">
                     {section.empty}
                   </p>
                 )}
@@ -737,7 +737,7 @@ export function SearchMenu({ tags, recentNotes, open, onOpenChange }: Props) {
           />
         </div>
 
-        <div className="zone-step flex shrink-0 items-center justify-between gap-4 px-6 py-3 text-[12px] text-ink-faint">
+        <div className="zone-step flex shrink-0 items-center justify-between gap-4 px-6 py-3 text-meta text-ink-faint">
           {/* A legend — every key stays listed, dimmed when it would do
               nothing, so the strip doesn't jump as you arrow down. */}
           <span className="flex items-center gap-4">
@@ -779,7 +779,7 @@ function ScopeChip({
     <span
       style={tag ? ({ "--h": hueOf(tag) } as React.CSSProperties) : undefined}
       // Not .tag-pill — this is filled at rest, in the sidebar's selected tint.
-      className={`flex h-7 shrink-0 items-center gap-1.5 rounded-full pl-2.5 pr-1 text-[13px] ${
+      className={`flex h-7 max-[999px]:h-9 shrink-0 items-center gap-1.5 rounded-full pl-2.5 pr-1 text-ui ${
         tag ? "hue-row-selected" : "row-selected"
       }`}
     >
@@ -887,7 +887,7 @@ function SearchMenuRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           <span
-            className={`min-w-0 flex-1 truncate text-[14px] ${
+            className={`min-w-0 flex-1 truncate text-ui-lg ${
               active ? "text-ink" : "text-ink-muted"
             }`}
           >
@@ -896,22 +896,22 @@ function SearchMenuRow({
           {row.kind === "note" && (
             <RelativeDate
               date={row.note.updatedAt}
-              className="shrink-0 whitespace-nowrap text-[12px] text-ink-faint"
+              className="shrink-0 whitespace-nowrap text-meta text-ink-faint"
             />
           )}
           {row.kind === "tag" && (
-            <span className="shrink-0 whitespace-nowrap text-[12px] text-ink-faint">
+            <span className="shrink-0 whitespace-nowrap text-meta text-ink-faint">
               {row.count} {row.count === 1 ? "note" : "notes"}
             </span>
           )}
           {row.kind === "action" && row.action.shortcut && (
-            <span className="shrink-0 font-mono text-[12px] text-ink-faint">
+            <span className="shrink-0 font-mono text-meta text-ink-faint">
               {row.action.shortcut}
             </span>
           )}
         </div>
         {/* The reason line — never conditional; every row says why it's here. */}
-        <p className="truncate text-[12px] leading-snug text-ink-faint">
+        <p className="truncate text-meta leading-snug text-ink-faint">
           <RowReason row={row} hueOf={hueOf} />
         </p>
       </div>

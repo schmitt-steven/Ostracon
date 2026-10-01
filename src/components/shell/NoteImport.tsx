@@ -263,7 +263,7 @@ function DropOverlay({ kind }: { kind: DragKind }) {
           <p className="mt-2 font-display text-[17px] font-medium text-ink">
             Drop to add images
           </p>
-          <p className="mt-[var(--space-hair)] text-[13px] text-ink-muted">
+          <p className="mt-[var(--space-hair)] text-ui text-ink-muted">
             They land in this note, where you drop them.
           </p>
         </div>
@@ -281,7 +281,7 @@ function DropOverlay({ kind }: { kind: DragKind }) {
         <p className="mt-3 font-display text-[20px] font-medium text-ink">
           Drop to import
         </p>
-        <p className="mt-[var(--space-hair)] text-[13px] text-ink-muted">
+        <p className="mt-[var(--space-hair)] text-ui text-ink-muted">
           Every .md or .txt file becomes a note, named after the file.
         </p>
       </div>
@@ -311,7 +311,7 @@ function ImportToast({
     <div className="pointer-events-none fixed right-6 top-[calc(var(--head-h)+1.25rem)] z-40 flex max-w-xs flex-col items-end gap-2 text-right">
       <p
         role="status"
-        className="glass lift-2 toast-enter pointer-events-auto rounded-[var(--radius-control)] px-4 py-2.5 text-[13px] text-ink"
+        className="glass lift-2 toast-enter pointer-events-auto rounded-[var(--radius-control)] px-4 py-2.5 text-ui text-ink"
       >
         {status.kind === "working" && <>Importing {fileCount(status.count)}…</>}
         {status.kind === "failed" && (

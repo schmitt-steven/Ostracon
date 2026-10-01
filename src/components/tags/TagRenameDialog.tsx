@@ -123,7 +123,7 @@ export function TagRenameDialog({ tag, noteCount, onClose }: Props) {
             </p>
             {/* Undo touches only the notes that moved. */}
             {undo.merged && (
-              <p className="mt-1 text-[13px] text-ink-muted">
+              <p className="mt-1 text-ui text-ink-muted">
                 Undo moves those {undo.noteIds.length === 1 ? "note" : "notes"}{" "}
                 back to #{tag}; notes already filed under #{undo.to} stay put.
               </p>
@@ -134,14 +134,14 @@ export function TagRenameDialog({ tag, noteCount, onClose }: Props) {
                 type="button"
                 onClick={revert}
                 disabled={pending}
-                className="row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] text-ink-muted hover:text-ink"
+                className="row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-ui text-ink-muted hover:text-ink"
               >
                 Undo
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="row-tint row-selected rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] text-ink"
+                className="row-tint row-selected rounded-[var(--radius-control)] px-3 py-1.5 text-ui text-ink"
               >
                 Done
               </button>
@@ -152,7 +152,7 @@ export function TagRenameDialog({ tag, noteCount, onClose }: Props) {
             <p className="text-base text-ink">Rename #{tag} everywhere</p>
             {/* The count of notes under the whole subtree — the set the rename
                 touches. */}
-            <p className="mt-1 text-[13px] text-ink-muted">
+            <p className="mt-1 text-ui text-ink-muted">
               Rewrites {noteCount} {noteCount === 1 ? "note" : "notes"}. Nested
               tags come along.
             </p>
@@ -184,18 +184,18 @@ export function TagRenameDialog({ tag, noteCount, onClose }: Props) {
             {/* Under the field, in --accent (not --danger) — merging is an
                 outcome to be sure about, not a mistake. */}
             {merging && (
-              <p id={mergeNoticeId} className="mt-2 text-[13px] text-accent">
+              <p id={mergeNoticeId} className="mt-2 text-ui text-accent">
                 #{target} already exists. Renaming merges the two — every note
                 under #{tag} joins it, and nested tags merge alongside.
               </p>
             )}
-            {error && <p className="mt-2 text-[13px] text-danger">{error}</p>}
+            {error && <p className="mt-2 text-ui text-danger">{error}</p>}
             {/* Right end, cancel first — the app's dialog order. */}
             <div className="mt-5 flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] text-ink-muted hover:text-ink"
+                className="row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-ui text-ink-muted hover:text-ink"
               >
                 Cancel
               </button>
@@ -205,7 +205,7 @@ export function TagRenameDialog({ tag, noteCount, onClose }: Props) {
                 disabled={!valid || pending}
                 // Seated (the default), and stands down while there's nothing
                 // to submit.
-                className={`row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] ${
+                className={`row-tint rounded-[var(--radius-control)] px-3 py-1.5 text-ui ${
                   valid && !pending ? "row-selected text-ink" : "text-ink-faint"
                 }`}
               >

@@ -12,7 +12,7 @@ import { SessionsTable, type SessionRow } from "./SessionsTable";
 export function SessionsSetting() {
   return (
     <div>
-      <p className="text-[15px] text-ink">Active sessions</p>
+      <p className="text-ui-lg text-ink">Active sessions</p>
       <div className="mt-[var(--space-item)]">
         <Suspense fallback={<SessionsSkeleton />}>
           <Sessions />
@@ -52,13 +52,13 @@ async function Sessions() {
  */
 function SessionsSkeleton() {
   return (
-    <table aria-hidden className="w-full text-[13px]">
+    <table aria-hidden className="w-full text-ui">
       <thead>
         <tr className="border-b border-line">
           {["Device", "Location", "Created", "Last active"].map((label) => (
             <th
               key={label}
-              className="whitespace-nowrap pb-[var(--space-item)] pr-6 text-left text-[11px] font-normal uppercase tracking-wider text-ink-faint last:pr-0"
+              className="whitespace-nowrap pb-[var(--space-item)] pr-6 text-left text-meta font-normal uppercase tracking-wider text-ink-faint last:pr-0"
             >
               {label}
             </th>

@@ -57,14 +57,14 @@ export function DeleteRowButton({
         // Hovering this previews the deletion on the row (see [data-row-delete-trigger]).
         data-row-delete-trigger
         onClick={() => setConfirming((open) => !open)}
-        className={`flex h-7 w-7 items-center justify-center rounded-full text-ink-faint transition-all hover:bg-danger-wash hover:text-danger focus-visible:opacity-100 ${
+        className={`flex tap items-center justify-center rounded-full text-ink-faint transition-all hover:bg-danger-wash hover:text-danger focus-visible:opacity-100 ${
           // Hidden until row hover, but not while confirming or focused.
           confirming
             ? "bg-danger-wash text-danger opacity-100"
             : "opacity-0 group-hover/row:opacity-100"
         }`}
       >
-        <TrashIcon aria-hidden className="h-4 w-4" />
+        <TrashIcon aria-hidden className="icon" />
       </button>
 
       {confirming && (
@@ -73,14 +73,14 @@ export function DeleteRowButton({
           aria-label={`Delete ${name}?`}
           className="glass lift-2 absolute right-0 top-full z-20 mt-2 w-56 rounded-[var(--radius-zone)] p-3"
         >
-          <p className="text-[13px] text-ink">
+          <p className="text-ui text-ink">
             Delete <span className="font-medium">{name}</span>?
           </p>
           <div className="mt-2.5 flex justify-end gap-1.5">
             <button
               type="button"
               onClick={() => setConfirming(false)}
-              className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-[13px] text-ink-muted hover:text-ink"
+              className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-ui text-ink-muted hover:text-ink"
             >
               Keep
             </button>
@@ -89,7 +89,7 @@ export function DeleteRowButton({
               // Pre-selected, so Enter confirms straight away.
               autoFocus
               onClick={confirm}
-              className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-[13px] text-danger hover:text-danger-hover"
+              className="row-tint rounded-[var(--radius-control)] px-2.5 py-1 text-ui text-danger hover:text-danger-hover"
             >
               Delete
             </button>

@@ -22,7 +22,7 @@ export function TagHuePalette({ tag, hue }: Props) {
 
   return (
     <>
-      <p className="pb-1.5 text-[13px] text-ink-faint">
+      <p className="pb-1.5 text-ui text-ink-faint">
         {root === tag ? "Colour" : `Colour of #${root}`}
       </p>
       {/* A fixed 8-column grid, not flex-wrap — the same block of colour in

@@ -402,12 +402,19 @@ export function NoteEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Re-fit the title textarea to its wrapped text on every change.
+  // Re-fit the title textarea to its wrapped text on every change, and when
+  // its width changes (resize, font load) so a wrapped line is never clipped.
   useEffect(() => {
     const el = titleRef.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    const fit = () => {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [title]);
 
   // Escape goes to the note's index (the breadcrumb's tag destination) —
@@ -484,19 +491,18 @@ export function NoteEditor({
         head={
           <header className="content-head">
             <div
-              className={`mx-auto flex min-h-[var(--head-h)] items-center gap-3 px-6 py-4 ${COLUMN[mode]}`}
+              className={`mx-auto flex min-h-[var(--head-h)] items-center gap-2 px-4 min-[1000px]:gap-3 min-[1000px]:px-6 py-4 ${COLUMN[mode]}`}
             >
               {/* min-w-0 lets the title segment ellipsise instead of widening
                 the row; -ml-1.5 cancels the first pill's padding so the word
                 "All notes" lines up with the title. */}
               <nav
                 aria-label="Breadcrumb"
-                className="-ml-1.5 flex min-w-0 flex-1 items-center text-[13px]"
+                className="-ml-0.5 min-[1000px]:-ml-1.5 flex min-w-0 flex-1 items-center text-ui-lg"
               >
-                {/* The same pill the tags get, so a tag reads alike anywhere. */}
                 <Link
                   href={ALL_NOTES_HREF}
-                  className="tag-pill tag-pill-ink shrink-0 rounded-full px-1.5 py-1 text-ink-muted"
+                  className="tag-pill tag-pill-ink shrink-0 rounded-full px-0.5 min-[1000px]:px-1.5 py-2 text-ink-muted"
                 >
                   All notes
                 </Link>
@@ -505,43 +511,45 @@ export function NoteEditor({
                     <span aria-hidden className="text-ink-faint">
                       /
                     </span>
-                    {/* The way back — there's no back button; Escape matches it. */}
+                    {/* The way back, there's no back button; Escape matches it. */}
                     <Link
                       href={tagHref(contextTag)}
                       style={
                         { "--h": hueOf(contextTag) } as React.CSSProperties
                       }
-                      className="tag-pill hue-text shrink-0 rounded-full px-1.5 py-1"
+                      className="tag-pill hue-text min-w-0 truncate rounded-full px-0.5 min-[1000px]:px-1.5 py-2"
                     >
                       #{contextTag}
                     </Link>
                   </>
                 )}
-                <span aria-hidden className="text-ink-faint">
+                <span aria-hidden className="hidden min-[1000px]:inline text-ink-faint">
                   /
                 </span>
-                <span className="min-w-0 truncate px-1.5 text-ink">
+                <span className="hidden min-w-0 truncate px-1.5 min-[1000px]:block text-ink">
                   {title || defaultTitle}
                 </span>
               </nav>
-              <ViewModeToggle mode={mode} onChange={setMode} />
-              {/* Both only once the note has an id (from the first save). */}
-              {savedId && (
-                <>
-                  <NotePinButton
-                    noteId={savedId}
-                    title={title}
-                    pinned={pinned}
-                    canRefreshShell={!urlSwapped}
-                  />
-                  <NoteDeleteButton noteId={savedId} title={title} />
-                </>
-              )}
+              <div className="-mr-3 flex shrink-0 items-center min-[1000px]:mr-0 min-[1000px]:gap-3">
+                <ViewModeToggle mode={mode} onChange={setMode} />
+                {/* Both only once the note has an id (from the first save). */}
+                {savedId && (
+                  <>
+                    <NotePinButton
+                      noteId={savedId}
+                      title={title}
+                      pinned={pinned}
+                      canRefreshShell={!urlSwapped}
+                    />
+                    <NoteDeleteButton noteId={savedId} title={title} />
+                  </>
+                )}
+              </div>
             </div>
           </header>
         }
       >
-        <div className={`mx-auto px-6 pb-32 ${COLUMN[mode]}`}>
+        <div className={`mx-auto px-4 pb-32 min-[1000px]:px-6 ${COLUMN[mode]}`}>
           <textarea
             ref={titleRef}
             // A textarea so a long title wraps; rows=1 + the grow effect keeps
@@ -559,12 +567,12 @@ export function NoteEditor({
             aria-label="Note title"
             // The global :focus-visible ring would box this borderless field;
             // the caret in 28px display type is affordance enough. `!` beats
-            // the unlayered rule.
-            className="mt-2 w-full resize-none overflow-hidden bg-transparent font-display text-[28px] font-medium leading-[1.3] text-ink outline-none focus-visible:outline-none!"
+            // the unlayered rules (including the mobile font-size floor).
+            className="mt-0 min-[1000px]:mt-2 w-full resize-none overflow-hidden hyphens-auto bg-transparent font-display text-[28px] max-[999px]:text-[32px]! font-medium leading-[1.3] text-ink outline-none focus-visible:outline-none!"
           />
 
           {/* One plain line — the note's facts as a sentence, no badges. */}
-          <div className="mt-[var(--space-hair)] text-[13px] text-ink-muted">
+          <div className="mt-[var(--space-hair)] text-ui text-ink-muted">
             Edited <RelativeDate date={editedAt} long />
             <span aria-hidden className="px-1.5 text-ink-faint">
               ·
@@ -582,13 +590,13 @@ export function NoteEditor({
 
           {showTagNudge && (
             // Muted text, not a banner — untagged isn't an error.
-            <p className="mt-[var(--space-item)] text-[13px] text-ink-faint">
+            <p className="mt-[var(--space-item)] text-ui text-ink-faint">
               No tags yet, add one to file this note.
             </p>
           )}
 
           {conflict && (
-            <div className="mt-[var(--space-block)] rounded-[var(--radius-control)] bg-accent-wash px-4 py-3 text-[13px] text-ink">
+            <div className="mt-[var(--space-block)] rounded-[var(--radius-control)] bg-accent-wash px-4 py-3 text-ui text-ink">
               This note changed in another tab (last saved{" "}
               {new Date(conflict.updatedAt).toLocaleTimeString()}).
               <span className="ml-2 inline-flex gap-3">
@@ -611,7 +619,7 @@ export function NoteEditor({
           )}
 
           {imageNotice && (
-            <p className="mt-[var(--space-block)] rounded-[var(--radius-control)] bg-accent-wash px-4 py-3 text-[13px] text-ink">
+            <p className="mt-[var(--space-block)] rounded-[var(--radius-control)] bg-accent-wash px-4 py-3 text-ui text-ink">
               {imageNotice}
               <button
                 type="button"
@@ -624,7 +632,7 @@ export function NoteEditor({
           )}
 
           {aiError && (
-            <p className="mt-[var(--space-block)] rounded-[var(--radius-control)] bg-accent-wash px-4 py-3 text-[13px] text-ink">
+            <p className="mt-[var(--space-block)] rounded-[var(--radius-control)] bg-accent-wash px-4 py-3 text-ui text-ink">
               {aiError}
               <button
                 type="button"
@@ -645,7 +653,7 @@ export function NoteEditor({
           />
 
           {/* The body — no box; split's halves are separated by a gap. */}
-          <div className="mt-[var(--space-block)] flex gap-8">
+          <div className="mt-[var(--space-item)] flex gap-8">
             <CodeMirrorEditor
               ref={editorRef}
               value={bodyMd}

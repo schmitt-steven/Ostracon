@@ -35,14 +35,14 @@ const iconButton =
 
 /** The two replace verbs. Words, not glyphs — a rewrite should say so. */
 const textButton =
-  "row-tint h-6 shrink-0 rounded-[var(--radius-control)] px-2 text-[12px] text-ink disabled:pointer-events-none disabled:text-ink-faint disabled:opacity-25";
+  "row-tint h-6 max-[999px]:h-8 shrink-0 rounded-[var(--radius-control)] px-2 text-meta text-ink disabled:pointer-events-none disabled:text-ink-faint disabled:opacity-25";
 
 /** A field, on the same well the ⌘K trigger is cut into. */
 const fieldWell =
-  "well well-shallow flex h-7 w-full min-w-0 items-center gap-0.5 rounded-[var(--radius-control)] bg-sunk pl-2 pr-1";
+  "well well-shallow flex h-7 max-[999px]:h-10 w-full min-w-0 items-center gap-0.5 rounded-[var(--radius-control)] bg-sunk pl-2 pr-1";
 
 const fieldInput =
-  "min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none focus-visible:outline-none!";
+  "min-w-0 flex-1 bg-transparent text-ui text-ink outline-none focus-visible:outline-none!";
 
 type Props = {
   view: EditorView;
@@ -147,7 +147,7 @@ export function FindPanel({
       >
         <ChevronDownIcon
           aria-hidden
-          className={`size-3 transition-transform duration-[var(--tint-motion)] motion-reduce:transition-none ${
+          className={`icon-sm transition-transform duration-[var(--tint-motion)] motion-reduce:transition-none ${
             replaceOpen ? "" : "-rotate-90"
           }`}
         />
@@ -201,7 +201,7 @@ export function FindPanel({
           <p
             role="status"
             aria-live="polite"
-            className={`min-w-[62px] shrink-0 px-1 text-right text-[11px] tabular-nums ${
+            className={`min-w-[62px] shrink-0 px-1 text-right text-meta tabular-nums ${
               nothingToFind ? "text-ink-faint" : "text-ink-muted"
             }`}
           >
@@ -216,7 +216,7 @@ export function FindPanel({
             title="Previous match (⇧↵)"
             className={iconButton}
           >
-            <ArrowUpIcon aria-hidden className="size-3.5" />
+            <ArrowUpIcon aria-hidden className="icon" />
           </button>
           <button
             type="button"
@@ -226,7 +226,7 @@ export function FindPanel({
             title="Next match (↵)"
             className={iconButton}
           >
-            <ArrowDownIcon aria-hidden className="size-3.5" />
+            <ArrowDownIcon aria-hidden className="icon" />
           </button>
           <button
             type="button"
@@ -236,7 +236,7 @@ export function FindPanel({
             title="Select all matches (⌥↵)"
             className={iconButton}
           >
-            <SelectAllIcon aria-hidden className="size-3.5" />
+            <SelectAllIcon aria-hidden className="icon" />
           </button>
 
           {/* Stood off from the three verbs — closing isn't one of them. */}
@@ -247,7 +247,7 @@ export function FindPanel({
             title="Close (Esc)"
             className={`${iconButton} ml-1`}
           >
-            <CloseSmallIcon aria-hidden className="size-3" />
+            <CloseSmallIcon aria-hidden className="icon-sm" />
           </button>
         </div>
 
@@ -345,7 +345,7 @@ function Flag({ on, label, onToggle, children }: FlagProps) {
       aria-label={label}
       title={label}
       onClick={onToggle}
-      className={`grid size-5 shrink-0 place-items-center rounded-[var(--radius-control)] font-mono text-[10px] leading-none ${
+      className={`grid size-5 max-[999px]:size-8 shrink-0 place-items-center rounded-[var(--radius-control)] font-mono text-[10px] leading-none ${
         // No `.row-tint` on the on state: its hover tint outranks the fill, and
         // an armed switch going pale under the pointer reads as turning off.
         on

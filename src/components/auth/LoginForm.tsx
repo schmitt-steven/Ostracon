@@ -13,7 +13,7 @@ export function LoginForm() {
   return (
     <form action={formAction} className="flex w-full flex-col gap-4">
       <label className="flex w-full flex-col gap-1.5">
-        <span className="text-[13px] text-ink-muted">Password</span>
+        <span className="text-ui text-ink-muted">Password</span>
         {/* `.well` is the field's edge — same as the password-change fields. */}
         <input
           type="password"

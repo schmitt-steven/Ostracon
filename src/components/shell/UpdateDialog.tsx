@@ -59,7 +59,7 @@ export function UpdateDialog({
         <p className="font-display text-[20px] font-semibold leading-tight text-ink">
           Update to {latest}
         </p>
-        <p className="mt-1.5 text-[13px] text-ink-muted">
+        <p className="mt-1.5 text-ui text-ink-muted">
           This copy is at {current}. Updating pulls the new code into your 
           repository. Vercel automatically builds it and applies any database changes. 
           Your notes, images and settings are not touched.
@@ -68,7 +68,7 @@ export function UpdateDialog({
           href={releaseUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-2 inline-block text-[13px] text-action underline-offset-2 hover:underline"
+          className="mt-2 inline-block text-ui text-action underline-offset-2 hover:underline"
         >
           See release notes
         </a>
@@ -111,7 +111,7 @@ export function UpdateDialog({
           <button
             type="button"
             onClick={onClose}
-            className="row-tint row-selected rounded-[var(--radius-control)] px-3 py-1.5 text-[13px] text-ink"
+            className="row-tint row-selected rounded-[var(--radius-control)] px-3 py-1.5 text-ui text-ink"
           >
             Done
           </button>
@@ -136,8 +136,8 @@ function Path({
 }) {
   return (
     <div className="mt-5">
-      <p className="text-[13px] font-semibold text-ink">{title}</p>
-      <div className="mt-1.5 text-[13px] text-ink-muted">{children}</div>
+      <p className="text-ui font-semibold text-ink">{title}</p>
+      <div className="mt-1.5 text-ui text-ink-muted">{children}</div>
     </div>
   );
 }
@@ -145,7 +145,7 @@ function Path({
 /** Something to be typed, laid out so it can be read and copied without wrapping. */
 function Command({ children }: { children: React.ReactNode }) {
   return (
-    <pre className="well mt-1.5 overflow-x-auto rounded-[var(--radius-control)] bg-sunk px-3 py-2 font-mono text-[12px] text-ink">
+    <pre className="well mt-1.5 overflow-x-auto rounded-[var(--radius-control)] bg-sunk px-3 py-2 font-mono text-meta text-ink">
       {children}
     </pre>
   );
