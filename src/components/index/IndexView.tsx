@@ -387,7 +387,7 @@ export function IndexView({ notes, tag, heading }: Props) {
                           data-row={index}
                           // has() lifts the row above its siblings while its
                           // dialog is open.
-                          className="group/row relative mb-[var(--space-row)] last:mb-0 has-[[role=dialog]]:z-10"
+                          className="group/row relative mb-[var(--space-row)] max-[999px]:mb-4 last:mb-0 has-[[role=dialog]]:z-10"
                         >
                           <Link
                             // Carries this list's tag, so the note opens under it.

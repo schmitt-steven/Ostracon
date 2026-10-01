@@ -232,7 +232,7 @@ function TagRow({
         // py-1.5 (tighter than the index's --space-row — a tag is one line).
         // The bleed is spelled out, not `.bleed-row`, because the right side is
         // asymmetric: pr-11 holds a lane clear for the ⋯ button.
-        className="hue-row -mx-3 flex min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-control)] py-1.5 pl-3 pr-11"
+        className="hue-row -mx-3 flex min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-control)] py-1.5 max-[999px]:py-3 pl-3 pr-11"
       >
         <span
           aria-hidden
@@ -241,7 +241,7 @@ function TagRow({
           }`}
         />
         <span
-          className={`min-w-0 truncate font-display text-base font-medium ${
+          className={`min-w-0 truncate font-display text-base max-[999px]:text-xl font-medium ${
             root ? "text-ink" : "text-ink/85"
           }`}
         >

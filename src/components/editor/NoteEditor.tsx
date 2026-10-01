@@ -565,10 +565,7 @@ export function NoteEditor({
             }}
             placeholder={defaultTitle}
             aria-label="Note title"
-            // The global :focus-visible ring would box this borderless field;
-            // the caret in 28px display type is affordance enough. `!` beats
-            // the unlayered rules (including the mobile font-size floor).
-            className="mt-0 min-[1000px]:mt-2 w-full resize-none overflow-hidden hyphens-auto bg-transparent font-display text-[28px] max-[999px]:text-[32px]! font-medium leading-[1.3] text-ink outline-none focus-visible:outline-none!"
+            className="mt-0 min-[1000px]:mt-2 w-full resize-none overflow-hidden hyphens-auto bg-transparent font-display text-[28px] max-[999px]:text-[24px]! font-medium leading-[1.3] text-ink outline-none focus-visible:outline-none!"
           />
 
           {/* One plain line — the note's facts as a sentence, no badges. */}
