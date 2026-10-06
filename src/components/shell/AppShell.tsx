@@ -95,7 +95,7 @@ export function AppShell({
                 onClick={() => setDrawerOpen(false)}
                 className="scrim drawer-scrim-enter absolute inset-0"
               />
-              <div className="bg-paper lift-3 drawer-enter absolute inset-y-2 left-2 w-72 overflow-hidden rounded-[var(--radius-zone)]">
+              <div className="bg-paper lift-3 drawer-enter absolute top-[max(0.5rem,env(safe-area-inset-top))] bottom-[max(0.5rem,env(safe-area-inset-bottom))] left-2 w-72 overflow-hidden rounded-[var(--radius-zone)]">
                 <Sidebar data={sidebar} onNavigate={() => setDrawerOpen(false)} />
               </div>
             </div>

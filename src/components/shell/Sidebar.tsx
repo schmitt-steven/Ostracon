@@ -295,7 +295,7 @@ export function Sidebar({
 
   return (
     <div
-      className="flex h-full flex-col overflow-y-auto px-3 py-4 max-[999px]:pt-[calc(env(safe-area-inset-top)+1.5rem)]max-[999px]:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+      className="flex h-full flex-col overflow-y-auto px-3 py-4"
       // Before the menu's own outside-press closes it.
       onPointerDownCapture={() => {
         menuWasOpenRef.current = menu !== null;
