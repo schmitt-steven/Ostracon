@@ -71,7 +71,7 @@ export function TagDirectory({
       // sit just off it.
       <li
         key={node.name}
-        className={depth === 0 ? "mt-3 first:mt-0" : "mt-0.5"}
+        className={depth === 0 ? "mt-3 max-[999px]:mt-2 first:mt-0" : "mt-0.5 max-[999px]:mt-0 max-[999px]:first:-mt-0.5"}
       >
         <TagRow
           node={node}
@@ -116,7 +116,7 @@ export function TagDirectory({
           <div className="pt-2">
             {/* The same magnifier the note lists carry, next to the title. */}
             <div className="flex items-center gap-2">
-              <h1 className="min-w-0 flex-1 font-display text-[28px] max-[999px]:text-[32px] font-medium leading-tight text-ink">
+              <h1 className="min-w-0 flex-1 font-display text-[28px] max-[999px]:text-[26px] font-medium leading-tight text-ink">
                 All tags
               </h1>
               {/* Tags first — the search menu opens wearing the All tags
@@ -232,7 +232,7 @@ function TagRow({
         // py-1.5 (tighter than the index's --space-row — a tag is one line).
         // The bleed is spelled out, not `.bleed-row`, because the right side is
         // asymmetric: pr-11 holds a lane clear for the ⋯ button.
-        className="hue-row -mx-3 flex min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-control)] py-1.5 max-[999px]:py-3 pl-3 pr-11"
+        className={`hue-row -mx-3 flex min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-control)] py-1.5 ${root ? "" : "max-[999px]:py-1"} pl-3 pr-11`}
       >
         <span
           aria-hidden
@@ -241,7 +241,7 @@ function TagRow({
           }`}
         />
         <span
-          className={`min-w-0 truncate font-display text-base max-[999px]:text-xl font-medium ${
+          className={`min-w-0 truncate font-display text-base max-[999px]:text-[19px] font-medium ${
             root ? "text-ink" : "text-ink/85"
           }`}
         >

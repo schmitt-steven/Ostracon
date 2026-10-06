@@ -16,7 +16,12 @@ import { deleteNote } from "@/lib/notes/actions";
 import { requestNoteImport } from "@/lib/notes/import-request";
 import type { NoteOverviewLite } from "@/lib/notes/queries";
 import { forgetPin, notePinKey } from "@/lib/tags/preferences";
-import { ALL_NOTES_HREF, noteHref, UNTAGGED_HREF } from "@/lib/tags/routes";
+import {
+  ALL_NOTES_HREF,
+  noteHref,
+  TAGS_HREF,
+  UNTAGGED_HREF,
+} from "@/lib/tags/routes";
 import { washLights, washVars } from "@/lib/ui/wash";
 import { ContentBody } from "@/components/shell/ContentBody";
 import { TagDeleteDialog } from "@/components/tags/TagDeleteDialog";
@@ -183,10 +188,10 @@ export function IndexView({ notes, tag, heading }: Props) {
                 className="-ml-1.5 flex min-w-0 flex-1 items-center text-ui"
               >
                 <Link
-                  href={ALL_NOTES_HREF}
+                  href={tag ? TAGS_HREF : ALL_NOTES_HREF}
                   className="tag-pill tag-pill-ink shrink-0 whitespace-nowrap rounded-full px-1.5 py-1 text-ink-muted"
                 >
-                  All notes
+                  {tag ? "All tags" : "All notes"}
                 </Link>
                 {(tag ?? heading) && (
                   <>
@@ -219,7 +224,7 @@ export function IndexView({ notes, tag, heading }: Props) {
               each its own target. */}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-3 pt-2">
             <h1
-              className={`flex min-w-0 flex-1 items-center gap-1 font-display text-[28px] max-[999px]:text-[32px] ${tag ? "max-[999px]:basis-full" : ""} font-medium leading-tight text-ink`}
+              className={`flex min-w-0 flex-1 items-center gap-1 font-display text-[28px] max-[999px]:text-[26px] ${tag ? "max-[999px]:basis-full" : ""} font-medium leading-tight text-ink`}
             >
               {tag ? (
                 <>
@@ -387,7 +392,7 @@ export function IndexView({ notes, tag, heading }: Props) {
                           data-row={index}
                           // has() lifts the row above its siblings while its
                           // dialog is open.
-                          className="group/row relative mb-[var(--space-row)] max-[999px]:mb-4 last:mb-0 has-[[role=dialog]]:z-10"
+                          className="group/row relative mb-[var(--space-row)] max-[999px]:mb-5 last:mb-0 has-[[role=dialog]]:z-10"
                         >
                           <Link
                             // Carries this list's tag, so the note opens under it.
@@ -406,7 +411,7 @@ export function IndexView({ notes, tag, heading }: Props) {
                             }`}
                           >
                             <span className="flex items-baseline gap-4">
-                              <span className="min-w-0 flex-1 truncate font-display text-base max-[999px]:text-xl font-medium text-ink group-has-[[data-row-delete-trigger]:hover]/row:text-danger group-has-[[data-row-delete-trigger]:hover]/row:line-through">
+                              <span className="min-w-0 flex-1 truncate font-display text-base max-[999px]:text-[19px] font-medium text-ink group-has-[[data-row-delete-trigger]:hover]/row:text-danger group-has-[[data-row-delete-trigger]:hover]/row:line-through">
                                 {note.title || "Untitled"}
                               </span>
                               <RelativeDate
