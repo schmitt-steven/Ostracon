@@ -25,6 +25,8 @@ type ConflictInfo = { version: number; contentMd: string; updatedAt: Date };
 type UseAutosaveArgs = {
   initialNoteId: string | null;
   initialVersion: number;
+  /** Sent with the create only; a note's day is fixed once it exists. */
+  journalEntryDate?: string;
   onCreated: (result: { id: string; slug: string }) => void;
 };
 
@@ -41,6 +43,7 @@ const lastWritten = new Map<string, number>();
 export function useAutosave({
   initialNoteId,
   initialVersion,
+  journalEntryDate,
   onCreated,
 }: UseAutosaveArgs) {
   const noteIdRef = useRef(initialNoteId);
@@ -94,12 +97,19 @@ export function useAutosave({
       const payload = draftRef.current;
       try {
         if (!noteIdRef.current) {
-          creatingRef.current ??= createNote(payload);
+          creatingRef.current ??= createNote({ ...payload, journalEntryDate });
           const created = await creatingRef.current;
           noteIdRef.current = created.id;
           versionRef.current = created.version;
-          lastWritten.set(created.id, created.version);
-          void idbDel(draftKey(null));
+          if (created.existed) {
+            // Send the draft again as an update — it surfaces the conflict now
+            // rather than on the next keystroke, or never if the tab closes.
+            dirtyRef.current = true;
+            pendingFlushRef.current = true;
+          } else {
+            lastWritten.set(created.id, created.version);
+            void idbDel(draftKey(null));
+          }
           if (!unmountedRef.current) {
             onCreatedRef.current({ id: created.id, slug: created.slug });
             swappedUrlRef.current = true;
@@ -141,7 +151,7 @@ export function useAutosave({
       if (!pendingFlushRef.current) return;
       pendingFlushRef.current = false;
     }
-  }, []);
+  }, [journalEntryDate]);
 
   const scheduleSave = useCallback(
     (draft: NoteDraft) => {

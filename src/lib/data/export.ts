@@ -35,6 +35,7 @@ type ExportedNote = {
   title: string;
   contentMd: string;
   pinnedAt: Date | null;
+  journalEntryDate: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -61,6 +62,7 @@ async function loadNotes(): Promise<ExportedNote[]> {
       title: notes.title,
       contentMd: notes.contentMd,
       pinnedAt: notes.pinnedAt,
+      journalEntryDate: notes.journalEntryDate,
       createdAt: notes.createdAt,
       updatedAt: notes.updatedAt,
     })
@@ -90,7 +92,7 @@ function imageEntries(rows: ExportedNote[]): Map<string, string> {
   return entryByUrl;
 }
 
-/** The file a note becomes: its own frontmatter, enriched, over its own body. */
+/** The file a note becomes */
 function noteFile(row: ExportedNote, entryByUrl: Map<string, string>): string {
   const { data, body } = parseContentMd(row.contentMd);
   return stringifyExportMd(
@@ -101,6 +103,7 @@ function noteFile(row: ExportedNote, entryByUrl: Map<string, string>): string {
       created: row.createdAt.toISOString(),
       updated: row.updatedAt.toISOString(),
       ...(row.pinnedAt ? { pinned: row.pinnedAt.toISOString() } : {}),
+      ...(row.journalEntryDate ? { journalEntryDate: row.journalEntryDate } : {}),
     },
     toRelativeImages(body, entryByUrl),
   );

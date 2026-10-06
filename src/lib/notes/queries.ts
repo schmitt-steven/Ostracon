@@ -12,14 +12,15 @@ import {
 } from "@/lib/tags/parse";
 import { parseContentMd } from "./frontmatter";
 import { textLength } from "./text-length";
+import { DayKey } from "./daily";
 
 export type NoteOverview = {
   id: string;
   slug: string;
   title: string;
   /**
-   * Read from the note's frontmatter, not the `tags` column — the column is a
-   * derived index for GIN, rewritten on save (see notes/actions). Deriving
+   * Read from the note's frontmatter, not the `tags` column. The column is a
+   * derived index for GIN, rewritten on save (see notes/actions). Deriving 
    * here also handles pre-tag-bar notes (see [resolveNoteTags]).
    */
   tags: string[];
@@ -203,4 +204,12 @@ export async function getBacklinks(noteId: string): Promise<Backlink[]> {
     .innerJoin(notes, eq(links.fromId, notes.id))
     .where(eq(links.toId, noteId))
     .orderBy(notes.title);
+}
+
+export async function getDailyNoteSlug(dateKey: DayKey): Promise<string | undefined> {
+  const [row] = await db.select({slug: notes.slug})
+    .from(notes)
+    .where(eq(notes.journalEntryDate, dateKey))
+    .limit(1);
+  return row?.slug;
 }

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  date,
   index,
   integer,
   jsonb,
@@ -22,12 +23,7 @@ export const notes = pgTable(
       .notNull()
       .default(sql`'{}'::text[]`),
     version: integer("version").notNull().default(1),
-    /**
-     * When the note was pinned to the sidebar; null means it isn't. A
-     * timestamp, not a boolean, so the pinned section keeps its order across a
-     * reload. A column because the sidebar needs the title and that only lives
-     * here.
-     */
+    journalEntryDate: date("journal_entry_date", { mode: "string"}),
     pinnedAt: timestamp("pinned_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -39,6 +35,7 @@ export const notes = pgTable(
   (t) => [
     uniqueIndex("notes_slug_idx").on(t.slug),
     index("notes_tags_gin_idx").using("gin", t.tags),
+    uniqueIndex("notes_journal_entry_date_idx").on(t.journalEntryDate),
     index("notes_updated_at_idx").on(t.updatedAt),
     index("notes_pinned_at_idx").on(t.pinnedAt),
   ],

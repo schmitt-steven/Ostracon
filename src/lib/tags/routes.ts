@@ -3,14 +3,16 @@
  * nested tag's slashes must survive encoding, so each segment is encoded alone.
  */
 
+import type { DayKey } from "@/lib/notes/daily";
 import { isValidTag, normalizeTag, tagMatches } from "./parse";
 
 export const ALL_NOTES_HREF = "/";
 export const UNTAGGED_HREF = "/untagged";
 /** The tag directory — every tag at once, which the sidebar no longer lists. */
 export const TAGS_HREF = "/tags";
+export const DAILY_NOTE_HREF = "/daily-note";
 
-/** `infra/ci` → `/t/infra/ci`. */
+/** `infra/ci` -> `/t/infra/ci`. */
 export function tagHref(name: string): string {
   return `/t/${name.split("/").map(encodeURIComponent).join("/")}`;
 }
@@ -28,6 +30,11 @@ const FROM_PARAM = "from";
 export function noteHref(slug: string, from?: string | null): string {
   const path = `/notes/${encodeURIComponent(slug)}`;
   return from ? `${path}?${FROM_PARAM}=${encodeURIComponent(from)}` : path;
+}
+
+/** 2026-10-04 -> /daily-note/2026-10-04 */
+export function dailyNoteHref(day: DayKey): string {
+  return `/daily-note/${day}`;
 }
 
 /**

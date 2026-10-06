@@ -84,6 +84,7 @@ type Props = {
   initialBodyMd: string;
   /** The note's tags, as filed. Edited in the tag bar, never in the body. */
   initialTags: string[];
+  journalEntryDate?: string;
   /** The index this note was opened from, off the query string; validated in
    * [resolveContextTag]. Absent when there's no index behind it. */
   openedFrom?: string;
@@ -125,6 +126,7 @@ export function NoteEditor({
   defaultTitle,
   initialBodyMd,
   initialTags,
+  journalEntryDate,
   openedFrom,
   initialPreviewHtml = "",
   pinned,
@@ -293,6 +295,7 @@ export function NoteEditor({
   const { status, conflict, scheduleSave, flush, keepMine } = useAutosave({
     initialNoteId: noteId,
     initialVersion: version,
+    journalEntryDate,
     onCreated: (result) => {
       setSavedId(result.id);
       // history.replaceState, not router.replace: /notes/new and
@@ -376,13 +379,13 @@ export function NoteEditor({
     if (seededRef.current) return;
     seededRef.current = true;
     if (noteId !== null) return;
-    if (!initialTitle) return;
+    if (!initialTitle || journalEntryDate) return;
     scheduleSave({
       title: initialTitle,
       bodyMd: initialBodyMd,
       tags: initialTags,
     });
-  }, [initialBodyMd, initialTags, initialTitle, noteId, scheduleSave]);
+  }, [initialBodyMd, initialTags, initialTitle, noteId, journalEntryDate, scheduleSave]);
 
   // display:none leaves CodeMirror with stale measurements — re-measure rather
   // than tear the view (and its undo history) down on every mode switch.

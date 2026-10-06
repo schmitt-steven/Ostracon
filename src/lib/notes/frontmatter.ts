@@ -1,5 +1,6 @@
 import "server-only";
 import matter from "gray-matter";
+import { DayKey, parseDayKey } from "./daily";
 
 /** What a note's frontmatter carries. `tags` is the note's own tag record. */
 export type Frontmatter = { title: string; tags: string[] };
@@ -46,6 +47,7 @@ export type ExportFrontmatter = {
   created: string;
   updated: string;
   pinned?: string;
+  journalEntryDate?: string;
 };
 
 export function stringifyExportMd(
@@ -66,6 +68,7 @@ export type ArchiveFrontmatter = {
   created: Date | null;
   updated: Date | null;
   pinned: Date | null;
+  journalEntryDate: DayKey | null;
 };
 
 const EMPTY_ARCHIVE_FRONTMATTER: ArchiveFrontmatter = {
@@ -75,6 +78,7 @@ const EMPTY_ARCHIVE_FRONTMATTER: ArchiveFrontmatter = {
   created: null,
   updated: null,
   pinned: null,
+  journalEntryDate: null,
 };
 
 /**
@@ -95,9 +99,9 @@ function readDate(value: unknown, now: Date): Date | null {
 }
 
 /**
- * The six fields an archived note may declare, validated down to scalars;
+ * The fields an archived note can declare, validated down to scalars;
  * everything else is discarded. Returns all nulls when there's no frontmatter,
- * it's too large, or the YAML doesn't parse — all "read this as prose".
+ * it's too large, or the YAML doesn't parse.
  */
 export function readArchiveFrontmatter(
   text: string,
@@ -114,7 +118,7 @@ export function readArchiveFrontmatter(
 
   let parsed: matter.GrayMatterFile<string>;
   try {
-    // Pin the engine to YAML — a `---toml` fence throws, same as malformed YAML.
+    // Pin the engine to YAML: a `---toml` fence throws, same as malformed YAML.
     parsed = matter(text, { language: "yaml" });
   } catch {
     return { data: EMPTY_ARCHIVE_FRONTMATTER, body: text };
@@ -131,7 +135,19 @@ export function readArchiveFrontmatter(
       created: readDate(raw.created, now),
       updated: readDate(raw.updated, now),
       pinned: readDate(raw.pinned, now),
+      journalEntryDate: readDay(raw.journalEntryDate),
     },
     body: parsed.content,
   };
+}
+
+/** A `YYYY-MM-DD` day from a file, or null — whether YAML left it a string or
+ * resolved it to a Date. */
+function readDay(value: unknown): DayKey | null {
+  if (typeof value === "string") return parseDayKey(value);
+  // YAML reads a bare date as UTC midnight, so the UTC day is the written one.
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10) as DayKey;
+  }
+  return null;
 }

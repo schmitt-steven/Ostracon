@@ -46,6 +46,7 @@ import {
 import { normalizeTag, tagMatches } from "@/lib/tags/parse";
 import {
   ALL_NOTES_HREF,
+  DAILY_NOTE_HREF,
   noteHref,
   tagHref,
   TAGS_HREF,
@@ -359,6 +360,19 @@ export function SearchMenu({ tags, recentNotes, open, onOpenChange }: Props) {
       });
     }
 
+    if (
+      !needle ||
+      commandMatches("Go to daily note", "today daily journal diary", needle)
+    ) {
+      list.push({
+        id: "daily-note",
+        label: "Go to daily note",
+        detail: "Go to today's daily note",
+        icon: "run",
+        run: () => router.push(DAILY_NOTE_HREF),
+      });
+    }
+
     if (!needle) {
       list.push({
         id: "all-notes",
@@ -369,7 +383,6 @@ export function SearchMenu({ tags, recentNotes, open, onOpenChange }: Props) {
       });
     }
 
-    // The only way to browse tags now that the sidebar lists none.
     if (
       !needle ||
       commandMatches("Go to all tags", "directory index", needle)

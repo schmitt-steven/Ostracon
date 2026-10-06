@@ -16,6 +16,7 @@ import {
   scanTags,
   tagMatches,
 } from "@/lib/tags/parse";
+import { dailyNoteTitle, parseDayKey } from "./daily";
 import { defaultNoteTitle } from "./default-title";
 import { parseContentMd, stringifyContentMd } from "./frontmatter";
 import { MAX_PINNED_NOTES } from "./pins";
@@ -38,8 +39,7 @@ function tagsFor(tags: string[]): string[] {
 }
 
 /**
- * The note before an update overwrites it — `createdAt` anchors the day title,
- * the rest is the previous state for [shellChanged] to diff.
+ * The note before an update overwrites it
  */
 async function currentNote(id: string) {
   const [row] = await db
@@ -48,6 +48,7 @@ async function currentNote(id: string) {
       title: notes.title,
       tags: notes.tags,
       contentMd: notes.contentMd,
+      journalEntryDate: notes.journalEntryDate,
     })
     .from(notes)
     .where(eq(notes.id, id))
@@ -81,20 +82,53 @@ function shellChanged(
   );
 }
 
-export type CreateNoteResult = { id: string; slug: string; version: number };
+// Create only: a note's day is fixed once it exists.
+const CreateNoteInput = NoteInput.extend({
+  journalEntryDate: z
+    .string()
+    .transform((value, ctx) => {
+      const day = parseDayKey(value);
+      if (!day) {
+        ctx.addIssue({ code: "custom", message: "Not a YYYY-MM-DD date" });
+        return z.NEVER;
+      }
+      return day;
+    })
+    .optional(),
+});
+
+export type CreateNoteResult = {
+  id: string;
+  slug: string;
+  version: number;
+  /** Another tab filed this journal day first; this draft wasn't written. */
+  existed?: boolean;
+};
 
 export async function createNote(input: unknown): Promise<CreateNoteResult> {
   await requireAuth();
-  const { title, bodyMd, tags: submitted } = NoteInput.parse(input);
+  const { title, bodyMd, tags: submitted, journalEntryDate } = CreateNoteInput.parse(input);
   const tags = tagsFor(submitted);
-  const finalTitle = title.trim() ? title : defaultNoteTitle(new Date());
+  const defaultTitle = journalEntryDate ? dailyNoteTitle(journalEntryDate) : defaultNoteTitle(new Date());
+  const finalTitle = title.trim() ? title : defaultTitle;
   const slug = await uniqueSlugFor(finalTitle);
   const contentMd = stringifyContentMd({ title: finalTitle, tags }, bodyMd);
 
   const [row] = await db
     .insert(notes)
-    .values({ slug, title: finalTitle, tags, contentMd })
+    .values({ slug, title: finalTitle, tags, contentMd, journalEntryDate })
+    .onConflictDoNothing({ target: notes.journalEntryDate })
     .returning({ id: notes.id, slug: notes.slug, version: notes.version });
+  if (!row && journalEntryDate) {
+    const [existing] = await db
+      .select({ id: notes.id, slug: notes.slug })
+      .from(notes)
+      .where(eq(notes.journalEntryDate, journalEntryDate))
+      .limit(1);
+    // Version 0 matches no row, so this tab's next save conflicts instead of
+    // overwriting the other tab's entry.
+    if (existing) return { ...existing, version: 0, existed: true };
+  }
   if (!row) throw new Error("Failed to create note");
 
   const affectedSlugs = await syncLinksForNote(row.id, bodyMd);
@@ -103,7 +137,7 @@ export async function createNote(input: unknown): Promise<CreateNoteResult> {
   return row;
 }
 
-const UpdateInput = NoteInput.extend({
+const UpdateNoteInput = NoteInput.extend({
   id: z.uuid(),
   expectedVersion: z.number().int(),
   /**
@@ -135,14 +169,16 @@ export async function updateNote(input: unknown): Promise<UpdateNoteResult> {
     tags: submitted,
     expectedVersion,
     canRefreshShell,
-  } = UpdateInput.parse(input);
+  } = UpdateNoteInput.parse(input);
   const tags = tagsFor(submitted);
   const before = await currentNote(id);
   // Clearing the title lands back on the day title. A missing row (deleted
   // mid-edit) makes the update below a no-op, so any title will do.
   const finalTitle = title.trim()
     ? title
-    : defaultNoteTitle(before?.createdAt ?? new Date());
+    : before?.journalEntryDate
+      ? dailyNoteTitle(parseDayKey(before.journalEntryDate)!)
+      : defaultNoteTitle(before?.createdAt ?? new Date())
   const contentMd = stringifyContentMd({ title: finalTitle, tags }, bodyMd);
 
   // Slug is fixed at creation, never re-derived — URLs survive renames.
@@ -214,7 +250,7 @@ export async function deleteNote(input: unknown): Promise<void> {
 const PinInput = z.object({
   id: z.uuid(),
   pinned: z.boolean(),
-  /** As in [UpdateInput] — a swapped-URL editor must not be refreshed out. */
+  /** As in [UpdateNoteInput] — a swapped-URL editor must not be refreshed out. */
   canRefreshShell: z.boolean().default(true),
 });
 

@@ -12,6 +12,7 @@ import {
 import { isMarkdownFile, titleFromFilename } from "./import-files";
 import { MAX_PINNED_NOTES } from "./pins";
 import { claimSlug, takenSlugs } from "./slug";
+import { type DayKey } from "./daily";
 
 /**
  * Files → rows, the half both import paths share. The one difference is
@@ -56,6 +57,7 @@ function readFile(
         created: null,
         updated: null,
         pinned: null,
+        journalEntryDate: null,
       },
       body: file.text,
     };
@@ -75,13 +77,21 @@ async function pinBudget(): Promise<number> {
   return Math.max(0, MAX_PINNED_NOTES - (row?.pinned ?? 0));
 }
 
+async function takenJournalDays(): Promise<Set<string>> {
+  const rows = await db
+    .select({ journalEntryDate: notes.journalEntryDate })
+    .from(notes)
+    .where(isNotNull(notes.journalEntryDate));
+  return new Set(rows.map((row) => row.journalEntryDate!));
+}
+
 export async function insertImportedNotes(
   files: ImportedFile[],
 ): Promise<InsertedNote[]> {
   if (files.length === 0) return [];
 
   const now = new Date();
-  const [taken, budget] = await Promise.all([takenSlugs(), pinBudget()]);
+  const [taken, budget, takenDays] = await Promise.all([takenSlugs(), pinBudget(), takenJournalDays()]);
   let pinsLeft = budget;
 
   const rows = files.map((file) => {
@@ -105,6 +115,12 @@ export async function insertImportedNotes(
       pinsLeft -= 1;
     }
 
+    let journalEntryDate: DayKey | null = null;
+    if (trusted && data.journalEntryDate && !takenDays.has(data.journalEntryDate)) {
+      journalEntryDate = data.journalEntryDate;
+      takenDays.add(journalEntryDate);
+    }
+
     return {
       slug,
       title,
@@ -112,6 +128,7 @@ export async function insertImportedNotes(
       contentMd: stringifyContentMd({ title, tags }, body),
       body,
       pinnedAt,
+      journalEntryDate,
       createdAt: created,
       updatedAt: trusted ? (data.updated ?? created) : now,
     };
@@ -124,6 +141,7 @@ export async function insertImportedNotes(
     tags: row.tags,
     contentMd: row.contentMd,
     pinnedAt: row.pinnedAt,
+    journalEntryDate: row.journalEntryDate,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }));

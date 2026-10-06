@@ -18,7 +18,7 @@ export default async function NotePage({
 }: PageProps<"/notes/[slug]">) {
   await requireAuth();
   const { slug } = await params;
-  // Which index this was opened from — passed raw, resolved in the editor
+  // Which index this was opened from, passed raw, resolved in the editor
   // (see [resolveContextTag]), since the tags are editable on this screen.
   const { from } = await searchParams;
   const note = await getNoteBySlug(slug);
@@ -30,7 +30,7 @@ export default async function NotePage({
     // For the preview's first paint.
     renderNoteHtml(body, tags),
     getBacklinks(note.id),
-    // Every tag in the collection — the bar suggests from it.
+    // Every tag in the collection
     listNotesOverview(),
   ]);
 
@@ -39,7 +39,7 @@ export default async function NotePage({
       noteId={note.id}
       version={note.version}
       initialTitle={note.title}
-      // The note's own day — emptying the title restores the day it was started.
+      // The note's own day, emptying the title restores the day it was started.
       defaultTitle={defaultNoteTitle(note.createdAt)}
       initialBodyMd={body}
       initialTags={tags}

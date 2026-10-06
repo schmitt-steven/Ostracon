@@ -25,6 +25,7 @@ import {
   tagPinKey,
 } from "@/lib/tags/preferences";
 import {
+  CalendarIcon,
   GearIcon,
   ImagesIcon,
   NotesIcon,
@@ -89,6 +90,34 @@ type Props = {
  * ⌘K took over searching. Sections are separated by --space-group alone.
  * Folded, it's the same column with the lists removed.
  */
+/** An icon link in the folded strip, lit like a [SidebarRow] when it's the
+ * current page. */
+function StripLink({
+  href,
+  label,
+  selected,
+  children,
+}: {
+  href: string;
+  label: string;
+  selected: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      title={label}
+      aria-current={selected ? "page" : undefined}
+      className={`row-tint flex tap items-center justify-center rounded-[var(--radius-control)] hover:text-ink ${
+        selected ? "row-selected text-ink" : "text-ink-muted"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
 export function Sidebar({
   data,
   onNavigate,
@@ -194,11 +223,9 @@ export function Sidebar({
     return { x: event.clientX, y: event.clientY };
   }
 
-  // Folded: the same px-3 py-4 column with the named rows (views, pins)
-  // dropped — search + New note at top, settings + log out at the foot.
   if (collapsed && onToggleCollapsed) {
     return (
-      <div className="flex h-full flex-col items-start gap-[var(--space-item)] px-3 py-4">
+      <div className="flex h-full flex-col items-start gap-3 px-3 py-4 [--icon:18px]">
         <FoldButton collapsed onClick={onToggleCollapsed} />
         <button
           type="button"
@@ -214,27 +241,52 @@ export function Sidebar({
         >
           <SearchIcon aria-hidden className="icon shrink-0" />
         </button>
-        <Link
+        <StripLink
           href="/notes/new"
-          aria-label="New note"
-          className="row-tint flex tap items-center justify-center rounded-[var(--radius-control)] text-ink-muted hover:text-ink"
+          label="New note"
+          selected={pathname === "/notes/new"}
         >
           <PlusIcon aria-hidden className="icon shrink-0" />
-        </Link>
+        </StripLink>
+        <StripLink
+          href="/daily-note"
+          label="Daily note"
+          selected={pathname.startsWith("/daily-note")}
+        >
+          <CalendarIcon aria-hidden className="icon shrink-0" />
+        </StripLink>
 
-        <div className="mt-auto flex flex-col items-start gap-[var(--space-item)]">
+        <StripLink
+          href="/"
+          label="All notes"
+          selected={pathname === "/"}
+        >
+          <NotesIcon aria-hidden className="icon shrink-0" />
+        </StripLink>
+        <StripLink
+          href="/tags"
+          label="All tags"
+          selected={pathname === "/tags"}
+        >
+          <TagIcon aria-hidden className="icon shrink-0" />
+        </StripLink>
+        <StripLink
+          href="/images"
+          label="Images"
+          selected={pathname === "/images"}
+        >
+          <ImagesIcon aria-hidden className="icon shrink-0" />
+        </StripLink>
+
+        <div className="mt-auto flex flex-col items-start gap-3">
           <UpdateRow compact />
-          <Link
+          <StripLink
             href="/settings"
-            aria-label="Settings"
-            title="Settings"
-            aria-current={pathname === "/settings" ? "page" : undefined}
-            className={`row-tint flex tap items-center justify-center rounded-[var(--radius-control)] hover:text-ink ${
-              pathname === "/settings" ? "text-ink" : "text-ink-muted"
-            }`}
+            label="Settings"
+            selected={pathname === "/settings"}
           >
             <GearIcon aria-hidden className="icon shrink-0" />
-          </Link>
+          </StripLink>
           <LogOutButton compact />
         </div>
       </div>
@@ -243,7 +295,7 @@ export function Sidebar({
 
   return (
     <div
-      className="flex h-full flex-col overflow-y-auto px-3 py-4 max-[999px]:pt-6 max-[999px]:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+      className="flex h-full flex-col overflow-y-auto px-3 py-4 max-[999px]:pt-[calc(env(safe-area-inset-top)+1.5rem)]max-[999px]:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
       // Before the menu's own outside-press closes it.
       onPointerDownCapture={() => {
         menuWasOpenRef.current = menu !== null;
@@ -295,6 +347,12 @@ export function Sidebar({
           label="New note"
           selected={pathname === "/notes/new"}
           icon={<PlusIcon className="icon shrink-0" />}
+        />
+        <SidebarRow
+          href="/daily-note"
+          label="Daily note"
+          selected={pathname.startsWith("/daily-note")}
+          icon={<CalendarIcon className="icon shrink-0" />}
         />
         <SidebarRow
           href={ALL_NOTES_HREF}

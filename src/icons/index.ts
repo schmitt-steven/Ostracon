@@ -14,6 +14,7 @@ export { default as EditIcon } from "./edit.svg";
 export { default as PlusIcon } from "./plus.svg";
 export { default as NotesIcon } from "./notes.svg";
 export { default as TagIcon } from "./tag.svg";
+export { default as CalendarIcon } from "./calendar.svg";
 export { default as ImagesIcon } from "./images.svg";
 export { default as GearIcon } from "./gear.svg";
 /** Arrow onto a line — the update row. Not a tray: at 14px the box reads as noise. */
