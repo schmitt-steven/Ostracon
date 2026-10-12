@@ -1,6 +1,6 @@
 import { NoteEditor } from "@/components/editor/NoteEditor";
 import { requireAuth } from "@/lib/auth/require-auth";
-import { DAILY_TAG, dailyNoteTitle, parseDayKey, todayKey } from "@/lib/notes/daily";
+import { DAILY_TAG, dailyNoteTitle, parseDayKey } from "@/lib/notes/daily";
 import { getDailyNoteSlug, listNotesOverview } from "@/lib/notes/queries";
 import { noteHref } from "@/lib/tags/routes";
 import { buildTagTree, flattenTree } from "@/lib/tags/tree";

@@ -1,0 +1,146 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: 24.x
+
+jobs:
+  check-code:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Schema matches migrations
+        run: |
+          npx drizzle-kit generate --name ci_check
+          if [ -n "$(git status --porcelain drizzle)" ]; then
+            echo "::error::schema.ts changed without a committed migration"
+            git status --porcelain drizzle
+            exit 1
+          fi
+
+      - name: Run lint
+        run: npm run lint -- --max-warnings 0
+
+      - name: Check types
+        run: |
+          npx next typegen
+          npx tsc --noEmit
+
+      #- name: Run unit tests
+      #  run: npm test
+
+      - name: Migrations apply to a fresh database
+        run: |
+          npm install --no-save pg
+          npx drizzle-kit migrate
+
+      - name: Build app
+        run: npx next build
+
+  upgrade-path:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: |
+          npm ci
+          npm install --no-save pg
+
+      # From HEAD so a release commit is compared to previous release
+      - name: Find last release
+        id: release
+        run: echo "tag=$(git describe --tags --abbrev=0 --match 'v*' HEAD^ 2>/dev/null)" >> "$GITHUB_OUTPUT"
+
+      - name: No release to upgrade from
+        if: steps.release.outputs.tag == ''
+        run: echo "::notice::No earlier release tag, skipping the upgrade test"
+
+      - name: Set up the database of ${{ steps.release.outputs.tag }}
+        if: steps.release.outputs.tag != ''
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          rm -rf drizzle
+          git checkout "$TAG" -- drizzle
+          npx drizzle-kit migrate
+
+      - name: Add user data
+        if: steps.release.outputs.tag != ''
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f .github/ci/seed.sql
+
+      - name: Upgrade to this commit
+        if: steps.release.outputs.tag != ''
+        run: |
+          git checkout HEAD -- drizzle
+          npx drizzle-kit migrate
+
+      - name: User data survived
+        if: steps.release.outputs.tag != ''
+        run: |
+          notes=$(psql "$DATABASE_URL" -tA -c "SELECT count(*) FROM notes")
+          if [ "$notes" != "3" ]; then
+            echo "::error::Expected 3 notes after upgrading, but found $notes"
+            exit 1
+          fi
+
