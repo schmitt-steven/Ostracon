@@ -1,6 +1,6 @@
-// The AI provider the user picked, in a `useSyncExternalStore` store (like
-// [tag preferences]) so it survives navigation between notes. sessionStorage,
-// not local — it's a property of the current session, not a durable preference.
+// The AI provider last picked in the menu, in a `useSyncExternalStore` store
+// (like [tag preferences]) so it survives navigation between notes. Local
+// storage, so the last one used is the one the menu opens on next time.
 
 const STORAGE_KEY = "skb:ai-provider";
 
@@ -11,7 +11,7 @@ const listeners = new Set<() => void>();
 
 function read(): string | null {
   try {
-    return sessionStorage.getItem(STORAGE_KEY);
+    return localStorage.getItem(STORAGE_KEY);
   } catch {
     // Storage blocked (Safari private mode).
     return null;
@@ -43,7 +43,7 @@ export function setProviderChoice(id: string): void {
   loaded = true;
   snapshot = id;
   try {
-    sessionStorage.setItem(STORAGE_KEY, id);
+    localStorage.setItem(STORAGE_KEY, id);
   } catch {
     // In-memory snapshot still carries it across navigations in this tab.
   }

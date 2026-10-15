@@ -55,7 +55,10 @@ export function ModelPicker({
         className="row-tint row-selected flex h-8 max-[999px]:h-10 max-w-[min(280px,60%)] items-center gap-1.5 rounded-[var(--radius-control)] px-3 text-ui text-ink disabled:opacity-50"
       >
         <span className="truncate font-mono">{value}</span>
-        <ChevronDownIcon aria-hidden className="icon-sm shrink-0 text-ink-faint" />
+        <ChevronDownIcon
+          aria-hidden
+          className="icon-sm shrink-0 text-ink-faint"
+        />
       </button>
 
       {anchor && (
@@ -67,26 +70,30 @@ export function ModelPicker({
           ignoreRef={trigger}
           onClose={() => setAnchor(null)}
         >
-          <div className="max-h-[min(50vh,320px)] overflow-y-auto">
-            {models.map((model) => (
-              <button
-                key={model}
-                type="button"
-                role="menuitemradio"
-                aria-checked={model === value}
-                // Menu opens focused on the current model — see [ContextMenu].
-                data-autofocus={model === value ? "" : undefined}
-                onClick={() => {
-                  setAnchor(null);
-                  onChange(model);
-                }}
-                className={`${menuItem} font-mono break-all ${
-                  model === value ? "text-ink" : ""
-                }`}
-              >
-                {model}
-              </button>
-            ))}
+          <div className="max-h-[min(50vh,320px)] overflow-auto">
+            {/* w-max so every row is as wide as the longest id and the box
+                scrolls sideways instead of wrapping. */}
+            <div className="flex w-max min-w-full flex-col">
+              {models.map((model) => (
+                <button
+                  key={model}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={model === value}
+                  // Menu opens focused on the current model — see [ContextMenu].
+                  data-autofocus={model === value ? "" : undefined}
+                  onClick={() => {
+                    setAnchor(null);
+                    onChange(model);
+                  }}
+                  className={`${menuItem} font-mono whitespace-nowrap ${
+                    model === value ? "text-ink" : ""
+                  }`}
+                >
+                  {model}
+                </button>
+              ))}
+            </div>
           </div>
         </ContextMenu>
       )}

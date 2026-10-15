@@ -118,7 +118,7 @@ export function AiMenu({
           <select
             value={provider?.available ? provider.id : (usable[0]?.id ?? "")}
             onChange={(e) => onProviderChange(e.target.value)}
-            className="min-w-0 flex-1 bg-transparent text-xs text-ink-muted outline-none"
+            className="min-w-0 flex-1 bg-transparent text-xs text-ink-muted outline-none focus-visible:outline-none!"
           >
             {usable.map((p) => (
               <option key={p.id} value={p.id}>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAuth } from "@/lib/auth/require-auth";
+import { ensureLmStudioModelLoaded } from "@/lib/ai/lmstudio";
 import {
   describeProvider,
   listProviders,
@@ -76,9 +77,18 @@ export async function POST(request: Request) {
     request.signal,
   );
   let first;
+  let release = () => {};
   try {
+    if (provider.id === "lmstudio") {
+      release = await ensureLmStudioModelLoaded(
+        provider.baseURL,
+        provider.model,
+        request.signal,
+      );
+    }
     first = await tokens.next();
   } catch (error) {
+    release();
     // 502 — this route's gateway hop; the upstream status is in the message.
     return NextResponse.json(
       { error: describeCompletionError(error, provider.label) },
@@ -97,12 +107,14 @@ export async function POST(request: Request) {
       } catch {
         // Mid-stream failure — close cleanly; can't signal a fault after a 200.
       } finally {
+        release();
         controller.close();
       }
     },
     cancel() {
       // The reader went away (Escape) — stop generating.
       void tokens.return(undefined);
+      release();
     },
   });
 

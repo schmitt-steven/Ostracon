@@ -622,6 +622,8 @@ export function CodeMirrorEditor({
 
     const view = new EditorView({
       doc: value,
+      // Caret at the end, where you'd pick the note back up.
+      selection: { anchor: value.length },
       parent: containerRef.current,
       extensions: [
         editorSetup,
@@ -764,7 +766,7 @@ export function CodeMirrorEditor({
     viewRef.current = view;
 
     if (autoFocus) {
-      // Caret is already at 0; just claim focus, no scrollIntoView.
+      // No scrollIntoView — the note still opens at the top; typing scrolls.
       view.focus();
     }
 

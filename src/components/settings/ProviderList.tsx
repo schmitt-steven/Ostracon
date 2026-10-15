@@ -52,12 +52,7 @@ export function ProviderList({ initial }: { initial: ProviderDetail[] }) {
     });
   }
 
-  // What an unpicked request runs on: first available in list order, matching
-  // `resolveProvider`. Only marked when there's more than one to choose from.
-  const ready = providers.filter((provider) => provider.available);
-  const fallback = ready.length > 1 ? ready[0]?.id : undefined;
-
-  // Hosted before local — the order [getProviderConfigs] and fallback use.
+  // Hosted before local — the order [getProviderConfigs] uses.
   const ordered = PROVIDER_KINDS.flatMap((kind) =>
     providers.filter((provider) => provider.kind === kind),
   );
@@ -68,7 +63,6 @@ export function ProviderList({ initial }: { initial: ProviderDetail[] }) {
         <ProviderBlock
           key={provider.id}
           provider={provider}
-          fallback={provider.id === fallback}
           busy={pending}
           failure={
             failure?.providerId === provider.id ? failure.message : undefined
@@ -99,14 +93,11 @@ export function ProviderList({ initial }: { initial: ProviderDetail[] }) {
  */
 function ProviderBlock({
   provider,
-  fallback,
   busy,
   failure,
   onModel,
 }: {
   provider: ProviderDetail;
-  /** True for the one an unpicked request would run on. */
-  fallback: boolean;
   busy: boolean;
   /** What the server refused about *this* provider, if anything. */
   failure?: string;
@@ -128,13 +119,6 @@ function ProviderBlock({
         </p>
 
         <StatusPill provider={provider} />
-
-        {fallback ? (
-          // Not a pill — this is a tie-break, not a state.
-          <span className="shrink-0 text-meta uppercase tracking-wider text-ink-faint">
-            Default
-          </span>
-        ) : null}
       </div>
 
       {provider.model ? (
@@ -207,7 +191,7 @@ function StatusPill({ provider }: { provider: ProviderDetail }) {
   );
 }
 
-/** The shape all three share: 11px, fully rounded, sized to its two words. */
+/** The shape the status pills share: 11px, fully rounded, sized to its two words. */
 function Pill({
   className,
   title,

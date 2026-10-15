@@ -37,7 +37,8 @@ export type SessionRow = {
 
 /**
  * The devices holding a valid cookie, and the control to revoke one. Scrolls
- * sideways rather than reflowing; nothing wraps or ellipsises. The current
+ * sideways rather than reflowing; nothing wraps or ellipsises. On a phone it
+ * is a list instead: name, then place and last activity beneath. The current
  * device is named and can be signed out like any other — [revokeSessionAction]
  * redirects it to /login.
  */
@@ -59,8 +60,8 @@ export function SessionsTable({ rows }: { rows: SessionRow[] }) {
       <div className="overflow-x-auto">
         {/* w-full to spread when there's room, nowrap so past that the box
             above scrolls. */}
-        <table className="w-full text-ui">
-          <thead>
+        <table className="w-full text-ui max-sm:block">
+          <thead className="max-sm:hidden">
             {/* The only rule in the table — columns from contents. */}
             <tr className="border-b border-line">
               <Column>Device</Column>
@@ -73,14 +74,14 @@ export function SessionsTable({ rows }: { rows: SessionRow[] }) {
               </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="max-sm:block">
             {rows.map((row) => (
-              <tr key={row.id}>
-                <Cell className="text-ink">
+              <tr key={row.id} className="max-sm:flex max-sm:items-center">
+                <Cell className="text-ink max-sm:min-w-0 max-sm:flex-1">
                   {/* Flex so the glyph centres against the name, not its baseline. */}
                   <span className="grid grid-cols-[auto_1fr] items-center gap-x-2">
                     <DeviceMark kind={row.kind} />
-                    <span className="col-start-2">
+                    <span className="col-start-2 max-sm:truncate">
                       {row.device ?? <Unknown label="Unknown device" />}
                     </span>
                     {row.current && (
@@ -88,24 +89,36 @@ export function SessionsTable({ rows }: { rows: SessionRow[] }) {
                         This device
                       </span>
                     )}
+                    {/* The hidden columns, folded in for a phone. */}
+                    <span className="col-start-2 truncate text-meta text-ink-faint sm:hidden">
+                      {row.location ?? <Address ip={row.ip} />}
+                    </span>
+                    <RelativeDate
+                      date={row.lastSeenAt}
+                      long
+                      className="col-start-2 truncate text-meta text-ink-faint sm:hidden"
+                    />
                   </span>
                 </Cell>
 
                 {/* IP as the tooltip; promoted into the cell only when there's
                     no location — see [Address]. */}
-                <Cell title={row.location ? (row.ip ?? undefined) : undefined}>
+                <Cell
+                  className="text-ink-muted max-sm:hidden"
+                  title={row.location ? (row.ip ?? undefined) : undefined}
+                >
                   {row.location ?? <Address ip={row.ip} />}
                 </Cell>
 
                 {/* Relative dates, full timestamp in the tooltip — the app's habit. */}
-                <Cell>
+                <Cell className="text-ink-muted max-sm:hidden">
                   <RelativeDate date={row.createdAt} />
                 </Cell>
-                <Cell>
+                <Cell className="text-ink-muted max-sm:hidden">
                   <RelativeDate date={row.lastSeenAt} />
                 </Cell>
 
-                <Cell className="text-right">
+                <Cell className="text-right max-sm:shrink-0 max-sm:pl-3">
                   <SignOutButton row={row} onError={setError} />
                 </Cell>
               </tr>
@@ -329,7 +342,7 @@ function Cell({
   return (
     <td
       title={title}
-      className={`whitespace-nowrap py-1.5 pr-6 align-middle last:pr-0 ${className}`}
+      className={`whitespace-nowrap py-1.5 pr-6 align-middle last:pr-0 max-sm:pr-0 ${className}`}
     >
       {children}
     </td>

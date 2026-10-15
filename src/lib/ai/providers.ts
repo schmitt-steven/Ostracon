@@ -1,4 +1,5 @@
 import "server-only";
+import { listLmStudioModels } from "./lmstudio";
 import { loadAiSettings, type StoredSettings } from "./settings-store";
 import {
   PROVIDER_IDENTITIES,
@@ -64,7 +65,7 @@ function noKeyReason(keyEnv: string): string {
 /**
  * Static config: what each provider would be once stored settings are merged
  * over the environment. For the local two, `available` only means "reachable
- * from this machine" — the probes below settle whether a model is loaded. Not
+ * from this machine" — the probes below settle whether a model is available. Not
  * exported; callers go through `listProviders`/`listProviderDetails`/
  * `resolveProvider`.
  */
@@ -94,8 +95,9 @@ function getProviderConfigs(stored: StoredSettings): Provider[] {
       id: "lmstudio",
       ...PROVIDER_IDENTITIES.lmstudio,
       baseURL: process.env.LMSTUDIO_BASE_URL || "http://localhost:1234/v1",
-      // Empty means "whatever the probe finds loaded"; a stored choice is
-      // honoured only if the server still has it — see `resolveLocal`.
+      // Empty means "whatever the probe finds loaded, else the first
+      // downloaded"; a stored choice is honoured only if the server still has
+      // it — see `resolveLocal`.
       model: stored.get("lmstudio")?.model ?? process.env.LMSTUDIO_MODEL ?? "",
       // Ignored by local servers, but the OpenAI client needs a non-empty string.
       apiKey: "local",
@@ -146,27 +148,6 @@ async function probeJson<T>(
   }
 }
 
-type LmStudioModel = {
-  id: string;
-  /** "llm" and "vlm" can chat; "embeddings" cannot. */
-  type: string;
-  state: "loaded" | "not-loaded";
-};
-
-/**
- * The models LM Studio currently has in memory. Uses LM Studio's own REST API,
- * not the OpenAI `/v1/models` (which lists everything downloaded, loaded or
- * not) — only its response carries a per-model `state`.
- */
-async function loadedLmStudioModels(baseURL: string): Promise<string[] | null> {
-  const url = new URL("/api/v0/models", baseURL).toString();
-  const body = await probeJson<{ data?: LmStudioModel[] }>(url);
-  if (!body?.data) return null;
-  return body.data
-    .filter((m) => m.state === "loaded" && m.type !== "embeddings")
-    .map((m) => m.id);
-}
-
 /**
  * The models Ollama has pulled. No load-state filter — Ollama loads on demand,
  * so anything pulled is usable (the first generation is just slow).
@@ -174,8 +155,9 @@ async function loadedLmStudioModels(baseURL: string): Promise<string[] | null> {
 async function pulledOllamaModels(baseURL: string): Promise<string[] | null> {
   const url = `${baseURL.replace(/\/+$/, "")}/models`;
   const body = await probeJson<{ data?: { id: string }[] }>(url);
-  if (!body?.data) return null;
-  return body.data.map((m) => m.id);
+  if (!body) return null;
+  // Ollama sends `data: null`, not `[]`, when nothing is pulled.
+  return (body.data ?? []).map((m) => m.id);
 }
 
 /**
@@ -333,8 +315,9 @@ const NOT_RUNNING: Record<string, Down> = {
 
 const NOTHING_READY: Record<string, Down> = {
   lmstudio: {
-    unavailableStatus: "No model loaded",
-    unavailableReason: "No model is loaded in LM Studio — load one, then reload.",
+    unavailableStatus: "No models downloaded",
+    unavailableReason:
+      "LM Studio has no models downloaded — download one, then reload.",
   },
   ollama: {
     unavailableStatus: "No models pulled",
@@ -351,13 +334,20 @@ type Resolution = {
 
 /**
  * A local provider, asked what it has. One probe settles both "is it up" and
- * "what's loaded" — no cheap variant, but the answer is on loopback.
+ * "what can it run" — no cheap variant, but the answer is on loopback. Nothing
+ * needs to be in memory: a request loads what it asks for.
  */
 async function resolveLocal(config: Provider): Promise<Resolution> {
-  const models =
-    config.id === "lmstudio"
-      ? await loadedLmStudioModels(config.baseURL)
-      : await pulledOllamaModels(config.baseURL);
+  let models: string[] | null;
+  // What's already in memory answers with no load, so it's the default pick.
+  let inMemory: string | undefined;
+  if (config.id === "lmstudio") {
+    const listed = await listLmStudioModels(config.baseURL);
+    models = listed && listed.map((m) => m.key);
+    inMemory = listed?.find((m) => m.loaded)?.key;
+  } else {
+    models = await pulledOllamaModels(config.baseURL);
+  }
 
   if (models === null) {
     return {
@@ -365,17 +355,17 @@ async function resolveLocal(config: Provider): Promise<Resolution> {
       models: [],
     };
   }
-  const [firstModel] = models;
-  if (!firstModel) {
+  const fallback = inMemory ?? models[0];
+  if (!fallback) {
     return {
       provider: { ...config, available: false, ...NOTHING_READY[config.id] },
       models: [],
     };
   }
-  // A chosen model wins only if the server still has it; otherwise fall back
-  // to what's loaded, silently.
+  // A chosen model wins only if the server still has it; otherwise fall back,
+  // silently.
   const model =
-    config.model && models.includes(config.model) ? config.model : firstModel;
+    config.model && models.includes(config.model) ? config.model : fallback;
   return { provider: { ...config, model }, models: models.sort() };
 }
 

@@ -209,7 +209,7 @@ body {
 .bar-inset {
   --bar-overhang: 120px;
   bottom: calc(-1 * var(--bar-overhang));
-  padding-bottom: calc(max(0.5rem, min(1rem, env(safe-area-inset-bottom))) + var(--bar-overhang));
+  padding-bottom: calc(max(0.5rem, min(1.5rem, env(safe-area-inset-bottom))) + var(--bar-overhang));
   padding-left: max(1rem, env(safe-area-inset-left));
   padding-right: max(1rem, env(safe-area-inset-right));
 }
@@ -366,6 +366,12 @@ html {
 
 ::view-transition {
   pointer-events: none;
+}
+
+/* The editor's view-mode switch. */
+::view-transition-group(root) {
+  animation-duration: 240ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -10,6 +10,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { flushSync } from "react-dom";
 import { ContentBody } from "@/components/shell/ContentBody";
 import { RelativeDate } from "@/components/ui/RelativeDate";
 import { useAiCompletion, type AiRequest } from "@/hooks/use-ai-completion";
@@ -155,6 +156,15 @@ export function NoteEditor({
   // window widened again returns to the chosen mode.
   const mode = compact && chosenMode === "split" ? "write" : chosenMode;
 
+  // Crossfades the layout change
+  function changeMode(next: ViewMode) {
+    if (!document.startViewTransition) {
+      setMode(next);
+      return;
+    }
+    document.startViewTransition(() => flushSync(() => setMode(next)));
+  }
+
   const editorRef = useRef<EditorHandle>(null);
   const previewRef = useRef<PreviewHandle>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
@@ -198,8 +208,8 @@ export function NoteEditor({
     [bodyMd, title],
   );
 
-  // Held in the session store, not component state, so picking a provider once
-  // holds for every note until the tab closes — see [provider-choice].
+  // Held in a store, not component state, so the last provider picked holds
+  // for every note and across visits — see [provider-choice].
   const providerId = useSyncExternalStore(
     subscribeProviderChoice,
     getProviderChoice,
@@ -534,7 +544,7 @@ export function NoteEditor({
                 </span>
               </nav>
               <div className="-mr-3 flex shrink-0 items-center min-[1000px]:mr-0 min-[1000px]:gap-3">
-                <ViewModeToggle mode={mode} onChange={setMode} />
+                <ViewModeToggle mode={mode} onChange={changeMode} />
                 {/* Both only once the note has an id (from the first save). */}
                 {savedId && (
                   <>

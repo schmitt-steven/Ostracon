@@ -53,7 +53,7 @@ async function Sessions() {
 function SessionsSkeleton() {
   return (
     <table aria-hidden className="w-full text-ui">
-      <thead>
+      <thead className="max-sm:hidden">
         <tr className="border-b border-line">
           {["Device", "Location", "Created", "Last active"].map((label) => (
             <th
@@ -71,7 +71,12 @@ function SessionsSkeleton() {
       <tbody>
         <tr>
           {["device", "location", "created", "lastActive"].map((key) => (
-            <td key={key} className="py-1.5 pr-6 text-ink-faint">
+            <td
+              key={key}
+              className={`py-1.5 pr-6 text-ink-faint ${
+                key === "device" ? "" : "max-sm:hidden"
+              }`}
+            >
               —
             </td>
           ))}

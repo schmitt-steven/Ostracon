@@ -24,10 +24,6 @@ function WaitingLine() {
 
   return (
     <p className="flex items-center gap-2.5 text-sm text-ink-muted">
-      <span
-        aria-hidden
-        className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-action"
-      />
       Waiting for the first words…
       <span className="tabular-nums text-ink-faint">{elapsed}s</span>
     </p>

@@ -131,9 +131,10 @@ export async function createNote(input: unknown): Promise<CreateNoteResult> {
   }
   if (!row) throw new Error("Failed to create note");
 
-  const affectedSlugs = await syncLinksForNote(row.id, bodyMd);
-  revalidatePath("/");
-  for (const s of affectedSlugs) revalidatePath(`/notes/${s}`);
+  // No revalidatePath: the caller swaps its URL as this resolves, and the
+  // refresh that follows would remount the editor mid-typing (see
+  // [UpdateNoteInput]'s canRefreshShell). The shell catches up on navigation.
+  await syncLinksForNote(row.id, bodyMd);
   return row;
 }
 

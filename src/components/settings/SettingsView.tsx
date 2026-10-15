@@ -118,7 +118,7 @@ export function SettingsView({
               <nav
                 aria-label="Settings sections"
                 // The sidebar's heading-over-list spacing (--space-item).
-                className="mt-[var(--space-item)]"
+                className="mt-[var(--space-item)] hidden min-[900px]:block"
               >
                 <ul className="flex flex-col gap-[var(--space-item)]">
                   {SETTINGS_SECTIONS.map((section) => {

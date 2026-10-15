@@ -78,7 +78,7 @@ export function DeploymentSection() {
               <RelativeDate
                 date={release.builtAt}
                 long
-                className="text-ink-faint"
+                className="text-ink-faint max-[480px]:hidden"
               />
             </>
           ) : (
@@ -220,8 +220,8 @@ function Fact({
   children: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-6">
-      <dt className="text-ui text-ink-muted">{label}</dt>
+    <div className="flex items-baseline justify-between gap-x-4">
+      <dt className="shrink-0 text-ui text-ink-muted">{label}</dt>
       <dd className="min-w-0 text-right text-ui text-ink">
         <span className="block truncate">{children}</span>
         {hint ? (
