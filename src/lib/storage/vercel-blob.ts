@@ -7,11 +7,12 @@ import type { StoredObject, UploadStorage } from "./types";
  * so the store has to be made as private (see the README) — writing private
  * blobs to a public store fails.
  *
- * Every call passes the token explicitly, so this doesn't depend on the
- * project's OIDC config — @vercel/blob tries OIDC first when
- * VERCEL_OIDC_TOKEN is present (Next.js injects one for locally-linked
+ * A read-write token, when there is one, is passed explicitly, so this
+ * doesn't depend on the project's OIDC config — @vercel/blob tries OIDC first
+ * when VERCEL_OIDC_TOKEN is present (Next.js injects one for locally-linked
  * projects) and that path fails unless OIDC is enabled for "development" in
- * the dashboard.
+ * the dashboard. Without one (a store connected through OIDC, which only
+ * sets BLOB_STORE_ID), the SDK authenticates with OIDC itself.
  */
 function token(): string | undefined {
   return process.env.BLOB_READ_WRITE_TOKEN;
