@@ -1,7 +1,7 @@
 import "server-only";
-import { list } from "@vercel/blob";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
+import { getStorage } from "@/lib/storage";
 import { describeRegion, type Region } from "./regions";
 
 /**
@@ -152,24 +152,9 @@ export type BlobStats = { count: number; sizeBytes: number };
  */
 export async function blobStats(): Promise<Stats<BlobStats>> {
   try {
-    let count = 0;
-    let sizeBytes = 0;
-    let cursor: string | undefined;
-
-    do {
-      const page = await list({
-        cursor,
-        // Explicit token — see the upload route's note on OIDC resolution.
-        token: process.env.BLOB_READ_WRITE_TOKEN,
-      });
-      for (const blob of page.blobs) {
-        count += 1;
-        sizeBytes += blob.size;
-      }
-      cursor = page.hasMore ? page.cursor : undefined;
-    } while (cursor);
-
-    return { ok: true, value: { count, sizeBytes } };
+    const objects = await getStorage().list();
+    const sizeBytes = objects.reduce((sum, object) => sum + object.size, 0);
+    return { ok: true, value: { count: objects.length, sizeBytes } };
   } catch {
     return { ok: false };
   }

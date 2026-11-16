@@ -1,9 +1,9 @@
 import "server-only";
-import { list, type ListBlobResultBlob } from "@vercel/blob";
 import { asc } from "drizzle-orm";
 import { db } from "@/db/client";
 import { notes } from "@/db/schema";
-import { referencedUrls, UPLOAD_PREFIX } from "./references";
+import { getStorage } from "@/lib/storage";
+import { referencedUrls, UPLOAD_PREFIX, uploadUrl } from "./references";
 
 /** `id` is what the gallery matches against note search results. */
 export type ImageOwner = { id: string; slug: string; title: string };
@@ -41,39 +41,26 @@ async function ownersByUrl(): Promise<Map<string, ImageOwner>> {
   return owners;
 }
 
-async function listAllBlobs(): Promise<ListBlobResultBlob[]> {
-  const blobs: ListBlobResultBlob[] = [];
-  let cursor: string | undefined;
-  // list() pages at 1000; the gallery shows everything, so follow the cursor.
-  do {
-    const page = await list({
-      prefix: UPLOAD_PREFIX,
-      cursor,
-      // Explicit token — see the upload route's note on OIDC resolution.
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-    });
-    blobs.push(...page.blobs);
-    cursor = page.hasMore ? page.cursor : undefined;
-  } while (cursor);
-  return blobs;
-}
-
 function displayName(pathname: string): string {
   return pathname.slice(UPLOAD_PREFIX.length).replace(/^\d+-/, "");
 }
 
 export async function listStoredImages(): Promise<StoredImage[]> {
-  const [blobs, owners] = await Promise.all([listAllBlobs(), ownersByUrl()]);
+  const [blobs, owners] = await Promise.all([
+    getStorage().list(UPLOAD_PREFIX),
+    ownersByUrl(),
+  ]);
 
   return blobs
     .flatMap((blob) => {
-      const note = owners.get(blob.url);
+      const url = uploadUrl(blob.pathname);
+      const note = owners.get(url);
       // A blob no note points at is a stray — left out; this is a view of the
       // images in the notes, not of the bucket.
       if (!note) return [];
       return [
         {
-          url: blob.url,
+          url,
           filename: displayName(blob.pathname),
           size: blob.size,
           uploadedAt: blob.uploadedAt.toISOString(),

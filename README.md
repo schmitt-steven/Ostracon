@@ -19,7 +19,7 @@ It runs on Next.js and hosting is free: one Vercel project holds the app, a Neon
 - **Installable**: add it to your home screen or dock and it opens in its own window, with shortcuts and a share target. Open `.md` and `.txt` files directly in Ostracon. If you lose connection mid-work your edits are saved once you're back online.
 - **Full-text search**: instant and client-side over the whole corpus.
 - **Dark mode**: switch from settings or the menu.
-- **Images**: paste or drag-and-drop to upload; gallery browser with all uploaded images.
+- **Images**: paste or drag-and-drop to upload; gallery browser with all uploaded images. Images are private: only visible when signed in.
 - **AI Integration**: select text and Explain, Summarize, Rewrite, or Ask, via Gemini or local LLMs.
 - **Authentication**: signed sessions, per-device tracking, login throttling.
 - **Import / Export**: Import `.md` and `.txt` files, or a `.zip`. Export everything as a `.zip`.
@@ -39,7 +39,7 @@ In the Vercel dashboard, go to **Add New → Project**, and import your newly fo
 
 In the project's **Storage** tab, select **Create Database → Neon (Serverless Postgres)**, pick your preferred region, give your DB a name and create it. Vercel connects it to the project automatically.
 
-Still under **Storage**, select **Create Database → Blob (Fast Object Storage)**. Give the blob store a name, pick the region you want, then create it.
+Still under **Storage**, select **Create Database → Blob (Fast Object Storage)**. Give the blob store a name, pick the region you want, and set its access to **Private**, then create it. Ostracon serves every image itself, and only to a signed-in browser, so the store must be private.
 
 ### 4. Set the required secrets
 

@@ -1,9 +1,9 @@
 import "server-only";
-import { del } from "@vercel/blob";
 import { ne } from "drizzle-orm";
 import { db } from "@/db/client";
 import { notes } from "@/db/schema";
-import { isUploadedBlobUrl, referencedUrls } from "./references";
+import { getStorage } from "@/lib/storage";
+import { isUploadUrl, referencedUrls, uploadPathname } from "./references";
 
 /**
  * Deletes the uploads a deleted note pointed at. Best-effort — a missed blob
@@ -16,7 +16,7 @@ export async function deleteNoteImages(
 ): Promise<void> {
   // Only our own uploads — external images are referenced, not owned.
   const candidates = [
-    ...new Set(referencedUrls(contentMd).filter(isUploadedBlobUrl)),
+    ...new Set(referencedUrls(contentMd).filter(isUploadUrl)),
   ];
   if (candidates.length === 0) return;
 
@@ -34,10 +34,9 @@ export async function deleteNoteImages(
   if (orphaned.length === 0) return;
 
   try {
-    await del(orphaned, {
-      // Explicit token — see the upload route's note on OIDC resolution.
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-    });
+    await getStorage().delete(
+      orphaned.flatMap((url) => uploadPathname(url) ?? []),
+    );
   } catch (error) {
     console.error(`Failed to delete blobs for note ${noteId}`, error);
   }

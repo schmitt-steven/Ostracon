@@ -101,10 +101,11 @@ export function uniqueFilenames(titles: string[]): string[] {
  * Where an upload goes in the archive. Keeps the blob store's name, timestamp
  * prefix and all, because that prefix is what keeps two `Screenshot.png`s apart.
  */
-export function imageEntryName(blobUrl: string): string | null {
+export function imageEntryName(uploadUrl: string): string | null {
   let pathname: string;
   try {
-    pathname = new URL(blobUrl).pathname;
+    // The base only matters for a disk upload's relative `/uploads/…` URL.
+    pathname = new URL(uploadUrl, "http://relative.invalid").pathname;
   } catch {
     return null;
   }

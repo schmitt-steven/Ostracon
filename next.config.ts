@@ -2,19 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    // Uploads live in Vercel Blob, on a store-specific subdomain. Scoped to
-    // the prefix the upload route writes under so the optimizer can't be
-    // pointed at arbitrary blobs, and `search: ""` keeps signed/query-string
-    // variants out.
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "**.public.blob.vercel-storage.com",
-        port: "",
-        pathname: "/notes/**",
-        search: "",
-      },
-    ],
+    // The optimiser only ever resizes the app's own static images (logo,
+    // icons — emitted under /_next/static/media). Uploads are served by
+    // app/uploads to signed-in browsers only and shown unoptimised, so the
+    // optimiser is never pointed at them; no remote hosts are allowed at all.
+    localPatterns: [{ pathname: "/_next/static/media/**", search: "" }],
   },
   env: {
     /**

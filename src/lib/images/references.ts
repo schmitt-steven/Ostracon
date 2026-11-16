@@ -7,8 +7,20 @@
 /** Matches the prefix the upload route writes under. */
 export const UPLOAD_PREFIX = "notes/";
 
-/** Public Vercel Blob URLs are `https://<store>.public.blob.vercel-storage.com/<pathname>`. */
-const BLOB_HOST_SUFFIX = ".public.blob.vercel-storage.com";
+/**
+ * Every upload is linked as `/uploads/<pathname>`, wherever it is stored — a
+ * folder on disk or a private Vercel Blob store. The route there (app/uploads)
+ * checks the session before streaming the bytes, so an image is only ever
+ * visible to a signed-in browser. Relative, so links survive the install
+ * moving to another domain or another store.
+ */
+export const UPLOAD_URL_PREFIX = "/uploads/";
+
+/**
+ * One path segment as the upload route's sanitiser writes it: no separators,
+ * no leading dot, so nothing that could climb out of the store.
+ */
+const SAFE_SEGMENT = /^[A-Za-z0-9_-][A-Za-z0-9._-]*$/;
 
 // Markdown image/link syntax and raw <img> — an upload can end up as any.
 const MARKDOWN_TARGET_RE = /!?\[[^\]]*\]\(\s*<?([^\s)>]+)/g;
@@ -24,22 +36,41 @@ export function referencedUrls(markdown: string): string[] {
 }
 
 /**
- * Whether a URL is one of our own uploads — a blob under the prefix the upload
- * route writes to. Note bodies also carry plain external image URLs, and
- * deletion has to keep its hands off those, so this gates the cleanup pass.
- * Mirrors the `remotePatterns` entry in `next.config.ts`.
+ * Whether a pathname is one the upload route could have written:
+ * `notes/<safe filename>`, exactly. The single gate between a URL or a route
+ * parameter and the store.
  */
-export function isUploadedBlobUrl(url: string): boolean {
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    // Relative paths and other non-URLs are never uploads.
-    return false;
-  }
+export function isUploadPathname(pathname: string): boolean {
+  const [directory, name, ...rest] = pathname.split("/");
   return (
-    parsed.protocol === "https:" &&
-    parsed.hostname.endsWith(BLOB_HOST_SUFFIX) &&
-    parsed.pathname.startsWith(`/${UPLOAD_PREFIX}`)
+    rest.length === 0 &&
+    `${directory}/` === UPLOAD_PREFIX &&
+    name !== undefined &&
+    SAFE_SEGMENT.test(name)
   );
+}
+
+/** Where an upload is linked from a note. */
+export function uploadUrl(pathname: string): string {
+  return `${UPLOAD_URL_PREFIX}${pathname}`;
+}
+
+/**
+ * The stored pathname behind one of our upload URLs, or null for anything
+ * else — note bodies also carry plain external image URLs, and cleanup and
+ * export have to keep their hands off those.
+ */
+export function uploadPathname(url: string): string | null {
+  if (!url.startsWith(UPLOAD_URL_PREFIX)) return null;
+  let pathname: string;
+  try {
+    pathname = decodeURIComponent(url.slice(UPLOAD_URL_PREFIX.length));
+  } catch {
+    return null;
+  }
+  return isUploadPathname(pathname) ? pathname : null;
+}
+
+export function isUploadUrl(url: string): boolean {
+  return uploadPathname(url) !== null;
 }

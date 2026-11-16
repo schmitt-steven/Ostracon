@@ -1,6 +1,7 @@
 "use client";
 
 import { del as idbDel, set as idbSet } from "idb-keyval";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createNote,
@@ -80,76 +81,97 @@ export function useAutosave({
   const savingRef = useRef(false);
   const pendingFlushRef = useRef(false);
 
-  const flush = useCallback(async () => {
+  // The save running now, if any — what the unmount cleanup waits on.
+  const inflightRef = useRef<Promise<void> | null>(null);
+
+  // This mount created a note. Its URL swap kept the server from refreshing
+  // the shell (sidebar counts, tag tree) — so once the editor is gone, the
+  // unmount cleanup does it.
+  const createdHereRef = useRef(false);
+
+  const flush = useCallback((): Promise<void> => {
     if (savingRef.current) {
+      // The running save loops around for this one, so its promise covers it.
       pendingFlushRef.current = true;
-      return;
+      return inflightRef.current ?? Promise.resolve();
     }
 
-    // Loop, not self-recursion, to pick up a save that raced in (the React
-    // Compiler can't verify a self-referential callback).
-    for (;;) {
-      if (!dirtyRef.current) return;
-      dirtyRef.current = false;
-      savingRef.current = true;
-      setStatus("saving");
+    const run = saveUntilClean();
+    inflightRef.current = run;
+    void run.then(() => {
+      if (inflightRef.current === run) inflightRef.current = null;
+    });
+    return run;
 
-      const payload = draftRef.current;
-      try {
-        if (!noteIdRef.current) {
-          creatingRef.current ??= createNote({ ...payload, journalEntryDate });
-          const created = await creatingRef.current;
-          noteIdRef.current = created.id;
-          versionRef.current = created.version;
-          if (created.existed) {
-            // Send the draft again as an update — it surfaces the conflict now
-            // rather than on the next keystroke, or never if the tab closes.
-            dirtyRef.current = true;
-            pendingFlushRef.current = true;
-          } else {
-            lastWritten.set(created.id, created.version);
-            void idbDel(draftKey(null));
-          }
-          if (!unmountedRef.current) {
-            onCreatedRef.current({ id: created.id, slug: created.slug });
-            swappedUrlRef.current = true;
-          }
-          setStatus("saved");
-        } else {
-          const result: UpdateNoteResult = await updateNote({
-            id: noteIdRef.current,
-            expectedVersion: versionRef.current,
-            canRefreshShell: !swappedUrlRef.current,
-            ...payload,
-          });
-          if (result.ok) {
-            versionRef.current = result.version;
-            lastWritten.set(noteIdRef.current, result.version);
-            void idbDel(draftKey(noteIdRef.current));
-            setConflict(null);
+    // Never rejects: a failed save is caught, keeps the draft dirty, and
+    // reports through `status`.
+    async function saveUntilClean(): Promise<void> {
+      // Loop, not self-recursion, to pick up a save that raced in (the React
+      // Compiler can't verify a self-referential callback).
+      for (;;) {
+        if (!dirtyRef.current) return;
+        dirtyRef.current = false;
+        savingRef.current = true;
+        setStatus("saving");
+
+        const payload = draftRef.current;
+        try {
+          if (!noteIdRef.current) {
+            creatingRef.current ??= createNote({ ...payload, journalEntryDate });
+            const created = await creatingRef.current;
+            noteIdRef.current = created.id;
+            versionRef.current = created.version;
+            createdHereRef.current = true;
+            if (created.existed) {
+              // Send the draft again as an update — it surfaces the conflict now
+              // rather than on the next keystroke, or never if the tab closes.
+              dirtyRef.current = true;
+              pendingFlushRef.current = true;
+            } else {
+              lastWritten.set(created.id, created.version);
+              void idbDel(draftKey(null));
+            }
+            if (!unmountedRef.current) {
+              onCreatedRef.current({ id: created.id, slug: created.slug });
+              swappedUrlRef.current = true;
+            }
             setStatus("saved");
-          } else if ("conflict" in result) {
-            setStatus("conflict");
-            setConflict({
-              version: result.version,
-              contentMd: result.contentMd,
-              updatedAt: result.updatedAt,
-            });
           } else {
-            setStatus("error");
+            const result: UpdateNoteResult = await updateNote({
+              id: noteIdRef.current,
+              expectedVersion: versionRef.current,
+              canRefreshShell: !swappedUrlRef.current,
+              ...payload,
+            });
+            if (result.ok) {
+              versionRef.current = result.version;
+              lastWritten.set(noteIdRef.current, result.version);
+              void idbDel(draftKey(noteIdRef.current));
+              setConflict(null);
+              setStatus("saved");
+            } else if ("conflict" in result) {
+              setStatus("conflict");
+              setConflict({
+                version: result.version,
+                contentMd: result.contentMd,
+                updatedAt: result.updatedAt,
+              });
+            } else {
+              setStatus("error");
+            }
           }
+        } catch {
+          // Keep the draft dirty so the next save retries it — nothing is lost.
+          dirtyRef.current = true;
+          setStatus("error");
+        } finally {
+          savingRef.current = false;
+          creatingRef.current = null;
         }
-      } catch {
-        // Keep the draft dirty so the next save retries it — nothing is lost.
-        dirtyRef.current = true;
-        setStatus("error");
-      } finally {
-        savingRef.current = false;
-        creatingRef.current = null;
-      }
 
-      if (!pendingFlushRef.current) return;
-      pendingFlushRef.current = false;
+        if (!pendingFlushRef.current) return;
+        pendingFlushRef.current = false;
+      }
     }
   }, [journalEntryDate]);
 
@@ -180,14 +202,27 @@ export function useAutosave({
 
   // Flush on unmount so leaving mid-debounce doesn't lose the last edit — the
   // action outlives the component.
+  //
+  // Then, if this editor created its note, refresh the router once that save
+  // has landed. Creating skips the shell refresh so the editor isn't torn down
+  // mid-typing (see `canRefreshShell`), and navigating away doesn't make up
+  // for it: the sidebar lives in the root layout, which a client navigation
+  // reuses rather than re-fetches. With the editor gone, nothing is left for a
+  // refresh to interrupt.
+  const router = useRouter();
   useEffect(() => {
     unmountedRef.current = false;
     return () => {
       unmountedRef.current = true;
       if (timerRef.current) clearTimeout(timerRef.current);
-      if (dirtyRef.current) void flush();
+      const settled = dirtyRef.current
+        ? flush()
+        : (inflightRef.current ?? Promise.resolve());
+      void settled.then(() => {
+        if (createdHereRef.current) router.refresh();
+      });
     };
-  }, [flush]);
+  }, [flush, router]);
 
   const keepMine = useCallback(async () => {
     if (!conflict) return;

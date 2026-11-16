@@ -67,9 +67,7 @@ jobs:
       #  run: npm test
 
       - name: Migrations apply to a fresh database
-        run: |
-          npm install --no-save pg
-          npx drizzle-kit migrate
+        run: npx drizzle-kit migrate
 
       - name: Build app
         run: npx next build
@@ -103,9 +101,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
-      - run: |
-          npm ci
-          npm install --no-save pg
+      - run: npm ci
 
       # From HEAD so a release commit is compared to previous release
       - name: Find last release

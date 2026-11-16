@@ -1,6 +1,7 @@
-import { put } from "@vercel/blob";
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth/require-auth";
+import { UPLOAD_PREFIX, uploadUrl } from "@/lib/images/references";
+import { getStorage } from "@/lib/storage";
 import { SNIFF_BYTES, sniffImageType } from "@/lib/images/sniff";
 import {
   isAllowedImageType,
@@ -46,17 +47,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const pathname = `notes/${Date.now()}-${sanitizeFilename(file.name || "image")}`;
-  const blob = await put(pathname, file, {
-    access: "public",
-    // The sniffed type — this is the Content-Type every reader is served under.
-    contentType: sniffed,
-    // Explicit token, so this doesn't depend on the project's OIDC config —
-    // @vercel/blob tries OIDC first when VERCEL_OIDC_TOKEN is present (Next.js
-    // injects one for locally-linked projects) and that path fails unless OIDC
-    // is enabled for "development" in the dashboard.
-    token: process.env.BLOB_READ_WRITE_TOKEN,
-  });
+  const pathname = `${UPLOAD_PREFIX}${Date.now()}-${sanitizeFilename(file.name || "image")}`;
+  // The sniffed type — this is the Content-Type every reader is served under.
+  await getStorage().put(pathname, file, sniffed);
 
-  return NextResponse.json({ url: blob.url });
+  return NextResponse.json({ url: uploadUrl(pathname) });
 }

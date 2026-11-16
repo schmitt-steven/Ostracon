@@ -7,7 +7,7 @@ import { db } from "@/db/client";
 import { notes } from "@/db/schema";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { deleteNoteImages } from "@/lib/images/cleanup";
-import { isUploadedBlobUrl, referencedUrls } from "@/lib/images/references";
+import { isUploadUrl, referencedUrls } from "@/lib/images/references";
 import {
   isValidTag,
   normalizeTag,
@@ -59,7 +59,7 @@ async function currentNote(id: string) {
 /** The uploads a note holds, as the sidebar counts them (see
  * listNotesOverview). */
 function uploadSet(contentMd: string): string {
-  return [...new Set(referencedUrls(contentMd).filter(isUploadedBlobUrl))]
+  return [...new Set(referencedUrls(contentMd).filter(isUploadUrl))]
     .sort()
     .join("\n");
 }
@@ -133,7 +133,8 @@ export async function createNote(input: unknown): Promise<CreateNoteResult> {
 
   // No revalidatePath: the caller swaps its URL as this resolves, and the
   // refresh that follows would remount the editor mid-typing (see
-  // [UpdateNoteInput]'s canRefreshShell). The shell catches up on navigation.
+  // [UpdateNoteInput]'s canRefreshShell). The shell catches up when the
+  // editor closes — useAutosave refreshes the router on its way out.
   await syncLinksForNote(row.id, bodyMd);
   return row;
 }

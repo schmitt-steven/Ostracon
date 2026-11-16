@@ -3,8 +3,13 @@ import { Zip, ZipDeflate, ZipPassThrough, strToU8 } from "fflate";
 import { asc } from "drizzle-orm";
 import { db } from "@/db/client";
 import { notes } from "@/db/schema";
-import { isUploadedBlobUrl, referencedUrls } from "@/lib/images/references";
+import {
+  isUploadUrl,
+  referencedUrls,
+  uploadPathname,
+} from "@/lib/images/references";
 import { parseContentMd, stringifyExportMd } from "@/lib/notes/frontmatter";
+import { getStorage, type UploadStorage } from "@/lib/storage";
 import { resolveNoteTags } from "@/lib/tags/parse";
 import {
   ARCHIVE_FORMAT,
@@ -81,7 +86,7 @@ function imageEntries(rows: ExportedNote[]): Map<string, string> {
   for (const row of rows) {
     for (const url of referencedUrls(row.contentMd)) {
       // External images are referenced, not held — stay absolute.
-      if (!isUploadedBlobUrl(url) || entryByUrl.has(url)) continue;
+      if (!isUploadUrl(url) || entryByUrl.has(url)) continue;
       const name = imageEntryName(url);
       // Guard against two blobs sanitising to one name (very unlikely).
       if (!name || taken.has(name)) continue;
@@ -201,18 +206,22 @@ async function copyImage(
   name: string,
   flush: () => Promise<void>,
 ): Promise<boolean> {
-  let response: Response;
+  // From the store, not fetch(): the URL is relative and served only to a
+  // signed-in browser.
+  const pathname = uploadPathname(url);
+  if (!pathname) return false;
+  let stored: Awaited<ReturnType<UploadStorage["get"]>>;
   try {
-    response = await fetch(url);
+    stored = await getStorage().get(pathname);
   } catch {
     return false;
   }
-  if (!response.ok || !response.body) return false;
+  if (!stored) return false;
 
   const file = new ZipPassThrough(name);
   zip.add(file);
 
-  const reader = response.body.getReader();
+  const reader = stored.stream.getReader();
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -234,7 +243,7 @@ export async function archiveContents(): Promise<{
   const images = new Set<string>();
   for (const row of rows) {
     for (const url of referencedUrls(row.contentMd)) {
-      if (isUploadedBlobUrl(url)) images.add(url);
+      if (isUploadUrl(url)) images.add(url);
     }
   }
   return { notes: rows.length, images: images.size };

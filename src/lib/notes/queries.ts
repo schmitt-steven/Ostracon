@@ -3,7 +3,7 @@ import { desc, eq, isNotNull } from "drizzle-orm";
 import { db } from "@/db/client";
 import { links, notes } from "@/db/schema";
 import { MAX_PINNED_NOTES } from "./pins";
-import { isUploadedBlobUrl, referencedUrls } from "@/lib/images/references";
+import { isUploadUrl, referencedUrls } from "@/lib/images/references";
 import {
   tagNameSet,
   noteSnippet,
@@ -61,7 +61,7 @@ export async function listNotesOverview(): Promise<NoteOverview[]> {
       snippet: noteSnippet(body),
       // Only our own uploads, not external image URLs.
       imageUrls: [
-        ...new Set(referencedUrls(contentMd).filter(isUploadedBlobUrl)),
+        ...new Set(referencedUrls(contentMd).filter(isUploadUrl)),
       ],
       textLength: textLength(body),
     };

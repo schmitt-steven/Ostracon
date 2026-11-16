@@ -20,6 +20,9 @@
 # production
 /build
 
+# uploads stored on disk in development (see src/lib/storage/local.ts)
+/.data/
+
 # misc
 .DS_Store
 *.pem
@@ -42,6 +45,7 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.local.example
+pgdata
 
 # vercel
 .vercel

@@ -29,6 +29,10 @@ function Thumbnail({ image, eager }: { image: StoredImage; eager: boolean }) {
           alt={image.filename}
           fill
           sizes={SIZES}
+          // Uploads are served only to a signed-in browser (app/uploads), and
+          // the optimiser fetches without the reader's cookie — so they're
+          // shown as stored, not resized.
+          unoptimized
           // Not `priority` — deprecated in Next 16.
           loading={eager ? "eager" : "lazy"}
           // contain, not cover — cropping a screenshot cuts off the text.

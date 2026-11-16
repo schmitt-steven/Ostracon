@@ -1,3 +1,4 @@
+import { NewNoteBoundary } from "@/components/editor/NewNoteBoundary";
 import { NoteEditor } from "@/components/editor/NoteEditor";
 import { requireAuth } from "@/lib/auth/require-auth";
 import { defaultNoteTitle } from "@/lib/notes/default-title";
@@ -34,27 +35,29 @@ export default async function NewNotePage({
   const overview = await listNotesOverview();
 
   return (
-    <NoteEditor
-      noteId={null}
-      version={1}
-      initialTitle={initialTitle}
-      // Today, until the note exists and carries its own creation day.
-      defaultTitle={defaultNoteTitle(new Date())}
-      initialBodyMd={initialBodyMd}
-      initialTags={initialTags}
-      // Can't pin a note that doesn't exist yet.
-      pinned={false}
-      // Nothing saved yet — "edited" reads "just now" until the first save.
-      updatedAt={new Date().toISOString()}
-      backlinks={[]}
-      allTags={flattenTree(
-        buildTagTree(
-          overview.map((n) => ({
-            tags: n.tags,
-            updatedAt: n.updatedAt.toISOString(),
-          })),
-        ),
-      ).map((node) => node.name)}
-    />
+    <NewNoteBoundary>
+      <NoteEditor
+        noteId={null}
+        version={1}
+        initialTitle={initialTitle}
+        // Today, until the note exists and carries its own creation day.
+        defaultTitle={defaultNoteTitle(new Date())}
+        initialBodyMd={initialBodyMd}
+        initialTags={initialTags}
+        // Can't pin a note that doesn't exist yet.
+        pinned={false}
+        // Nothing saved yet — "edited" reads "just now" until the first save.
+        updatedAt={new Date().toISOString()}
+        backlinks={[]}
+        allTags={flattenTree(
+          buildTagTree(
+            overview.map((n) => ({
+              tags: n.tags,
+              updatedAt: n.updatedAt.toISOString(),
+            })),
+          ),
+        ).map((node) => node.name)}
+      />
+    </NewNoteBoundary>
   );
 }
