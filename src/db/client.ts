@@ -36,6 +36,21 @@ function isNeonUrl(url: string | undefined): boolean {
  */
 const globalForPool = globalThis as typeof globalThis & { ostraconPool?: Pool };
 
+function createPool(url: string | undefined): Pool {
+  const pool = new Pool({ connectionString: url });
+  /**
+   * An idle connection that the server closes (Postgres restarting or
+   * stopping, a network blip) is reported here. The pool has already
+   * dropped it and opens a fresh one on the next query, so logging is all
+   * there is to do. Without a listener, Node treats the `error` event as an
+   * uncaught exception, which can take the whole server down.
+   */
+  pool.on("error", (error) => {
+    console.error("[db] Idle connection lost:", error.message);
+  });
+  return pool;
+}
+
 function createDb(): Database {
   const url = process.env.DATABASE_URL;
 
@@ -43,9 +58,7 @@ function createDb(): Database {
     return drizzleNeon(neon(url!), { schema });
   }
 
-  const pool = (globalForPool.ostraconPool ??= new Pool({
-    connectionString: url,
-  }));
+  const pool = (globalForPool.ostraconPool ??= createPool(url));
   /**
    * Typed as the Neon database on purpose. The query API is the same for
    * both, and `execute` returns `{ rows }` from each, but neon-http has no

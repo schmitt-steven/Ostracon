@@ -1,10 +1,11 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { clientUserAgent } from "./client-info";
+import { isSecureCookie } from "./cookie-secure";
 import { clientLocation } from "./geo";
 import { loadCredential, setPassword, verifyPassword } from "./password";
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "./password-policy";
@@ -63,9 +64,10 @@ export async function loginAction(
   });
 
   const jar = await cookies();
+  const proto = (await headers()).get("x-forwarded-proto");
   jar.set(SESSION_COOKIE_NAME, makeSessionToken(sessionId), {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecureCookie(process.env, proto),
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_MAX_AGE_SECONDS,

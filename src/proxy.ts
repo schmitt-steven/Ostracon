@@ -8,7 +8,19 @@ import { parseSessionToken, SESSION_COOKIE_NAME } from "@/lib/auth/session";
  * requireAuth settles whether the session is still current; a revoked cookie
  * gets past this and no further, and is cleared via SESSION_END_PATH.
  */
+/**
+ * Dynamic routes that answer without a session. Matched exactly here rather
+ * than excluded in `config.matcher` below, which is for static files and
+ * matches by prefix.
+ *
+ *   /api/health   Docker's HEALTHCHECK, which has no cookie. Says only
+ *                 up or down (see app/api/health).
+ */
+const PUBLIC_PATHS = new Set(["/api/health"]);
+
 export async function proxy(request: NextRequest) {
+  if (PUBLIC_PATHS.has(request.nextUrl.pathname)) return NextResponse.next();
+
   const cookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const isValid = cookie ? parseSessionToken(cookie) !== null : false;
   const isLoginPath = request.nextUrl.pathname === "/login";
