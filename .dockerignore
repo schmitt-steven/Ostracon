@@ -1,0 +1,57 @@
+.dockerignore
+Dockerfile
+.gitignore
+.git
+.github
+ostracon-demo.gif
+*.md
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# uploads stored on disk in development (see src/lib/storage/local.ts)
+/.data/
+
+# misc
+**/.DS_Store
+*.pem
+
+updates.md
+RELEASING.md
+scripts/
+DOCKER_PLAN.md
+
+# agent instructions (local only)
+CLAUDE.md
+AGENTS.md
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+pgdata
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts

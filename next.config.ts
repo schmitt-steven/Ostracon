@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  /**
+   * Also emit `.next/standalone`: a `server.js` plus only the node_modules
+   * files the server imports. The Docker image is built from it (see
+   * Dockerfile). Vercel ignores this and deploys as before.
+   */
+  output: "standalone",
   images: {
     // The optimiser only ever resizes the app's own static images (logo,
     // icons — emitted under /_next/static/media). Uploads are served by
