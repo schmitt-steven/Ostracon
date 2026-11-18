@@ -15,7 +15,8 @@ VOLUME /data
 
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
-ENV UPLOAD_DIR=/data
+ENV UPLOAD_DIR=/data/uploads
+ENV DEPLOYMENT=docker
 
 COPY --chown=node:node --from=build /app/.next/standalone    ./
 COPY --chown=node:node --from=build /app/.next/static        ./.next/static

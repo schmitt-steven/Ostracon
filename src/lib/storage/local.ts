@@ -14,7 +14,8 @@ import type { StoredObject, UploadStorage } from "./types";
  * gitignored.
  */
 
-function uploadRoot(): string {
+/** The folder uploads are written to, absolute. Shown in settings too. */
+export function uploadRoot(): string {
   return path.resolve(
     process.env.UPLOAD_DIR || path.join(process.cwd(), ".data", "uploads"),
   );

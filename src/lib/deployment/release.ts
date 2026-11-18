@@ -12,16 +12,28 @@ import { describeRegion, type Region } from "./regions";
 
 /**
  * Where this copy runs. "development" is `vercel dev` (platform emulator);
- * "local" is plain `next dev` (no platform).
+ * "docker" is the published image (it sets `DEPLOYMENT=docker`); "local" is
+ * anything else off Vercel, such as `next dev`.
  */
-export type DeployTarget = "production" | "preview" | "development" | "local";
+export type DeployTarget =
+  | "production"
+  | "preview"
+  | "development"
+  | "docker"
+  | "local";
 
 export const TARGET_LABEL: Record<DeployTarget, string> = {
   production: "Production",
   preview: "Preview",
   development: "Development",
+  docker: "Docker / self-hosted",
   local: "Local",
 };
+
+/** Whether this is the Docker image. Vercel wins if both somehow claim it. */
+export function isDockerInstall(): boolean {
+  return !process.env.VERCEL && process.env.DEPLOYMENT === "docker";
+}
 
 export type Release = {
   /**
@@ -67,11 +79,12 @@ export function describeRelease(): Release {
   const onVercel = Boolean(process.env.VERCEL);
   const environment = process.env.VERCEL_ENV;
 
-  const target: DeployTarget =
-    !onVercel ||
-    (environment !== "production" &&
-      environment !== "preview" &&
-      environment !== "development")
+  const target: DeployTarget = isDockerInstall()
+    ? "docker"
+    : !onVercel ||
+        (environment !== "production" &&
+          environment !== "preview" &&
+          environment !== "development")
       ? "local"
       : environment;
 

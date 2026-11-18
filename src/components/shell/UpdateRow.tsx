@@ -100,6 +100,7 @@ export function UpdateRow({ compact = false }: Props) {
           current={update.current}
           releaseUrl={update.releaseUrl}
           forkUrl={update.forkUrl}
+          install={update.install}
           onClose={() => setOpen(false)}
         />
       )}

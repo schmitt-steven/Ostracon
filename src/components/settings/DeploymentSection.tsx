@@ -4,11 +4,13 @@ import { RelativeDate } from "@/components/ui/RelativeDate";
 import type { Region } from "@/lib/deployment/regions";
 import { describeRelease, TARGET_LABEL } from "@/lib/deployment/release";
 import {
-  blobStats,
   databaseStats,
-  describeBlobStore,
   describeDatabase,
+  describeUploads,
   formatBytes,
+  uploadStats,
+  type DatabaseIdentity,
+  type UploadsIdentity,
 } from "@/lib/deployment/services";
 import { SectionNote } from "./SectionNote";
 
@@ -24,6 +26,9 @@ import { SectionNote } from "./SectionNote";
  */
 export function DeploymentSection() {
   const release = describeRelease();
+  // Read here, outside Suspense, so the skeleton has the same rows.
+  const database = describeDatabase();
+  const uploads = describeUploads();
 
   return (
     <div className="flex flex-col gap-4">
@@ -31,6 +36,11 @@ export function DeploymentSection() {
         // Said once — off-platform most of these variables don't exist.
         <SectionNote>
           Not on Vercel, so this build has no release of its own.
+        </SectionNote>
+      ) : release.target === "docker" ? (
+        <SectionNote>
+          Running from the Docker image. Commit and region details only exist
+          on Vercel.
         </SectionNote>
       ) : null}
 
@@ -86,96 +96,150 @@ export function DeploymentSection() {
           )}
         </Fact>
 
-        {/* "Function region", not "Region" — the page names two regions. */}
-        <Fact label="Function region" hint={release.deploymentId ?? undefined}>
-          {release.region ? (
-            <RegionText region={release.region} />
-          ) : (
-            <Unknown />
-          )}
-        </Fact>
+        {/* "Function region", not "Region" — the page names two regions.
+            Left out in Docker, where there are no functions to place. */}
+        {release.target === "docker" ? null : (
+          <Fact
+            label="Function region"
+            hint={release.deploymentId ?? undefined}
+          >
+            {release.region ? (
+              <RegionText region={release.region} />
+            ) : (
+              <Unknown />
+            )}
+          </Fact>
+        )}
 
         <Fact label="Runtime">
           Next.js {release.runtime.next} · Node {release.runtime.node}
         </Fact>
       </Group>
 
-      <Suspense fallback={<StorageSkeleton />}>
-        <Storage />
+      <Suspense
+        fallback={<StorageSkeleton labels={storageLabels(database, uploads)} />}
+      >
+        <Storage database={database} uploads={uploads} />
       </Suspense>
     </div>
   );
 }
 
+/**
+ * The Storage rows for this deployment, in order. Neon has an endpoint id to
+ * show and a plain Postgres doesn't; a Blob store has an id and a folder has a
+ * path. Shared with [StorageSkeleton] so the placeholder is exactly as tall
+ * as what replaces it.
+ */
+function storageLabels(
+  database: DatabaseIdentity,
+  uploads: UploadsIdentity,
+): string[] {
+  return [
+    "Database",
+    ...(database.neon ? ["Endpoint"] : []),
+    // "Database size", not "Size" — the group holds two things with sizes.
+    "Database size",
+    "Postgres version",
+    ...(uploads.kind === "vercel-blob"
+      ? ["Blob store id", "Blobs"]
+      : uploads.kind === "local"
+        ? ["Upload folder", "Uploads"]
+        : ["Uploads"]),
+  ];
+}
+
 /** Where the notes and images are kept, and how much of each. Behind Suspense. */
-async function Storage() {
-  const database = describeDatabase();
-  const store = describeBlobStore();
-  const [stats, blobs] = await Promise.all([databaseStats(), blobStats()]);
+async function Storage({
+  database,
+  uploads,
+}: {
+  database: DatabaseIdentity;
+  uploads: UploadsIdentity;
+}) {
+  const [stats, files] = await Promise.all([
+    databaseStats(),
+    uploads.kind === "none"
+      ? Promise.resolve({ ok: false } as const)
+      : uploadStats(),
+  ]);
+
+  const facts: Record<string, ReactNode> = {
+    Database: database.host ? (
+      database.neon ? (
+        <>
+          Neon
+          {database.region ? (
+            <>
+              {" · "}
+              <RegionText region={database.region} />
+            </>
+          ) : null}
+        </>
+      ) : (
+        // A plain server: the host is the one thing worth naming — `db` in
+        // the compose file, or wherever the URL points.
+        <>
+          Postgres · <span className="font-mono">{database.host}</span>
+        </>
+      )
+    ) : (
+      <Unknown />
+    ),
+
+    // Neon's endpoint id — an identifier you paste into a dashboard.
+    Endpoint: database.endpoint ? (
+      <span className="font-mono">{database.endpoint}</span>
+    ) : (
+      <Unknown />
+    ),
+
+    "Database size": stats.ok ? (
+      formatBytes(stats.value.sizeBytes)
+    ) : (
+      <Unavailable />
+    ),
+
+    "Postgres version": stats.ok ? stats.value.serverVersion : <Unavailable />,
+
+    "Blob store id":
+      uploads.kind === "vercel-blob" && uploads.storeId ? (
+        <span className="font-mono">{uploads.storeId}</span>
+      ) : (
+        <Unknown />
+      ),
+
+    // A path inside the server (in Docker, the volume's mount point).
+    "Upload folder":
+      uploads.kind === "local" ? (
+        <span className="font-mono">{uploads.folder}</span>
+      ) : (
+        <Unknown />
+      ),
+  };
+
+  const count = files.ok
+    ? `${files.value.count} ${files.value.count === 1 ? "file" : "files"} · ${formatBytes(files.value.sizeBytes)}`
+    : null;
+  facts.Blobs = count ?? <Unavailable />;
+  facts.Uploads = count ?? <Unavailable />;
 
   return (
     <Group label="Storage">
-      <Fact label="Database">
-        {database.host ? (
-          <>
-            Neon
-            {database.region ? (
-              <>
-                {" · "}
-                <RegionText region={database.region} />
-              </>
-            ) : null}
-          </>
-        ) : (
-          <Unknown />
-        )}
-      </Fact>
-
-      {/* Neon's endpoint id — an identifier you paste into a dashboard. */}
-      <Fact label="Endpoint">
-        {database.endpoint ? (
-          <span className="font-mono">{database.endpoint}</span>
-        ) : (
-          <Unknown />
-        )}
-      </Fact>
-
-      {/* "Database size", not "Size" — the group holds two things with sizes. */}
-      <Fact label="Database size">
-        {stats.ok ? formatBytes(stats.value.sizeBytes) : <Unavailable />}
-      </Fact>
-
-      <Fact label="Postgres version">
-        {stats.ok ? stats.value.serverVersion : <Unavailable />}
-      </Fact>
-
-      <Fact label="Blob store id">
-        {store ? <span className="font-mono">{store}</span> : <Unknown />}
-      </Fact>
-
-      <Fact label="Blobs">
-        {blobs.ok ? (
-          `${blobs.value.count} files · ${formatBytes(blobs.value.sizeBytes)}`
-        ) : (
-          <Unavailable />
-        )}
-      </Fact>
+      {storageLabels(database, uploads).map((label) => (
+        <Fact key={label} label={label}>
+          {facts[label]}
+        </Fact>
+      ))}
     </Group>
   );
 }
 
-/** The same six rows, empty — kept exactly as tall as [Storage] replaces it. */
-function StorageSkeleton() {
+/** The same rows, empty — kept exactly as tall as [Storage] replaces it. */
+function StorageSkeleton({ labels }: { labels: string[] }) {
   return (
     <Group label="Storage">
-      {[
-        "Database",
-        "Endpoint",
-        "Database size",
-        "Postgres version",
-        "Blob store id",
-        "Blobs",
-      ].map((label) => (
+      {labels.map((label) => (
         <Fact key={label} label={label}>
           <Pending />
         </Fact>

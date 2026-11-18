@@ -2,10 +2,11 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { getStorage } from "@/lib/storage";
+import { uploadRoot } from "@/lib/storage/local";
 import { describeRegion, type Region } from "./regions";
 
 /**
- * The Neon database and Vercel blob store, described two ways: who they are
+ * The database and the upload store, described two ways: who they are
  * (parsed from the connection string / token — free, renders immediately) and
  * how much is in them (two round trips — streamed in, see [DeploymentSection]).
  * Nothing here prints a credential; only already-public parts leave the module.
@@ -16,6 +17,8 @@ import { describeRegion, type Region } from "./regions";
 /* ------------------------------------------------------------------ */
 
 export type DatabaseIdentity = {
+  /** Whether the host is Neon's; anything else is a plain Postgres server. */
+  neon: boolean;
   /** `neondb` — the database inside the project, not the project's name. */
   name: string | null;
   /** `ep-cool-name-a1b2c3`, Neon's id for the compute this app talks to. */
@@ -35,18 +38,19 @@ export type DatabaseIdentity = {
  * dropped. A non-`neon.tech` host is reported as a bare host.
  */
 function readNeonHost(host: string): Omit<DatabaseIdentity, "name"> {
-  const bare = { endpoint: null, region: null, pooled: false, host };
+  const bare = { neon: false, endpoint: null, region: null, pooled: false, host };
 
   const labels = host.split(".");
   if (labels.slice(-2).join(".") !== "neon.tech") return bare;
 
   const [endpoint, ...rest] = labels.slice(0, -2);
-  if (!endpoint) return bare;
+  if (!endpoint) return { ...bare, neon: true };
 
   // Drop the compute-size label so it isn't mistaken for the region.
   const place = rest.filter((label) => !/^c-\d+$/.test(label));
 
   return {
+    neon: true,
     endpoint: endpoint.replace(/-pooler$/, ""),
     // Second from the right; the cloud is last.
     region: place.length >= 2 ? describeRegion(place[place.length - 2]!) : null,
@@ -56,16 +60,17 @@ function readNeonHost(host: string): Omit<DatabaseIdentity, "name"> {
 }
 
 export function describeDatabase(): DatabaseIdentity {
+  const unknown: DatabaseIdentity = {
+    neon: false,
+    name: null,
+    endpoint: null,
+    region: null,
+    pooled: false,
+    host: null,
+  };
+
   const url = process.env.DATABASE_URL;
-  if (!url) {
-    return {
-      name: null,
-      endpoint: null,
-      region: null,
-      pooled: false,
-      host: null,
-    };
-  }
+  if (!url) return unknown;
 
   try {
     const parsed = new URL(url);
@@ -76,14 +81,30 @@ export function describeDatabase(): DatabaseIdentity {
     };
   } catch {
     // A malformed connection string isn't this page's job to diagnose.
-    return {
-      name: null,
-      endpoint: null,
-      region: null,
-      pooled: false,
-      host: null,
-    };
+    return unknown;
   }
+}
+
+/**
+ * Where uploads go: a Blob store (its public id) or a folder on disk (its
+ * path inside the server, `/data/uploads` in Docker). "none" when no store
+ * can be used here, such as Vercel without a Blob store connected.
+ */
+export type UploadsIdentity =
+  | { kind: "vercel-blob"; storeId: string | null }
+  | { kind: "local"; folder: string }
+  | { kind: "none" };
+
+export function describeUploads(): UploadsIdentity {
+  let kind: "vercel-blob" | "local";
+  try {
+    kind = getStorage().kind;
+  } catch {
+    return { kind: "none" };
+  }
+  return kind === "local"
+    ? { kind, folder: uploadRoot() }
+    : { kind, storeId: describeBlobStore() };
 }
 
 /**
@@ -144,13 +165,14 @@ export async function databaseStats(): Promise<Stats<DatabaseStats>> {
   }
 }
 
-export type BlobStats = { count: number; sizeBytes: number };
+export type UploadStats = { count: number; sizeBytes: number };
 
 /**
- * Everything in the store, including blobs no note points at — this is a view
- * of what's being paid for, not of the pictures in the notes.
+ * Everything in the store, including files no note points at — this is a view
+ * of what's being stored (and on Blob, paid for), not of the pictures in the
+ * notes. Works the same for a Blob store and a folder.
  */
-export async function blobStats(): Promise<Stats<BlobStats>> {
+export async function uploadStats(): Promise<Stats<UploadStats>> {
   try {
     const objects = await getStorage().list();
     const sizeBytes = objects.reduce((sum, object) => sum + object.size, 0);

@@ -1,4 +1,5 @@
 import "server-only";
+import { isDockerInstall } from "./release";
 
 /**
  * Whether a newer Ostracon exists upstream.
@@ -43,6 +44,11 @@ export type UpdateCheck =
       current: string;
       releaseUrl: string;
       forkUrl: string | null;
+      /**
+       * How this copy was installed, which decides the steps: "git" (a fork
+       * or clone that Vercel builds) or "docker" (the published image).
+       */
+      install: "git" | "docker";
     }
   /** Upstream couldn't be reached or didn't answer with a version. */
   | { state: "unknown" };
@@ -60,6 +66,7 @@ export async function checkForUpdate(current: string): Promise<UpdateCheck> {
     current,
     releaseUrl: releaseUrl(latest),
     forkUrl: forkUrl(),
+    install: isDockerInstall() ? "docker" : "git",
   };
 }
 

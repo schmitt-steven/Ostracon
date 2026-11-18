@@ -12,6 +12,11 @@ type Props = {
   releaseUrl: string;
   /** This copy's own repository, when the platform named it. */
   forkUrl: string | null;
+  /**
+   * How this copy was installed. Optional so an answer cached by a build
+   * from before this field existed still reads as the Git steps.
+   */
+  install?: "git" | "docker";
   onClose: () => void;
 };
 
@@ -31,6 +36,7 @@ export function UpdateDialog({
   current,
   releaseUrl,
   forkUrl,
+  install = "git",
   onClose,
 }: Props) {
   // On the document, as the tag dialogs — this opens from a sidebar row, and
@@ -59,11 +65,20 @@ export function UpdateDialog({
         <p className="font-display text-[20px] font-semibold leading-tight text-ink">
           Update to {latest}
         </p>
-        <p className="mt-1.5 text-ui text-ink-muted">
-          This copy is at {current}. Updating pulls the new code into your 
-          repository. Vercel automatically builds it and applies any database changes. 
-          Your notes, images and settings are not touched.
-        </p>
+        {install === "docker" ? (
+          <p className="mt-1.5 text-ui text-ink-muted">
+            This copy is at {current}. Updating downloads the new image and
+            recreates the app container. Database changes are applied when it
+            starts. Your notes, images and settings live in volumes and are not
+            touched.
+          </p>
+        ) : (
+          <p className="mt-1.5 text-ui text-ink-muted">
+            This copy is at {current}. Updating pulls the new code into your
+            repository. Vercel automatically builds it and applies any database
+            changes. Your notes, images and settings are not touched.
+          </p>
+        )}
         <a
           href={releaseUrl}
           target="_blank"
@@ -73,39 +88,18 @@ export function UpdateDialog({
           See release notes
         </a>
 
-        <Path title="If you forked Ostracon">
-          <p>
-            Open{" "}
-            {forkUrl ? (
-              <a
-                href={forkUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-action underline-offset-2 hover:underline"
-              >
-                your repository
-              </a>
-            ) : (
-              "your repository"
-            )}{" "}
-            on GitHub and press <b className="font-semibold text-ink">Sync
-            fork</b>, then <b className="font-semibold text-ink">Update
-            branch</b>. That&apos;s it, Vercel will then auto-deploy the update.
-          </p>
-        </Path>
-
-        <Path title="If you cloned it into a repository of your own">
-          <p>
-            There is no fork to sync, so pull from Ostracon&apos;s repo instead.<br/>
-            If you haven&apos;t added the remote yet, run:
-          </p>
-          <Command>
-            git remote add upstream
-            https://github.com/schmitt-steven/Ostracon.git
-          </Command>
-          <p className="mt-2">Then, for this update and every one after:</p>
-          <Command>{"git pull upstream main\ngit push"}</Command>
-        </Path>
+        {install === "docker" ? (
+          <Path title="Update the containers">
+            <p>
+              In the folder with your{" "}
+              <code className="font-mono text-meta">docker-compose.yml</code>,
+              run:
+            </p>
+            <Command>{"docker compose pull\ndocker compose up -d"}</Command>
+          </Path>
+        ) : (
+          <GitPaths forkUrl={forkUrl} />
+        )}
 
         <div className="mt-5 flex items-center justify-end">
           <button
@@ -119,6 +113,47 @@ export function UpdateDialog({
       </div>
     </div>,
     document.body,
+  );
+}
+
+/** The two ways to update a copy installed from Git: a fork, or a clone. */
+function GitPaths({ forkUrl }: { forkUrl: string | null }) {
+  return (
+    <>
+      <Path title="If you forked Ostracon">
+        <p>
+          Open{" "}
+          {forkUrl ? (
+            <a
+              href={forkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-action underline-offset-2 hover:underline"
+            >
+              your repository
+            </a>
+          ) : (
+            "your repository"
+          )}{" "}
+          on GitHub and press <b className="font-semibold text-ink">Sync
+          fork</b>, then <b className="font-semibold text-ink">Update
+          branch</b>. That&apos;s it, Vercel will then auto-deploy the update.
+        </p>
+      </Path>
+
+      <Path title="If you cloned it into a repository of your own">
+        <p>
+          There is no fork to sync, so pull from Ostracon&apos;s repo instead.<br/>
+          If you haven&apos;t added the remote yet, run:
+        </p>
+        <Command>
+          git remote add upstream
+          https://github.com/schmitt-steven/Ostracon.git
+        </Command>
+        <p className="mt-2">Then, for this update and every one after:</p>
+        <Command>{"git pull upstream main\ngit push"}</Command>
+      </Path>
+    </>
   );
 }
 
