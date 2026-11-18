@@ -119,7 +119,14 @@ docker compose exec -T db pg_dump -U postgres postgres > ostracon.sql
 docker compose exec -T app tar czf - -C /data uploads > uploads.tar.gz
 ```
 
-To restore, run the same commands the other way round on a fresh install: `psql -U postgres postgres < ostracon.sql` and `tar xzf - -C /data < uploads.tar.gz`.
+To restore on a fresh install, load the database before the app starts for the first time:
+
+```bash
+docker compose up -d db
+docker compose exec -T db psql -U postgres postgres < ostracon.sql
+docker compose up -d
+docker compose exec -T app tar xzf - -C /data < uploads.tar.gz
+```
 
 ### HTTPS
 
