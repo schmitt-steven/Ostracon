@@ -17,7 +17,7 @@ import type { StoredObject, UploadStorage } from "./types";
 /** The folder uploads are written to, absolute. Shown in settings too. */
 export function uploadRoot(): string {
   return path.resolve(
-    process.env.UPLOAD_DIR || path.join(process.cwd(), ".data", "uploads"),
+    process.env.UPLOAD_DIR || path.join(/* turbopackIgnore: true */ process.cwd(), ".data", "uploads"),
   );
 }
 

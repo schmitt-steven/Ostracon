@@ -140,3 +140,26 @@ jobs:
             exit 1
           fi
 
+  docker-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Create .env
+        run: printf 'POSTGRES_PASSWORD=ci\nAPP_PASSWORD=ci-password\nSESSION_SECRET=%s\n' "$(openssl rand -hex 32)" > .env
+
+      - run: docker compose up -d --build --wait
+
+      - run: curl --fail http://localhost:3000/api/health
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Clean up
+        if: always()
+        run: docker compose down -v
+
+
+  

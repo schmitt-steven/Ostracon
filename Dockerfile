@@ -5,6 +5,7 @@ RUN npm ci
 
 FROM dependencies AS build
 COPY . .
+ENV NEXT_OUTPUT=standalone
 RUN npx next build
 
 FROM node:24-alpine AS runner

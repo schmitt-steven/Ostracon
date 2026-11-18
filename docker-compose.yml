@@ -13,6 +13,7 @@ services:
       timeout: 5s
       retries: 10
   app:
+    image: ghcr.io/schmitt-steven/ostracon:latest
     build: .
     ports:
       - "3000:3000"
