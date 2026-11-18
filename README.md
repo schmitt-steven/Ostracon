@@ -7,7 +7,7 @@
 
 Ostracon is a tag-based Markdown notes app for one person.
 
-It runs on Next.js and hosting is free: one Vercel project holds the app, a Neon Postgres database, and a Blob store for images. All three have generous free tiers.
+It runs on Next.js and hosting is free: one Vercel project holds the app, a Neon Postgres database, and a Blob store for images. All three have generous free tiers. You can also [host it yourself with Docker](#self-hosting-with-docker).
 
 ![Ostracon demo](ostracon-demo.gif)
 
@@ -68,7 +68,64 @@ Once Vercel finished the deployment you can open your website and unlock Ostraco
 
 Ostracon tells you when a new release is available. An update button will appear in the side bar. Click it and follow the instructions to update.
 
-## Running it locally
+## Self-hosting with Docker
+
+Instead of Vercel, you can run Ostracon on your own machine or server. Docker Compose starts two containers, the app and a Postgres database, and images are stored on disk instead of in a Blob store. You need [Docker](https://docs.docker.com/get-docker/) with Compose. Source code not needed, you can download the image from GitHub's container registry, for both Intel/AMD and ARM machines.
+
+### 1. Download the compose file and the settings
+
+In an empty folder, run:
+
+```bash
+curl -O https://raw.githubusercontent.com/schmitt-steven/Ostracon/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/schmitt-steven/Ostracon/main/.env.docker.example
+```
+
+### 2. Fill in the curled `.env` file
+
+| Variable | Value |
+| --- | --- |
+| `POSTGRES_PASSWORD` | Password for the bundled database. Letters and digits only. |
+| `APP_PASSWORD` | The password you'll sign in with the first time. |
+| `SESSION_SECRET` | A generated random string. You could run `openssl rand -hex 32` for this. |
+
+The `.env` file also explains all optional settings.
+
+### 3. Run the image
+
+```bash
+docker compose up -d
+```
+
+Open `http://localhost:3000`, or your server's address, and unlock Ostracon with your `APP_PASSWORD`. The first start downloads the images and sets up the database, which can take a while.
+
+### Updating
+
+You'll see an update notice when a new release is out. To update, run:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Notes and images live in Docker volumes, so they are kept after updates and `docker compose down`. Only `docker compose down -v` deletes them.
+
+### Backups
+
+Run these in the folder with `docker-compose.yml` to back up the database and the uploaded images:
+
+```bash
+docker compose exec -T db pg_dump -U postgres postgres > ostracon.sql
+docker compose exec -T app tar czf - -C /data uploads > uploads.tar.gz
+```
+
+To restore, run the same commands the other way round on a fresh install: `psql -U postgres postgres < ostracon.sql` and `tar xzf - -C /data < uploads.tar.gz`.
+
+### HTTPS
+
+If Ostracon is reachable from the internet, put it behind a reverse proxy with HTTPS, such as [Caddy](https://caddyserver.com). See `COOKIE_SECURE` in `.env`.
+
+## Running Ostracon locally
 
 ```bash
 npm install
@@ -78,5 +135,4 @@ vercel env pull .env.local   # fetches DATABASE_URL and the rest
 npm run dev
 ```
 
-LM Studio and Ollama are only reachable
-in this mode at the moment.  Override `LMSTUDIO_BASE_URL` / `OLLAMA_BASE_URL` if the defaults shouldn't fit.
+LM Studio and Ollama are reachable in this mode and with Docker, but not on Vercel. Override `LMSTUDIO_BASE_URL` / `OLLAMA_BASE_URL` if the defaults shouldn't fit.

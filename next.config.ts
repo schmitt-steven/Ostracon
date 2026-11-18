@@ -2,9 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /**
-   * Also emit `.next/standalone`: a `server.js` plus only the node_modules
-   * files the server imports. The Docker image is built from it (see
-   * Dockerfile). Vercel ignores this and deploys as before.
+   * Emit `.next/standalone`: a `server.js` plus only the node_modules files
+   * the server imports. Only the Dockerfile turns this on (it sets
+   * NEXT_OUTPUT=standalone), because the image is built from it. Vercel must
+   * not get it: its builds write no server trace, and the standalone step
+   * then fails looking for `.next/next-server.js.nft.json`.
    */
   output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   images: {

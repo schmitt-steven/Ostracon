@@ -1,4 +1,5 @@
 import "server-only";
+import { isDockerInstall } from "@/lib/deployment/release";
 import { listLmStudioModels } from "./lmstudio";
 import { loadAiSettings, type StoredSettings } from "./settings-store";
 import {
@@ -41,10 +42,16 @@ export type Provider = {
 const GEMINI_BASE_URL =
   "https://generativelanguage.googleapis.com/v1beta/openai/";
 
-// Local model servers are on loopback, so what matters is whether this machine
-// is yours, not dev vs. prod. Vercel sets VERCEL everywhere; self-hosting
-// elsewhere would need its own check.
+// Local model servers run on the user's own machine, so what matters is whether
+// that machine is reachable, not dev vs. prod. Vercel sets VERCEL everywhere;
+// `next dev`, `npm start` and the Docker image all run on hardware you own.
 const isLocalDeployment = !process.env.VERCEL;
+
+// Inside the container `localhost` is the container itself. Compose maps
+// host.docker.internal to the machine Docker runs on (`extra_hosts`), which is
+// where LM Studio and Ollama listen.
+const isDocker = isDockerInstall();
+const LOCAL_HOST = isDocker ? "host.docker.internal" : "localhost";
 
 const LOCAL_UNAVAILABLE =
   "Local model servers are only reachable when the app runs on your own machine.";
@@ -54,9 +61,14 @@ const LOCAL_UNAVAILABLE_STATUS = "Only reachable on localhost";
 
 /**
  * Why a hosted provider with no key can't run, naming the right place to set
- * one for where the app is running (.env.local vs. the platform).
+ * one for where the app is running (Docker's .env, .env.local, or the
+ * platform). In Docker, `restart` keeps the old environment; `up -d` recreates
+ * the container with the new one.
  */
 function noKeyReason(keyEnv: string): string {
+  if (isDocker) {
+    return `No ${keyEnv} in .env next to docker-compose.yml. Add it there, then run docker compose up -d.`;
+  }
   return isLocalDeployment
     ? `No ${keyEnv} in .env.local — add it there and restart.`
     : `No ${keyEnv} in this deployment's environment. Add it to the project's environment variables, then redeploy.`;
@@ -94,7 +106,7 @@ function getProviderConfigs(stored: StoredSettings): Provider[] {
     {
       id: "lmstudio",
       ...PROVIDER_IDENTITIES.lmstudio,
-      baseURL: process.env.LMSTUDIO_BASE_URL || "http://localhost:1234/v1",
+      baseURL: process.env.LMSTUDIO_BASE_URL || `http://${LOCAL_HOST}:1234/v1`,
       // Empty means "whatever the probe finds loaded, else the first
       // downloaded"; a stored choice is honoured only if the server still has
       // it — see `resolveLocal`.
@@ -110,7 +122,7 @@ function getProviderConfigs(stored: StoredSettings): Provider[] {
     {
       id: "ollama",
       ...PROVIDER_IDENTITIES.ollama,
-      baseURL: process.env.OLLAMA_BASE_URL || "http://localhost:11434/v1",
+      baseURL: process.env.OLLAMA_BASE_URL || `http://${LOCAL_HOST}:11434/v1`,
       model: stored.get("ollama")?.model ?? process.env.OLLAMA_MODEL ?? "",
       apiKey: "local",
       available: isLocalDeployment,
