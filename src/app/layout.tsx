@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import { ServiceWorkerRegistrar } from "@/components/pwa/ServiceWorkerRegistrar";
 import { AppShell } from "@/components/shell/AppShell";
 import { InlineScript } from "@/components/ui/InlineScript";
@@ -15,25 +15,35 @@ import { buildTagTree, flattenTree } from "@/lib/tags/tree";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
-const plexSans = IBM_Plex_Sans({
+// Fonts are files in the repo (src/assets/fonts, latin subset from Google
+// Fonts, SIL OFL), not next/font/google: that one downloads them during
+// `next build`, and a build in CI or Docker failed whenever Google didn't
+// answer. Next still self-hosts and preloads them the same way.
+
+// Variable font; only 400 and 500 are used.
+const plexSans = localFont({
+  src: "../assets/fonts/IBMPlexSans.woff2",
   variable: "--font-plex-sans",
-  weight: ["400", "500"],
-  subsets: ["latin"],
+  weight: "400 500",
 });
 
-const plexMono = IBM_Plex_Mono({
+const plexMono = localFont({
+  src: [
+    { path: "../assets/fonts/IBMPlexMono-Regular.woff2", weight: "400" },
+    { path: "../assets/fonts/IBMPlexMono-Medium.woff2", weight: "500" },
+  ],
   variable: "--font-plex-mono",
-  weight: ["400", "500"],
-  subsets: ["latin"],
+  adjustFontFallback: false,
 });
 
 // The app's visual signature: every note title and every index row title is
-// set in this, in both views. `opsz` keeps it from going spindly at the 16px
-// the index rows use.
-const fraunces = Fraunces({
+// set in this, in both views. The file carries the SOFT, WONK and opsz axes;
+// `opsz` keeps it from going spindly at the 16px the index rows use.
+const fraunces = localFont({
+  src: "../assets/fonts/Fraunces.woff2",
   variable: "--font-fraunces",
-  axes: ["SOFT", "WONK", "opsz"],
-  subsets: ["latin"],
+  weight: "100 900",
+  adjustFontFallback: "Times New Roman",
 });
 
 export const metadata: Metadata = {

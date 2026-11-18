@@ -82,7 +82,7 @@ export const localDiskStorage: UploadStorage = {
         if (!pathname.startsWith(prefix)) continue;
         const file = fileFor(pathname);
         if (!file) continue;
-        const info = await stat(file).catch(() => null);
+        const info = await stat(/* turbopackIgnore: true */ file).catch(() => null);
         if (!info?.isFile()) continue;
         objects.push({ pathname, size: info.size, uploadedAt: info.mtime });
       }
@@ -105,10 +105,10 @@ export const localDiskStorage: UploadStorage = {
   async get(pathname) {
     const file = fileFor(pathname);
     if (!file) return null;
-    const info = await stat(file).catch(() => null);
+    const info = await stat(/* turbopackIgnore: true */ file).catch(() => null);
     if (!info?.isFile()) return null;
     return {
-      stream: Readable.toWeb(createReadStream(file)) as ReadableStream<Uint8Array>,
+      stream: Readable.toWeb(createReadStream(/* turbopackIgnore: true */ file)) as ReadableStream<Uint8Array>,
       size: info.size,
       contentType: await sniffFile(file),
     };
